@@ -41,7 +41,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <script src="env.js?v=20260526-auth-redirect"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
   <script>
     tailwind.config = {
       darkMode: "class",
@@ -2785,8 +2785,8 @@
   <input id="schedulePhotoFileInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*">
 
   <script>
-    const MY_NAME = "김지석";
     const MALE_MEMBER_NAMES = new Set(["조형철", "김지석", "한인호", "김태환", "이상백", "민문기", "박창언", "윤준"]);
+    const AUTH_STORAGE_KEY = "tennis-homepage-v2-auth";
     const LOCAL_SCHEDULES_KEY = "tennis.localSchedules";
     const LOCAL_EVENTS_KEY = "tennis.localEvents";
     const DELETED_SCHEDULES_KEY = "tennis.deletedScheduleIds";
@@ -2806,12 +2806,16 @@
     const SCHEDULE_TIME_START_HOUR = 6;
     const SCHEDULE_TIME_END_HOUR = 24;
     const supabaseClient = SUPABASE_CONFIG.supabaseUrl && SUPABASE_CONFIG.supabaseAnonKey && window.supabase
-      ? window.supabase.createClient(SUPABASE_CONFIG.supabaseUrl, SUPABASE_CONFIG.supabaseAnonKey)
+      ? window.supabase.createClient(SUPABASE_CONFIG.supabaseUrl, SUPABASE_CONFIG.supabaseAnonKey, {
+          auth: {
+            storageKey: AUTH_STORAGE_KEY
+          }
+        })
       : null;
     const todayIso = todayIsoLocal();
     const today = new Date(`${todayIso}T00:00:00`);
         const state = { query: "", place: "all", person: "all", scheduleWindow: "upcoming", memberSort: "count", memberMonth: "all", selectedId: 0, selectedEventId: "", selectedMemberId: "", detailType: "schedule", detailReturnTo: "schedule", selectedDate: "", currentMonth: todayIso.slice(0, 7) };
-    const authState = { session: null, user: null, initialized: false };
+    const authState = { session: null, user: null, memberAccount: null, member: null, initialized: false };
     const dataStore = { members: [], courts: [], courtUnits: [], schedules: [], events: [], discussions: [], scheduleDeclines: [] };
     let members = [];
     let courts = [];
@@ -3471,6 +3475,7 @@
       const attendeeOverrides = ALLOW_REMOTE_WRITES ? {} : loadAttendeeOverrides();
 
       members = dataStore.members;
+      syncCurrentMemberFromData();
       courts = dataStore.courts;
       courtUnits = dataStore.courtUnits || [];
       discussions = dataStore.discussions;
@@ -3967,8 +3972,14 @@
     function initHeaderAvatar() {
       const headerAvatar = document.querySelector("#headerProfileAvatar");
       if (!headerAvatar) return;
+      const memberName = myMemberName();
+      if (!memberName) {
+        headerAvatar.className = "hidden";
+        headerAvatar.innerHTML = "";
+        return;
+      }
       headerAvatar.className = "ml-2 hidden sm:flex";
-      headerAvatar.innerHTML = memberAvatarHTML(MY_NAME, {
+      headerAvatar.innerHTML = memberAvatarHTML(memberName, {
         className: "flex h-10 w-10 items-center justify-center overflow-hidden rounded-full text-xs font-black text-white transition-all hover:scale-105"
       });
     }
@@ -4032,6 +4043,86 @@
       return authState.user?.email || "";
     }
 
+    function requestedNameFromAuthUser(user = authState.user) {
+      if (!user) return "";
+      const metadata = user.user_metadata || {};
+      return String(
+        metadata.nickname ||
+        metadata.full_name ||
+        metadata.name ||
+        ""
+      ).trim();
+    }
+
+    function authProviderName(user = authState.user) {
+      return String(
+        user?.app_metadata?.provider ||
+        user?.identities?.[0]?.provider ||
+        ""
+      ).trim();
+    }
+
+    function clearMemberAuthState() {
+      authState.memberAccount = null;
+      authState.member = null;
+    }
+
+    function syncCurrentMemberFromData() {
+      const memberId = authState.memberAccount?.status === "approved"
+        ? authState.memberAccount?.member_id
+        : "";
+      authState.member = memberId
+        ? members.find(member => String(member.id) === String(memberId)) || null
+        : null;
+    }
+
+    async function loadCurrentMemberAccount() {
+      if (!supabaseClient || !authState.user) {
+        clearMemberAuthState();
+        return;
+      }
+
+      const selectColumns = "user_id,member_id,requested_name,provider,role,status,approved_at";
+      let { data, error } = await supabaseClient
+        .from("club_member_accounts")
+        .select(selectColumns)
+        .eq("user_id", authState.user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        const pendingRow = {
+          user_id: authState.user.id,
+          requested_name: requestedNameFromAuthUser() || null,
+          provider: authProviderName() || null
+        };
+
+        const inserted = await supabaseClient
+          .from("club_member_accounts")
+          .insert(pendingRow)
+          .select(selectColumns)
+          .single();
+
+        if (inserted.error?.code === "23505") {
+          const retry = await supabaseClient
+            .from("club_member_accounts")
+            .select(selectColumns)
+            .eq("user_id", authState.user.id)
+            .single();
+          if (retry.error) throw retry.error;
+          data = retry.data;
+        } else if (inserted.error) {
+          throw inserted.error;
+        } else {
+          data = inserted.data;
+        }
+      }
+
+      authState.memberAccount = data || null;
+      syncCurrentMemberFromData();
+    }
+
     function isOwnerSignedIn() {
       return currentUserEmail().toLowerCase() === OWNER_EMAIL.toLowerCase();
     }
@@ -4056,11 +4147,14 @@
 
     function authRedirectUrl() {
       const currentOrigin = window.location.origin;
+      if (window.location.hostname === "cafesowoo.github.io" && SUPABASE_CONFIG.siteUrl) {
+        return SUPABASE_CONFIG.siteUrl;
+      }
       if (currentOrigin && currentOrigin !== "null" && /^https?:$/.test(window.location.protocol)) {
         return `${currentOrigin}${window.location.pathname}`;
       }
 
-      return SUPABASE_CONFIG.siteUrl || "https://cafesowoo.github.io/tennis-homepage/";
+      return SUPABASE_CONFIG.siteUrl || "https://cafesowoo.github.io/tennis-homepage-v2/";
     }
 
     function slugifyCourtName(name) {
@@ -4310,12 +4404,15 @@
 
       const iconEl = button.querySelector("[data-auth-icon]");
       const labelEl = button.querySelector("[data-auth-label]");
-      const email = currentUserEmail();
       const hasClient = Boolean(supabaseClient);
+      const signedIn = Boolean(authState.user);
+      const account = authState.memberAccount;
+      const memberName = myMemberName();
+      const authLabel = memberName || requestedNameFromAuthUser() || currentUserEmail() || "로그인 사용자";
 
       button.disabled = !hasClient;
       button.classList.toggle("is-disabled", !hasClient);
-      button.classList.toggle("is-signed-in", Boolean(email));
+      button.classList.toggle("is-signed-in", signedIn);
 
       if (!hasClient) {
         if (iconEl) iconEl.textContent = "cloud_off";
@@ -4325,18 +4422,31 @@
         return;
       }
 
-      if (!email) {
+      if (!signedIn) {
         if (iconEl) iconEl.textContent = "login";
-        if (labelEl) labelEl.textContent = "로그인";
-        button.setAttribute("aria-label", "Google 로그인");
-        button.title = "Google 로그인";
+        if (labelEl) labelEl.textContent = "카카오 로그인";
+        button.setAttribute("aria-label", "카카오 로그인");
+        button.title = "카카오 로그인";
         return;
       }
 
       if (iconEl) iconEl.textContent = "logout";
-      if (labelEl) labelEl.textContent = isOwnerSignedIn() ? "로그인됨" : "다른 계정";
-      button.setAttribute("aria-label", `${email} 로그아웃`);
-      button.title = `${email} 로그아웃`;
+      if (account?.status === "pending") {
+        if (labelEl) labelEl.textContent = "승인 대기";
+        button.setAttribute("aria-label", `${authLabel} 회원 승인 대기 중, 클릭하여 로그아웃`);
+        button.title = `${authLabel} · 회원 승인 대기 중`;
+        return;
+      }
+      if (account?.status === "disabled") {
+        if (labelEl) labelEl.textContent = "사용 중지";
+        button.setAttribute("aria-label", `${authLabel} 사용 중지 계정, 클릭하여 로그아웃`);
+        button.title = `${authLabel} · 사용 중지 계정`;
+        return;
+      }
+
+      if (labelEl) labelEl.textContent = memberName || "로그인됨";
+      button.setAttribute("aria-label", `${authLabel} 로그아웃`);
+      button.title = isClubAdmin() ? `${authLabel} · 관리자 · 클릭하여 로그아웃` : `${authLabel} · 클릭하여 로그아웃`;
     }
 
     async function initAuth() {
@@ -4350,19 +4460,45 @@
       if (error) console.warn("Auth session could not be loaded.", error);
       authState.session = data?.session || null;
       authState.user = authState.session?.user || null;
+      if (authState.user) {
+        try {
+          await loadCurrentMemberAccount();
+        } catch (memberError) {
+          console.warn("Club member account could not be loaded.", memberError);
+          clearMemberAuthState();
+        }
+      } else {
+        clearMemberAuthState();
+      }
       authState.initialized = true;
       renderAuthStatus();
 
       supabaseClient.auth.onAuthStateChange((_event, session) => {
         authState.session = session || null;
         authState.user = session?.user || null;
+        if (!authState.user) clearMemberAuthState();
         renderAuthStatus();
         // Clear protected data immediately; never retain it across account changes.
         kakaoCommentsRequest++;
         kakaoCommentSnapshots.clear();
         if (document.querySelector("#detail.active") && state.detailType === "schedule") renderDetail();
         // Keep Supabase requests outside the auth callback's lock.
-        setTimeout(() => { void loadKakaoComments(); }, 0);
+        setTimeout(() => {
+          void (async () => {
+            if (authState.user) {
+              try {
+                await loadCurrentMemberAccount();
+              } catch (memberError) {
+                console.warn("Club member account could not be refreshed.", memberError);
+                clearMemberAuthState();
+              }
+            }
+            renderAuthStatus();
+            initHeaderAvatar();
+            refreshViews();
+            await loadKakaoComments();
+          })();
+        }, 0);
       });
     }
 
@@ -4374,12 +4510,15 @@
         if (error) throw error;
         authState.session = null;
         authState.user = null;
+        clearMemberAuthState();
         renderAuthStatus();
+        initHeaderAvatar();
+        refreshViews();
         return;
       }
 
       const { error } = await supabaseClient.auth.signInWithOAuth({
-        provider: "google",
+        provider: "kakao",
         options: {
           redirectTo: authRedirectUrl()
         }
@@ -4657,14 +4796,16 @@
     }
 
         function isMySchedule(item) {
-          return item.attendees.includes(MY_NAME);
+          const memberName = myMemberName();
+          return Boolean(memberName && item.attendees.includes(memberName));
         }
 
         function isMyHostSchedule(item) {
           const memberId = myMemberId();
+          const memberName = myMemberName();
           return Boolean(
             (memberId && String(item.hostId || "") === String(memberId)) ||
-            item.hostName === MY_NAME
+            (memberName && item.hostName === memberName)
           );
         }
 
@@ -4855,12 +4996,13 @@
           const startMin = timeToMinutes(startTime);
           const endMin = timeToMinutes(endTime);
           const alerts = [];
+          const memberName = myMemberName();
 
           // Check other schedules I'm attending
           const dateSchedules = byDate[date] || [];
           for (const s of dateSchedules) {
             if (String(s.id) === String(excludeId)) continue;
-            if (!s.attendees.includes(MY_NAME)) continue;
+            if (!memberName || !s.attendees.includes(memberName)) continue;
             const sStartStr = toTwentyFourHourLabel(timeStart(s));
             const sEndStr = toTwentyFourHourLabel(timeEnd(s));
             if (!sStartStr || !sEndStr) continue;
@@ -4903,7 +5045,27 @@
 
 
         function myMemberId() {
-          return members.find(member => member.name === MY_NAME)?.id || "";
+          if (authState.member?.id) return String(authState.member.id);
+          if (authState.memberAccount?.status !== "approved") return "";
+          return String(authState.memberAccount?.member_id || "");
+        }
+
+        function myMember() {
+          const memberId = myMemberId();
+          if (!memberId) return null;
+          return authState.member || members.find(member => String(member.id) === String(memberId)) || null;
+        }
+
+        function myMemberName() {
+          return myMember()?.name || "";
+        }
+
+        function isApprovedMember() {
+          return authState.memberAccount?.status === "approved" && Boolean(myMemberId());
+        }
+
+        function isClubAdmin() {
+          return isApprovedMember() && authState.memberAccount?.role === "admin";
         }
 
         function nextScheduleFrom(dateValue = todayIso) {
@@ -5118,7 +5280,8 @@
             dotType = "dot-tertiary";
           }
           const myDotClass = !isDeclinedSchedule(item) && isMySchedule(item) ? "my-schedule-dot" : "";
-          const hostTitle = isMyHostSchedule(item) ? ` title="${MY_NAME} Host 일정"` : "";
+          const myNameLabel = escapeHTML(myMemberName() || "내");
+          const hostTitle = isMyHostSchedule(item) ? ` title="${myNameLabel} Host 일정"` : "";
           return `<span class="pulse-dot ${dotType} ${myDotClass}"${hostTitle}></span>`;
         }).join("");
 
@@ -5126,12 +5289,12 @@
           ? `<div class="absolute left-1/2 bottom-1 flex -translate-x-1/2 items-center justify-center gap-1 md:hidden">${dotsMarkup}</div>`
           : "";
         const myScheduleBadge = hasMySchedule
-          ? `<span class="absolute ${hasMyHostSchedule ? "right-6" : "right-2"} top-2 z-10 hidden h-5 w-5 items-center justify-center rounded-full bg-primary text-white shadow-sm ring-2 ring-surface-container-lowest md:flex" title="${MY_NAME} 참석 일정" aria-label="${MY_NAME} 참석 일정">
+          ? `<span class="absolute ${hasMyHostSchedule ? "right-6" : "right-2"} top-2 z-10 hidden h-5 w-5 items-center justify-center rounded-full bg-primary text-white shadow-sm ring-2 ring-surface-container-lowest md:flex" title="${myNameLabel} 참석 일정" aria-label="${myNameLabel} 참석 일정">
               <span class="text-[11px] font-black leading-none">✓</span>
             </span>`
           : "";
         const myHostBadge = hasMyHostSchedule
-          ? `<span class="host-calendar-dot absolute right-1.5 top-1.5 z-10 h-[5px] w-[5px] rounded-full md:right-2 md:top-2 md:h-1.5 md:w-1.5" title="${MY_NAME} Host 일정" aria-label="${MY_NAME} Host 일정"></span>`
+          ? `<span class="host-calendar-dot absolute right-1.5 top-1.5 z-10 h-[5px] w-[5px] rounded-full md:right-2 md:top-2 md:h-1.5 md:w-1.5" title="${myNameLabel} Host 일정" aria-label="${myNameLabel} Host 일정"></span>`
           : "";
 
 
@@ -5353,7 +5516,7 @@
       const empty = item.attendees.length === 0;
       const isBookClub = isBookClubSchedule(item);
       const isYonsei = isYonseiSchedule(item);
-      const isMine = item.attendees.includes(MY_NAME);
+      const isMine = isMySchedule(item);
       const isHost = isMyHostSchedule(item);
       const isDeclined = isDeclinedSchedule(item);
 
@@ -5404,7 +5567,7 @@
     }
 
     function memberAttendeeNameClass(name) {
-      if (name === MY_NAME) return "truncate font-black text-primary";
+      if (myMemberName() && name === myMemberName()) return "truncate font-black text-primary";
       return MALE_MEMBER_NAMES.has(name)
         ? "truncate font-bold text-sky-700"
         : "truncate font-bold text-rose-700";
@@ -5915,17 +6078,23 @@
 
               ${renderDiscussionMessages(item)}
 
-              <div class="flex items-start gap-3 md:gap-4">
-                ${memberAvatarHTML(MY_NAME, {
-                  className: "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-xs sm:text-sm font-black text-white shadow-sm"
-                })}
-                <div class="relative w-full">
-                  <textarea class="w-full resize-none rounded-xl border border-outline-variant bg-surface p-3 pr-12 text-xs sm:text-sm outline-none transition focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" data-discussion-input placeholder="Leave a message for the players..." rows="2"></textarea>
-                  <button class="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary p-0 text-on-primary shadow transition-all hover:bg-primary-container hover:text-on-primary-container sm:h-9 sm:w-9" type="button" data-send-discussion>
-                    ${icon("send", "text-[14px] sm:text-[16px]")}
-                  </button>
+              ${isApprovedMember() && myMemberName() ? `
+                <div class="flex items-start gap-3 md:gap-4">
+                  ${memberAvatarHTML(myMemberName(), {
+                    className: "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-xs sm:text-sm font-black text-white shadow-sm"
+                  })}
+                  <div class="relative w-full">
+                    <textarea class="w-full resize-none rounded-xl border border-outline-variant bg-surface p-3 pr-12 text-xs sm:text-sm outline-none transition focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" data-discussion-input placeholder="Leave a message for the players..." rows="2"></textarea>
+                    <button class="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary p-0 text-on-primary shadow transition-all hover:bg-primary-container hover:text-on-primary-container sm:h-9 sm:w-9" type="button" data-send-discussion>
+                      ${icon("send", "text-[14px] sm:text-[16px]")}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ` : `
+                <div class="rounded-xl border border-dashed border-outline-variant/50 bg-surface-container-low/50 p-4 text-center">
+                  <p class="text-xs font-semibold text-on-surface-variant">카카오 로그인 후 회원 승인이 완료되면 댓글을 작성할 수 있습니다.</p>
+                </div>
+              `}
             </article>
           </div>
 
@@ -6271,7 +6440,7 @@
     }
 
     function memberGenderChipHTML(name) {
-      if (name === MY_NAME) {
+      if (myMemberName() && name === myMemberName()) {
         return `<span class="inline-flex shrink-0 items-center rounded-full border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[9px] font-black leading-none text-primary sm:text-[10px]">나</span>`;
       }
       if (MALE_MEMBER_NAMES.has(name)) {
@@ -6281,7 +6450,7 @@
     }
 
     function memberGenderCardClass(name) {
-      if (name === MY_NAME) {
+      if (myMemberName() && name === myMemberName()) {
         return "border-primary/25 bg-primary/5 hover:border-primary/35";
       }
       if (MALE_MEMBER_NAMES.has(name)) {
@@ -6291,12 +6460,12 @@
     }
 
     function memberGenderTextClass(name) {
-      if (name === MY_NAME) return "text-primary";
+      if (myMemberName() && name === myMemberName()) return "text-primary";
       return MALE_MEMBER_NAMES.has(name) ? "text-sky-700" : "text-rose-700";
     }
 
     function memberGenderStatusClass(name) {
-      if (name === MY_NAME) return "border border-primary/20 bg-primary/10 text-primary";
+      if (myMemberName() && name === myMemberName()) return "border border-primary/20 bg-primary/10 text-primary";
       return MALE_MEMBER_NAMES.has(name)
         ? "border border-sky-200 bg-sky-50 text-sky-700"
         : "border border-rose-200 bg-rose-50 text-rose-700";
@@ -6497,7 +6666,7 @@
       `).join("");
       renderAddScheduleCourtUnitOptions();
       document.querySelector("#addScheduleMembers").innerHTML = members.map(member => {
-        const toneClass = member.name === MY_NAME ? "is-me" : MALE_MEMBER_NAMES.has(member.name) ? "is-male" : "is-female";
+        const toneClass = myMemberName() && member.name === myMemberName() ? "is-me" : MALE_MEMBER_NAMES.has(member.name) ? "is-male" : "is-female";
         return `
         <label class="attendee-option min-w-0">
           <input class="sr-only" name="attendeeIds" type="checkbox" value="${member.id}">
@@ -6671,8 +6840,8 @@
       form.querySelector('input[name="closed"]').checked = Boolean(schedule?.closed);
       form.querySelector('input[name="host"]').checked = schedule ? isMyHostSchedule(schedule) : false;
       const selectedAttendeeIds = schedule ? attendeeIdsForSchedule(schedule) : [];
-      const myMember = members.find(member => member.name === MY_NAME);
-      if (!schedule && myMember) selectedAttendeeIds.push(myMember.id);
+      const currentMember = myMember();
+      if (!schedule && currentMember) selectedAttendeeIds.push(currentMember.id);
       selectedAttendeeIds.forEach(memberId => {
         const checkbox = form.querySelector(`input[name="attendeeIds"][value="${memberId}"]`);
         if (checkbox) checkbox.checked = true;
@@ -7821,7 +7990,7 @@
 
         async function joinCurrentSchedule() {
           const memberId = myMemberId();
-          if (!memberId) throw new Error(`${MY_NAME} 멤버 정보를 찾지 못했습니다.`);
+          if (!memberId) throw new Error(`${myMemberName() || "현재 로그인한 회원"} 멤버 정보를 찾지 못했습니다.`);
           const schedule = findScheduleById(state.selectedId);
           if (schedule && isDeclinedSchedule(schedule)) await persistScheduleDecline(schedule.id, false);
           await addAttendee(memberId);
@@ -7830,7 +7999,7 @@
 
         async function leaveCurrentSchedule() {
           const memberId = myMemberId();
-          if (!memberId) throw new Error(`${MY_NAME} 멤버 정보를 찾지 못했습니다.`);
+          if (!memberId) throw new Error(`${myMemberName() || "현재 로그인한 회원"} 멤버 정보를 찾지 못했습니다.`);
           await removeAttendee(memberId);
         }
 
@@ -7866,7 +8035,7 @@
           if (!schedule) return;
 
           const memberId = myMemberId();
-          if (!memberId) throw new Error(`${MY_NAME} 멤버 정보를 찾지 못했습니다.`);
+          if (!memberId) throw new Error(`${myMemberName() || "현재 로그인한 회원"} 멤버 정보를 찾지 못했습니다.`);
 
           const current = getScheduleRsvpState(schedule);
           const next = nextScheduleRsvpState(current);
@@ -7920,7 +8089,7 @@
 
         async function persistScheduleDecline(scheduleId, declined) {
           const memberId = myMemberId();
-          if (!memberId) throw new Error(`${MY_NAME} 멤버 정보를 찾지 못했습니다.`);
+          if (!memberId) throw new Error(`${myMemberName() || "현재 로그인한 회원"} 멤버 정보를 찾지 못했습니다.`);
           if (!remoteWritesEnabled()) {
             throw new Error("불참 저장은 Supabase 연결과 공식 쓰기 권한이 필요합니다.");
           }
@@ -7984,9 +8153,10 @@
 
         async function addDiscussionMessage(message) {
       const schedule = findScheduleById(state.selectedId);
-      const author = members.find(member => member.name === MY_NAME) || members[0];
+      const author = myMember();
       const trimmed = message.trim();
-      if (!schedule || !author || !trimmed) return;
+      if (!schedule || !trimmed) return;
+      if (!isApprovedMember() || !author) throw new Error("승인된 회원만 댓글을 작성할 수 있습니다.");
 
       const discussion = {
         id: `local-discussion-${Date.now()}`,
@@ -8741,6 +8911,7 @@
 
         await initAuth();
         await loadData();
+        renderAuthStatus();
         renderDashboard();
         initHeaderAvatar();
         deferSecondaryRenders();
