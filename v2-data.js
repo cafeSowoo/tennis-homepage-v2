@@ -18,6 +18,9 @@
       capacity:row.capacity, closed:row.registration_closed, regular:row.regular,
       status:row.status, startsAt:row.starts_at, endsAt:row.ends_at, version:row.version,
       updatedAt:row.updated_at, createdAt:row.created_at, source:'v2',
+      legacyScheduleId:row.legacy_schedule_id, importedAt:row.create_payload?.imported_at,
+      originalCreator:row.create_payload?.v1_snapshot?.kakao_creator_name || '',
+      importedResponseIds:own.filter(r=>r.response_source==='v1').map(r=>r.member_id),
       attendeeIds:own.filter(r=>r.state==='attending').map(r=>r.member_id),
       absenteeIds:own.filter(r=>r.state==='declined').map(r=>r.member_id)
     };

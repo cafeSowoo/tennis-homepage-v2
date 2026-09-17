@@ -5,6 +5,8 @@ test('schedule adapter preserves KST ordering, capacity and response states',()=
  const mapped=adapter.schedule(row,[{schedule_id:'a',member_id:'m',state:'declined'},{schedule_id:'b',member_id:'x',state:'attending'}]);
  assert.equal(mapped.date,'2099-01-20');assert.equal(mapped.time,'오후 8:00 ~ 오후 10:00');assert.equal(mapped.capacity,5);
  assert.deepEqual(mapped.absenteeIds,['m']);assert.deepEqual(mapped.attendeeIds,[]);
+ const imported=adapter.schedule({...row,legacy_schedule_id:'old-id',create_payload:{imported_at:'2026-09-17',v1_snapshot:{kakao_creator_name:'Original creator'}}},[{schedule_id:'a',member_id:'m',state:'attending',response_source:'v1'},{schedule_id:'a',member_id:'n',state:'attending',response_source:'member'}]);
+ assert.deepEqual(imported.importedResponseIds,['m']);assert.equal(imported.originalCreator,'Original creator');assert.equal(imported.legacyScheduleId,'old-id');
  assert.equal(adapter.input({...mapped,creatorMemberId:'forged'}).creator_member_id,undefined);
 });
 test('pagination does not truncate after the API page limit',async()=>{
