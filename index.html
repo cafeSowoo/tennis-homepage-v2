@@ -2191,6 +2191,10 @@
         cursor: grab;
       }
     }
+
+    /* Keep dynamically rendered management controls hidden until authorized. */
+    body:not(.can-manage-official-data) :is([data-add-schedule], [data-add-event], [data-add-court], [data-edit-court], [data-edit-current], [data-delete-current], [data-add-attendee], [data-remove-attendee], [data-upload-schedule-photo], [data-follow-kakao], #calendarAddBtn) { display: none !important; }
+    body:not(.approved-club-member) :is([data-join-current], [data-leave-current], [data-decline-current], [data-clear-decline-current], [data-cycle-rsvp]) { display: none !important; }
   </style>
 </head>
 <body class="apple-ui min-h-screen bg-[#f5f5f7] font-body-md text-body-md text-[#1d1d1f] antialiased">
@@ -2243,7 +2247,7 @@
       </button>
     </div>
     <div class="relative flex items-center gap-sm">
-      <button id="authButton" class="auth-control inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition sm:w-auto sm:gap-2 sm:px-3" type="button" aria-label="Google 로그인" title="Google 로그인">
+      <button id="authButton" class="auth-control inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition sm:w-auto sm:gap-2 sm:px-3" type="button" aria-label="카카오 로그인" title="카카오 로그인">
         <span class="material-symbols-outlined text-[18px]" data-auth-icon>login</span>
         <span class="hidden lg:inline" data-auth-label>로그인</span>
       </button>
@@ -2787,15 +2791,15 @@
   <script>
     const MALE_MEMBER_NAMES = new Set(["조형철", "김지석", "한인호", "김태환", "이상백", "민문기", "박창언", "윤준"]);
     const AUTH_STORAGE_KEY = "tennis-homepage-v2-auth";
-    const LOCAL_SCHEDULES_KEY = "tennis.localSchedules";
-    const LOCAL_EVENTS_KEY = "tennis.localEvents";
-    const DELETED_SCHEDULES_KEY = "tennis.deletedScheduleIds";
-    const ATTENDEE_OVERRIDES_KEY = "tennis.scheduleAttendeeOverrides";
-    const LOCAL_DISCUSSIONS_KEY = "tennis.localDiscussions";
-    const REMINDER_ENABLED_KEY = "tennis.scheduleRemindersEnabled";
-    const REMINDER_LOG_KEY = "tennis.scheduleReminderLog";
-        const SCHEDULE_OVERRIDES_KEY = "tennis.scheduleOverrides";
-        const EVENT_OVERRIDES_KEY = "tennis.eventOverrides";
+    const LOCAL_SCHEDULES_KEY = "tennis.v2.localSchedules";
+    const LOCAL_EVENTS_KEY = "tennis.v2.localEvents";
+    const DELETED_SCHEDULES_KEY = "tennis.v2.deletedScheduleIds";
+    const ATTENDEE_OVERRIDES_KEY = "tennis.v2.scheduleAttendeeOverrides";
+    const LOCAL_DISCUSSIONS_KEY = "tennis.v2.localDiscussions";
+    const REMINDER_ENABLED_KEY = "tennis.v2.scheduleRemindersEnabled";
+    const REMINDER_LOG_KEY = "tennis.v2.scheduleReminderLog";
+        const SCHEDULE_OVERRIDES_KEY = "tennis.v2.scheduleOverrides";
+        const EVENT_OVERRIDES_KEY = "tennis.v2.eventOverrides";
         const SUPABASE_CONFIG = window.TENNIS_CONFIG || {};
         const ALLOW_REMOTE_WRITES = SUPABASE_CONFIG.allowRemoteWrites === true;
         const OWNER_EMAIL = SUPABASE_CONFIG.ownerEmail || "harminis@gmail.com";
@@ -3657,6 +3661,7 @@
     function refreshViews() {
       syncStoredLocalData();
       rebuildDataIndexes();
+      renderAuthStatus();
       renderDashboard();
       renderFilters();
       renderSchedule();
@@ -4063,6 +4068,7 @@
     }
 
     function clearMemberAuthState() {
+      memberAccountRequest++;
       authState.memberAccount = null;
       authState.member = null;
     }
@@ -4072,11 +4078,15 @@
         ? authState.memberAccount?.member_id
         : "";
       authState.member = memberId
-        ? members.find(member => String(member.id) === String(memberId)) || null
+        ? members.find(member => String(member.id) === String(memberId) && (member.status || "active") === "active") || null
         : null;
     }
 
+    let memberAccountRequest = 0;
+
     async function loadCurrentMemberAccount() {
+      const request = ++memberAccountRequest;
+      const user = authState.user;
       if (!supabaseClient || !authState.user) {
         clearMemberAuthState();
         return;
@@ -4086,16 +4096,18 @@
       let { data, error } = await supabaseClient
         .from("club_member_accounts")
         .select(selectColumns)
-        .eq("user_id", authState.user.id)
+        .eq("user_id", user.id)
         .maybeSingle();
 
       if (error) throw error;
 
+      if (request !== memberAccountRequest || authState.user?.id !== user.id) return;
+
       if (!data) {
         const pendingRow = {
-          user_id: authState.user.id,
-          requested_name: requestedNameFromAuthUser() || null,
-          provider: authProviderName() || null
+          user_id: user.id,
+          requested_name: requestedNameFromAuthUser(user) || null,
+          provider: authProviderName(user) || null
         };
 
         const inserted = await supabaseClient
@@ -4108,7 +4120,7 @@
           const retry = await supabaseClient
             .from("club_member_accounts")
             .select(selectColumns)
-            .eq("user_id", authState.user.id)
+            .eq("user_id", user.id)
             .single();
           if (retry.error) throw retry.error;
           data = retry.data;
@@ -4119,12 +4131,23 @@
         }
       }
 
+      if (request !== memberAccountRequest || authState.user?.id !== user.id) return;
       authState.memberAccount = data || null;
       syncCurrentMemberFromData();
     }
 
     function isOwnerSignedIn() {
       return currentUserEmail().toLowerCase() === OWNER_EMAIL.toLowerCase();
+    }
+
+    function canManageOfficialData() {
+      return authState.initialized && remoteWritesEnabled() && isOwnerSignedIn();
+    }
+
+    function requireApprovedMember() {
+      if (!remoteWritesEnabled()) throw new Error("회원 참석 상태 저장은 서버 연결이 필요합니다.");
+      if (!authState.initialized || !authState.user) throw new Error("카카오 로그인 후 이용해 주세요.");
+      if (!isApprovedMember()) throw new Error("승인된 활성 회원만 참석 상태를 변경할 수 있습니다.");
     }
 
     function remoteWritesEnabled() {
@@ -4399,6 +4422,8 @@
     }
 
     function renderAuthStatus() {
+      document.body.classList.toggle("can-manage-official-data", canManageOfficialData());
+      document.body.classList.toggle("approved-club-member", isApprovedMember());
       const button = document.querySelector("#authButton");
       if (!button) return;
 
@@ -4474,9 +4499,10 @@
       renderAuthStatus();
 
       supabaseClient.auth.onAuthStateChange((_event, session) => {
+        const previousUserId = authState.user?.id;
         authState.session = session || null;
         authState.user = session?.user || null;
-        if (!authState.user) clearMemberAuthState();
+        if (!authState.user || previousUserId !== authState.user.id) clearMemberAuthState();
         renderAuthStatus();
         // Clear protected data immediately; never retain it across account changes.
         kakaoCommentsRequest++;
@@ -4520,7 +4546,11 @@
       const { error } = await supabaseClient.auth.signInWithOAuth({
         provider: "kakao",
         options: {
-          redirectTo: authRedirectUrl()
+          redirectTo: authRedirectUrl(),
+          // Supabase's scopes option appends to Kakao defaults, including email.
+          queryParams: {
+            scope: "profile_nickname profile_image"
+          }
         }
       });
       if (error) throw error;
@@ -5045,9 +5075,11 @@
 
 
         function myMemberId() {
-          if (authState.member?.id) return String(authState.member.id);
+          if (!authState.user || authState.memberAccount?.user_id !== authState.user.id) return "";
           if (authState.memberAccount?.status !== "approved") return "";
-          return String(authState.memberAccount?.member_id || "");
+          const member = authState.member;
+          if (!member || (member.status || "active") !== "active") return "";
+          return String(member.id);
         }
 
         function myMember() {
@@ -5987,7 +6019,7 @@
         </button>
       `).join("");
 
-      const actionCard = `
+      const actionCard = isApprovedMember() ? `
         <article class="sticky-detail-bar app-card p-4 md:p-5">
           <div class="flex flex-row items-center justify-between gap-4 w-full">
             <div class="flex flex-1 md:w-full items-center gap-2 justify-end">
@@ -6002,7 +6034,9 @@
             </div>
           </div>
         </article>
-      `;
+      ` : `<article class="app-card p-4 text-center text-sm text-on-surface-variant">
+        ${!authState.user ? "카카오 로그인 후 승인된 회원만 참석 상태를 변경할 수 있습니다." : authState.memberAccount?.status === "disabled" ? "사용 중지된 계정입니다. 관리자에게 문의해 주세요." : "회원 승인과 연결 확인 후 참석 상태를 변경할 수 있습니다."}
+      </article>`;
 
       // Stitch bridge: Detail page HTML markup starts here.
       document.querySelector("#detailContent").innerHTML = `
@@ -6017,7 +6051,7 @@
                 <div class="absolute bottom-3 left-4 flex flex-wrap items-center gap-2 md:bottom-4 md:left-5">
                   ${myHosting ? `<span class="rounded-full bg-transparent px-3 py-1 text-[11px] font-black uppercase tracking-wide text-orange-800">Host</span>` : ""}
                 </div>
-                ${remoteWritesEnabled() ? `
+                ${canManageOfficialData() ? `
                   <button class="schedule-photo-upload-btn flex items-center justify-center" type="button" data-upload-schedule-photo="${item.id}" aria-label="경기 사진 업로드" title="경기 사진 업로드">
                     ${icon("add_photo_alternate", "text-[21px]")}
                   </button>
@@ -6078,7 +6112,7 @@
 
               ${renderDiscussionMessages(item)}
 
-              ${isApprovedMember() && myMemberName() ? `
+              ${canManageOfficialData() && isApprovedMember() && myMemberName() ? `
                 <div class="flex items-start gap-3 md:gap-4">
                   ${memberAvatarHTML(myMemberName(), {
                     className: "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-xs sm:text-sm font-black text-white shadow-sm"
@@ -6092,7 +6126,7 @@
                 </div>
               ` : `
                 <div class="rounded-xl border border-dashed border-outline-variant/50 bg-surface-container-low/50 p-4 text-center">
-                  <p class="text-xs font-semibold text-on-surface-variant">카카오 로그인 후 회원 승인이 완료되면 댓글을 작성할 수 있습니다.</p>
+                  <p class="text-xs font-semibold text-on-surface-variant">${isApprovedMember() ? "회원 댓글 작성 기능을 준비 중입니다." : "카카오 로그인 후 회원 승인을 기다려 주세요."}</p>
                 </div>
               `}
             </article>
@@ -7988,95 +8022,60 @@
           await persistScheduleAttendees(schedule.id, [...attendeeIds, memberId]);
         }
 
-        async function joinCurrentSchedule() {
-          const memberId = myMemberId();
-          if (!memberId) throw new Error(`${myMemberName() || "현재 로그인한 회원"} 멤버 정보를 찾지 못했습니다.`);
-          const schedule = findScheduleById(state.selectedId);
-          if (schedule && isDeclinedSchedule(schedule)) await persistScheduleDecline(schedule.id, false);
-          await addAttendee(memberId);
-          if (schedule && attendeeIdsForSchedule(schedule).includes(memberId)) refreshViews();
+    const pendingRsvpRequests = new Set();
+
+    async function persistMyScheduleRsvp(scheduleId, nextState) {
+      requireApprovedMember();
+      if (!["attending", "declined", "pending"].includes(nextState)) throw new Error("올바르지 않은 참석 상태입니다.");
+      const id = String(scheduleId);
+      if (pendingRsvpRequests.has(id)) return;
+      const schedule = schedules.find(item => String(item.id) === id);
+      if (!schedule) throw new Error("일정을 찾지 못했습니다.");
+      if (nextState === "attending" && !isMySchedule(schedule)) {
+        if (schedule.closed) throw new Error("마감된 일정입니다.");
+        if (attendeeIdsForSchedule(schedule).length >= MATCH_CAPACITY) throw new Error("참석 인원이 마감되었습니다.");
+      }
+      pendingRsvpRequests.add(id);
+      try {
+        const { error } = await supabaseClient.rpc("set_my_schedule_rsvp", {
+          p_schedule_id: id,
+          p_state: nextState
+        });
+        if (error) throw error;
+        // Reload the server's resolved state, including Kakao overrides and declines.
+        try {
+          await loadSupabaseData();
+        } catch {
+          throw new Error("참석 상태는 저장됐지만 화면을 새로 불러오지 못했습니다. 새로고침해 주세요.");
         }
+        refreshViews();
+      } finally {
+        pendingRsvpRequests.delete(id);
+      }
+    }
 
-        async function leaveCurrentSchedule() {
-          const memberId = myMemberId();
-          if (!memberId) throw new Error(`${myMemberName() || "현재 로그인한 회원"} 멤버 정보를 찾지 못했습니다.`);
-          await removeAttendee(memberId);
-        }
+    async function joinCurrentSchedule() {
+      await persistMyScheduleRsvp(state.selectedId, "attending");
+    }
 
-        async function declineCurrentSchedule() {
-          const schedule = findScheduleById(state.selectedId);
-          if (!schedule) return;
+    async function leaveCurrentSchedule() {
+      await persistMyScheduleRsvp(state.selectedId, "pending");
+    }
 
-          await persistScheduleDecline(schedule.id, true);
-          const memberId = myMemberId();
-          const attendeeIds = attendeeIdsForSchedule(schedule);
-          if (memberId && attendeeIds.includes(memberId)) {
-            try {
-              await persistScheduleAttendees(schedule.id, attendeeIds.filter(id => id !== memberId));
-            } catch (error) {
-              console.warn("Attendee removal after decline failed.", error);
-            }
-          }
+    async function declineCurrentSchedule() {
+      await persistMyScheduleRsvp(state.selectedId, "declined");
+    }
 
-          state.selectedId = schedule.id;
-          refreshViews();
-        }
+    async function clearCurrentScheduleDecline() {
+      await persistMyScheduleRsvp(state.selectedId, "pending");
+    }
 
-        async function clearCurrentScheduleDecline() {
-          const schedule = findScheduleById(state.selectedId);
-          if (!schedule) return;
-          await persistScheduleDecline(schedule.id, false);
-          state.selectedId = schedule.id;
-          refreshViews();
-        }
-
-        async function cycleScheduleRsvp(scheduleId) {
-          const schedule = schedules.find(item => String(item.id) === String(scheduleId));
-          if (!schedule) return;
-
-          const memberId = myMemberId();
-          if (!memberId) throw new Error(`${myMemberName() || "현재 로그인한 회원"} 멤버 정보를 찾지 못했습니다.`);
-
-          const current = getScheduleRsvpState(schedule);
-          const next = nextScheduleRsvpState(current);
-
-          if (next === "attending") {
-            const spotsLeft = Math.max(0, MATCH_CAPACITY - schedule.attendees.length);
-            if (!spotsLeft && !isMySchedule(schedule)) {
-              throw new Error("참석 인원이 마감되었습니다.");
-            }
-            if (schedule.closed && !isMySchedule(schedule)) {
-              throw new Error("마감된 일정입니다.");
-            }
-            if (isDeclinedSchedule(schedule)) await persistScheduleDecline(schedule.id, false);
-            const attendeeIds = attendeeIdsForSchedule(schedule);
-            if (!attendeeIds.includes(memberId)) {
-              await persistScheduleAttendees(schedule.id, [...attendeeIds, memberId]);
-            } else {
-              refreshViews();
-            }
-            return;
-          }
-
-          if (next === "declined") {
-            await persistScheduleDecline(schedule.id, true);
-            const attendeeIds = attendeeIdsForSchedule(schedule);
-            if (attendeeIds.includes(memberId)) {
-              await persistScheduleAttendees(schedule.id, attendeeIds.filter(id => id !== memberId));
-            } else {
-              refreshViews();
-            }
-            return;
-          }
-
-          if (isDeclinedSchedule(schedule)) await persistScheduleDecline(schedule.id, false);
-          const attendeeIds = attendeeIdsForSchedule(schedule);
-          if (attendeeIds.includes(memberId)) {
-            await persistScheduleAttendees(schedule.id, attendeeIds.filter(id => id !== memberId));
-          } else {
-            refreshViews();
-          }
-        }
+    async function cycleScheduleRsvp(scheduleId) {
+      requireApprovedMember();
+      const schedule = findScheduleById(scheduleId);
+      if (!schedule) return;
+      await persistMyScheduleRsvp(scheduleId, nextScheduleRsvpState(getScheduleRsvpState(schedule)));
+    }
 
         async function persistKakaoChoice(scheduleId, memberId, choice) {
           requireOfficialWriteAccess();
@@ -8436,6 +8435,10 @@
     }, true);
 
     document.addEventListener("click", event => {
+      if (event.target.closest("[data-add-schedule], [data-add-event], [data-add-court], [data-edit-court], [data-edit-current], [data-delete-current], [data-add-attendee], [data-remove-attendee], [data-upload-schedule-photo], [data-follow-kakao], #calendarAddBtn") && !canManageOfficialData()) {
+        event.preventDefault();
+        return;
+      }
       const closePhotoViewerButton = event.target.closest("[data-close-photo-viewer]");
       const followKakao = event.target.closest("[data-follow-kakao]");
       if (followKakao) {
@@ -8899,6 +8902,8 @@
     async function initApp() {
       try {
         document.body.classList.add("app-first-paint");
+        // Let Supabase consume OAuth callback parameters before history cleanup.
+        await initAuth();
         if (!history.state?.tennisHomeView) {
           history.replaceState({ tennisHomeView: "dashboard" }, "", currentHistoryBaseUrl());
         }
@@ -8909,7 +8914,6 @@
         syncNavigation("dashboard");
         refreshWeather();
 
-        await initAuth();
         await loadData();
         renderAuthStatus();
         renderDashboard();
@@ -8933,7 +8937,7 @@
 
     initApp();
 
-    const PWA_DISMISS_KEY = "tennis.pwaInstallDismissed";
+    const PWA_DISMISS_KEY = "tennis.v2.pwaInstallDismissed";
     let pwaDeferredPrompt = null;
     let pwaInstallBannerBound = false;
 

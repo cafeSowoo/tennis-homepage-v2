@@ -1,4 +1,15 @@
-const CACHE_NAME = "tennis-homepage-__CACHE_VERSION__";
+const CACHE_PREFIX = "tennis-homepage-v2-";
+const CACHE_NAME = `${CACHE_PREFIX}__CACHE_VERSION__`;
+const APP_URL = new URL(self.registration.scope);
+
+function isAppUrl(url) {
+  return url.origin === APP_URL.origin && url.pathname.startsWith(APP_URL.pathname);
+}
+
+async function matchAppCache(request) {
+  const cache = await caches.open(CACHE_NAME);
+  return cache.match(request);
+}
 const SHELL_ASSETS = [
   "./manifest.webmanifest",
   "./assets/logo.png",
@@ -19,7 +30,7 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -33,10 +44,15 @@ self.addEventListener("message", event => {
 self.addEventListener("notificationclick", event => {
   event.notification.close();
 
-  const targetUrl = new URL(event.notification.data?.url || "./", self.location.origin).href;
+  let target = APP_URL;
+  try {
+    const candidate = new URL(event.notification.data?.url || "./", APP_URL);
+    if (isAppUrl(candidate)) target = candidate;
+  } catch { /* Fall back to this app for malformed notification URLs. */ }
+  const targetUrl = target.href;
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then(clientList => {
-      const existingClient = clientList.find(client => new URL(client.url).origin === self.location.origin);
+      const existingClient = clientList.find(client => isAppUrl(new URL(client.url)));
       if (existingClient) {
         existingClient.focus();
         return "navigate" in existingClient ? existingClient.navigate(targetUrl) : existingClient;
@@ -56,7 +72,7 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
+  if (!isAppUrl(url)) return;
 
   if (url.pathname.includes("/data/")) {
     event.respondWith(fetch(request));
@@ -71,7 +87,7 @@ self.addEventListener("fetch", event => {
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }
         return response;
-      }).catch(() => caches.match(request))
+      }).catch(() => matchAppCache(request))
     );
     return;
   }
@@ -79,15 +95,15 @@ self.addEventListener("fetch", event => {
   if (isHtmlRequest(request)) {
     event.respondWith(
       fetch(request).catch(async () => {
-        const cached = await caches.match(request);
-        return cached || caches.match("./index.html");
+        const cached = await matchAppCache(request);
+        return cached || matchAppCache(new URL("index.html", APP_URL).href);
       })
     );
     return;
   }
 
   event.respondWith(
-    caches.match(request).then(cached => {
+    matchAppCache(request).then(cached => {
       const networkFetch = fetch(request).then(response => {
         if (response && response.status === 200 && response.type === "basic") {
           const copy = response.clone();
@@ -96,7 +112,11 @@ self.addEventListener("fetch", event => {
         return response;
       });
 
-      return cached || networkFetch;
+      if (cached) {
+        event.waitUntil(networkFetch.catch(() => undefined));
+        return cached;
+      }
+      return networkFetch;
     })
   );
 });
