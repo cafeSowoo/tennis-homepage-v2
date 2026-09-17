@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const html = fs.readFileSync(new URL('../index.html', `file://${__filename}`), 'utf8');
+const TennisV2 = require('../v2-data.js');
 const sw = fs.readFileSync(new URL('../sw.js', `file://${__filename}`), 'utf8');
 function source(name) {
   const match = new RegExp(`^([ \\t]*)(?:async )?function ${name}\\(`, 'm').exec(html);
@@ -18,22 +19,22 @@ function memberContext() {
     remoteWritesEnabled: () => true,
     schedules: [{ id: 'schedule-a', attendeeIds: [], closed: false, source: 'kakao' }],
     state: { selectedId: 'schedule-a' },
-    MATCH_CAPACITY: 16,
+    MATCH_CAPACITY: 16, TennisV2, clearV2Data: () => {},
     isMySchedule: schedule => schedule.attendeeIds.includes(member.id),
     attendeeIdsForSchedule: schedule => schedule.attendeeIds,
     supabaseClient: { rpc: async (name, args) => { calls.push({ name, args }); return { error: null }; } },
     loadSupabaseData: async () => {}, refreshViews: () => {}, calls
   };
   vm.createContext(ctx);
-  vm.runInContext('const pendingRsvpRequests = new Set();\n' + ['myMemberId', 'isApprovedMember', 'requireApprovedMember', 'persistMyScheduleRsvp', 'joinCurrentSchedule', 'leaveCurrentSchedule', 'declineCurrentSchedule', 'clearCurrentScheduleDecline'].map(source).join('\n'), ctx);
+  vm.runInContext('const pendingRsvpRequests = new Set();\n' + ['myMemberId', 'isApprovedMember', 'requireApprovedMember', 'reloadV2AfterWrite', 'persistMyScheduleRsvp', 'joinCurrentSchedule', 'leaveCurrentSchedule', 'declineCurrentSchedule', 'clearCurrentScheduleDecline'].map(source).join('\n'), ctx);
   return ctx;
 }
-test('self RSVP sends only schedule and state, for normal and Kakao schedules', async () => {
-  for (const source of ['supabase', 'kakao']) {
+test('self RSVP uses V2 RPC without caller-supplied identity', async () => {
+  for (const source of ['v2']) {
     const ctx = memberContext(); ctx.schedules[0].source = source;
     for (const [fn, state] of [['joinCurrentSchedule','attending'], ['leaveCurrentSchedule','pending'], ['declineCurrentSchedule','declined'], ['clearCurrentScheduleDecline','pending']]) {
       await ctx[fn]();
-      assert.deepEqual(JSON.parse(JSON.stringify(ctx.calls.at(-1))), { name: 'set_my_schedule_rsvp', args: { p_schedule_id: 'schedule-a', p_state: state } });
+      assert.deepEqual(JSON.parse(JSON.stringify(ctx.calls.at(-1))), { name: 'v2_set_my_rsvp', args: { p_id: 'schedule-a', p_state: state } });
     }
   }
 });
@@ -111,27 +112,35 @@ function discussionContext() {
   vm.runInContext('const pendingDiscussionWrites = new Set();\n' + ['canDeleteDiscussion','addDiscussionMessage','deleteDiscussionMessage'].map(source).join('\n'),c);
   return c;
 }
-test('comment deletion allows own homepage comments or admins, never Kakao imports', () => {
+test('comment deletion requires an active approved author or admin', () => {
   const c=discussionContext();
-  const own={memberId:'member-a',source:'supabase'},other={memberId:'member-b',source:'supabase'};
+  const own={memberId:'member-a'},other={memberId:'member-b'};
   assert.equal(c.canDeleteDiscussion(own),true);assert.equal(c.canDeleteDiscussion(other),false);
-  assert.equal(c.canDeleteDiscussion({...own,source:'seed'}),true);
   c.authState.memberAccount.status='disabled';assert.equal(c.canDeleteDiscussion(own),false);
-  c.isClubAdmin=()=>true;assert.equal(c.canDeleteDiscussion(other),true);
-  assert.equal(c.canDeleteDiscussion({...own,source:'kakao'}),false);
+  c.authState.memberAccount.status='approved';c.isClubAdmin=()=>true;
+  assert.equal(c.canDeleteDiscussion(other),true);
 });
-test('approved member comment writes use own identity and reject oversized text', async () => {
-  const c=discussionContext();let sent;
-  c.supabaseClient.from=table=>({insert:row=>{assert.equal(table,'discussions');sent=row;return{select:()=>({single:async()=>({data:row,error:null})})};}});
+test('comment RPC omits author identity and rejects oversized input', async () => {
+  const c=discussionContext();
+  c.reloadV2AfterWrite=async()=>{};
   await c.addDiscussionMessage('  Test comment  ');
-  assert.equal(sent.member_id,'member-a');assert.equal(sent.source,'supabase');assert.equal(sent.message,'Test comment');assert.equal(c.discussions.length,1);
+  assert.equal(c.calls[0].name,'v2_add_discussion');
+  assert.equal(c.calls[0].args.p_message,'Test comment');
+  assert.equal(c.calls[0].args.p_schedule_id,'schedule-a');
+  assert.equal(c.calls[0].args.member_id,undefined);
   await assert.rejects(c.addDiscussionMessage('x'.repeat(2001)),/2,000/);
   c.authState.memberAccount.status='pending';await assert.rejects(c.addDiscussionMessage('blocked'));
 });
-test('comment delete handles changed server permission without hiding the row', async () => {
-  const c=discussionContext();c.dataStore.discussions=[{id:'own',memberId:'member-a',scheduleId:'schedule-a',source:'supabase'}];c.rebuildDataIndexes();
-  c.supabaseClient.from=()=>({delete:()=>({eq:()=>({select:()=>({maybeSingle:async()=>({data:null,error:null})})})})});
+test('comment delete keeps visible rows when server rejects deletion', async () => {
+  const c=discussionContext();c.dataStore.discussions=[{id:'own',memberId:'member-a',scheduleId:'schedule-a'}];c.rebuildDataIndexes();
+  c.supabaseClient.rpc=async()=>({data:false,error:null});
   await assert.rejects(c.deleteDiscussionMessage('own'),/삭제 권한/);assert.equal(c.discussions.length,1);
-  c.supabaseClient.from=()=>({delete:()=>({eq:()=>({select:()=>({maybeSingle:async()=>({data:{id:'own'},error:null})})})})});
+  c.supabaseClient.rpc=async()=>({data:true,error:null});
+  c.reloadV2AfterWrite=async()=>{c.dataStore.discussions=[];c.rebuildDataIndexes();};
   await c.deleteDiscussionMessage('own');assert.equal(c.discussions.length,0);
+});
+test('cancelled and started schedules reject RSVP before network calls',async()=>{
+  for(const mutation of [s=>s.status='cancelled',s=>s.startsAt='2000-01-01T00:00:00Z']) {
+    const c=memberContext();mutation(c.schedules[0]);await assert.rejects(c.joinCurrentSchedule());assert.equal(c.calls.length,0);
+  }
 });
