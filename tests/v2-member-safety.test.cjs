@@ -78,3 +78,20 @@ test('notifications never reuse V1 windows or navigate outside V2',async()=>{
 test('service worker ignores V1 resource fetches',()=>{
   const c=workerContext();let intercepted=false;c.handlers.fetch({request:{url:'https://example.test/tennis-homepage/env.js',method:'GET'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);
 });
+test('approved member calendar renders attendance and host labels outside dot callback', () => {
+  const grid = { innerHTML: '' }, title = {};
+  const ctx = {
+    document: { querySelector: selector => selector === '#calendarGrid' ? grid : title, querySelectorAll: () => [] },
+    state: { currentMonth: '2026-09', selectedDate: '' }, todayIso: '2026-09-01',
+    byDate: { '2026-09-01': [{ id: 'own-schedule', date: '2026-09-01' }] }, eventsByDate: {},
+    firstDayOffset: () => 0, daysInMonth: () => 1, monthLabel: () => '9월', syncDocumentTitle() {},
+    compareSchedulesByMyStatusThenTime: () => 0, compareCalendarItemsByTime: () => 0, compareDashboardCalendarItems: () => 0,
+    isMySchedule: () => true, isMyHostSchedule: () => true, isDeclinedSchedule: () => false,
+    isBookClubSchedule: () => false, isYonseiSchedule: () => false,
+    myMemberName: () => '김지석', escapeHTML: value => value,
+    timeStart: () => '09:00', calendarTimeLabel: () => '09:00', schedulePlaceLabel: () => '테스트 코트'
+  };
+  vm.createContext(ctx); vm.runInContext(source('renderCalendar'),ctx);
+  assert.doesNotThrow(() => ctx.renderCalendar());
+  assert.match(grid.innerHTML, /김지석 참석 일정/); assert.match(grid.innerHTML, /김지석 Host 일정/);
+});
