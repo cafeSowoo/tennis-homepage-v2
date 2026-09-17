@@ -6792,6 +6792,7 @@
       document.querySelector("#addScheduleEnd").value = schedule ? toTwentyFourHourLabel(timeEnd(schedule)) : "22:00";
       renderScheduleTimePicker();
       window.setTimeout(scrollScheduleTimePickerToSelection, 0);
+      renderAddScheduleFormOptions();
       const firstCourt = courts[0]?.id || "";
       document.querySelector("#addScheduleCourt").value = schedule?.courtId || firstCourt;
       renderAddScheduleCourtUnitOptions(schedule?.courtUnitId || "");
