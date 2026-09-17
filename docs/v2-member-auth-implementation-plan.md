@@ -9,7 +9,9 @@
 - 기존 V1의 Google 관리자 로그인과 기존 관리자 쓰기 정책은 삭제하지 않고 유지했다.
 - `club_member_accounts`, 비공개 helper, 회원용 `set_my_schedule_rsvp()`를 추가했다.
 - 관리자/미승인 사용자 권한 테스트와 Supabase advisor 재검사를 완료했다.
-- Kakao provider 및 V2 프론트엔드 전환은 아직 적용하지 않았다.
+- Kakao Provider 활성화와 V2 Auth·개인화 기반이 적용됐다. 후속 로컬 작업으로 이메일 scope 제외, 저장소 격리, 회원 RSVP RPC 연결, 권한별 UI와 배포 파일 정리를 진행했다.
+- 실제 계정 로그인·원격 DB 권한 검증과 배포는 남아 있다. 최신 진행 기록은 [현재 1차 계획](v2-phase-1-plan-2026-09-17.md)을 따른다.
+- 아래의 설계·단계별 설명에는 초기 설계 시점의 내용이 포함된다. DB 적용·advisor 기록은 당시 작업 기록이며 이번 후속 작업에서 재실행하지 않았다.
 
 ## 1. 현재 확인된 구조
 
@@ -19,7 +21,7 @@
 - Plan: Free
 - 현재 활성 프로젝트: `tennis-homepage-preview`
 - Project ref: `myincubzgvhyreyqbban`
-- 기존 Auth 사용자: 1명, Google provider 사용
+- 초기 조사 당시 Auth 사용자: 1명, Google provider 사용 (현재 사용자 수 재조회 안 함)
 - 기존 회원: `public.members` 16명
 - 테니스와 `osaka_trip_*` 앱이 같은 Supabase 프로젝트를 공유하는 구조
 - DB 용량은 현재 약 13 MB 수준
@@ -29,10 +31,10 @@
 - 정적 GitHub Pages 앱
 - 핵심 파일: `index.html`
 - Supabase JS는 CDN으로 로드
-- 현재 로그인: Google OAuth
-- 현재 사용자 고정값: `const MY_NAME = "김지석"`
+- 현재 V2 로그인: Kakao OAuth (V1 Google 유지)
+- 현재 사용자: 승인된 `club_member_accounts.member_id`로 연결. `MY_NAME` 제거 완료
 - 현재 관리자 판정: `OWNER_EMAIL = "harminis@gmail.com"`
-- 현재 V2 `env.js`의 `siteUrl`은 아직 V1 URL을 가리킴
+- 현재 V2 `env.js`의 `siteUrl`: `https://cafesowoo.github.io/tennis-homepage-v2/`
 
 ### 이미 존재하는 테니스 데이터 구조
 

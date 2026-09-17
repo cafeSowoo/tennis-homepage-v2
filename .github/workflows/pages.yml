@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - staging
-      - codex/netlify-supabase-preview
   workflow_dispatch:
 
 permissions:
@@ -30,6 +28,9 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v6
 
+      - name: Verify member access and cache isolation
+        run: node --test tests/v2-member-safety.test.cjs
+
       - name: Prepare static site
         run: |
           rm -rf _site
@@ -39,20 +40,7 @@ jobs:
           cp manifest.webmanifest _site/
           sed "s/__CACHE_VERSION__/${GITHUB_SHA::7}/g" sw.js > _site/sw.js
           cp -R assets data _site/
-          cat > _site/env.js <<EOF
-          window.TENNIS_CONFIG = {
-            supabaseUrl: "${SUPABASE_URL}",
-            supabaseAnonKey: "${SUPABASE_ANON_KEY}",
-            siteUrl: "${SITE_URL:-https://cafesowoo.github.io/tennis-homepage/}",
-            ownerEmail: "${OWNER_EMAIL:-harminis@gmail.com}",
-            allowRemoteWrites: true
-          };
-          EOF
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SITE_URL: ${{ vars.SITE_URL }}
-          OWNER_EMAIL: ${{ vars.OWNER_EMAIL }}
+          cp env.js _site/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
