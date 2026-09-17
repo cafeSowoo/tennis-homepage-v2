@@ -6010,7 +6010,8 @@
                 </div>
 
                 <!-- Overlap Alert Banners -->
-                <p class="mt-3 text-sm text-on-surface-variant">작성자 · ${escapeHTML(item.creatorName || '')} · ${item.status === 'cancelled' ? '취소된 일정 · 기록 보존' : new Date(item.startsAt) <= new Date() ? '시작된 일정 · 참석 기록 확정' : item.closed ? '모집 마감' : '모집 중'}</p>
+                ${item.legacyScheduleId ? `<div class="mt-3 rounded-lg bg-surface-container-low p-3 text-xs leading-relaxed text-on-surface-variant">V1에서 가져온 일정 · 이후 변경은 V2에만 저장됩니다.<br>원 개설자: ${escapeHTML(item.originalCreator || '기록 없음')} · 이전 관리자: ${escapeHTML(item.creatorName || '')}<br>참석·불참 중 ${(item.importedResponseIds || []).length}건은 V1 기록입니다. V2에서 응답하면 본인 선택으로 갱신됩니다.</div>` : ''}
+                <p class="mt-3 text-sm text-on-surface-variant">${item.legacyScheduleId ? '관리자' : '작성자'} · ${escapeHTML(item.creatorName || '')} · ${item.status === 'cancelled' ? '취소된 일정 · 기록 보존' : new Date(item.startsAt) <= new Date() ? '시작된 일정 · 참석 기록 확정' : item.closed ? '모집 마감' : '모집 중'}</p>
                 ${item.version > 1 ? '<p class="mt-1 text-xs">일정 정보가 변경되었습니다. 참석 상태는 유지됩니다. 마지막 수정: ' + escapeHTML(discussionTimeLabel(item.updatedAt)) + '</p>' : ''}
                 ${conflictBanners}
 
