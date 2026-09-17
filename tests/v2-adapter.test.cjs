@@ -22,6 +22,7 @@ test('all inline scripts parse and legacy mutable tables are no longer queried',
  const loader=html.slice(html.indexOf('async function loadData()'),html.indexOf('function fromSupabaseSchedule('));
  assert.doesNotMatch(loader,/fetchJSON/);
  const workflow=fs.readFileSync('.github/workflows/pages.yml','utf8');
- assert.doesNotMatch(workflow,/cp -R assets data/);assert.match(workflow,/v2-data\.js/);
+ assert.doesNotMatch(workflow,/cp -R assets data/);assert.match(workflow,/v2-data\.js/);assert.match(workflow,/v2-admin\.js/);
+ acorn.parse(fs.readFileSync('v2-admin.js','utf8'),{ecmaVersion:'latest'});
  assert.doesNotMatch(fs.readFileSync('club/app.js','utf8'),/fetch\(/);
 });

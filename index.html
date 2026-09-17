@@ -24,6 +24,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <script src="env.js?v=20260526-auth-redirect"></script>
   <script src="v2-data.js"></script>
+  <script src="v2-admin.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
   <script>
     tailwind.config = {
@@ -127,6 +128,8 @@
     };
   </script>
   <style>
+    #memberAdminButton[hidden] { display: none !important; }
+    #memberAdminDialog::backdrop { background: rgba(0,0,0,.4); }
     /* CSS 디자인 시스템 토큰 및 변수 바인딩 */
     :root {
       --primary: #00685d;
@@ -2232,6 +2235,7 @@
       </button>
     </div>
     <div class="relative flex items-center gap-sm">
+      <button id="memberAdminButton" type="button" class="hidden app-icon-btn shrink-0" aria-label="회원 승인 관리" title="회원 승인 관리" hidden><span class="material-symbols-outlined">manage_accounts</span></button>
       <button id="authButton" class="auth-control inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition sm:w-auto sm:gap-2 sm:px-3" type="button" aria-label="카카오 로그인" title="카카오 로그인">
         <span class="material-symbols-outlined text-[18px]" data-auth-icon>login</span>
         <span class="hidden lg:inline" data-auth-label>로그인</span>
@@ -2810,6 +2814,7 @@
     const authState = { session: null, user: null, memberAccount: null, member: null, initialized: false };
     const dataStore = { members: [], courts: [], courtUnits: [], schedules: [], events: [], discussions: [], scheduleDeclines: [] };
     let members = [];
+    const memberAdmin = window.V2MemberAdmin.create({client: () => supabaseClient, isAdmin: () => isClubAdmin(), members: () => members, userId: () => authState.user?.id});
     let courts = [];
     let courtUnits = [];
     let schedules = [];
@@ -4045,6 +4050,7 @@
 
     let v2LoadRequest = 0;
     function clearV2Data() {
+      memberAdmin.invalidate();
       v2LoadRequest++;
       state.selectedId = ''; state.selectedEventId = ''; state.selectedDate = ''; state.detailType = 'schedule';
       state.currentMonth = todayIso.slice(0,7); state.query = '';
@@ -4342,6 +4348,7 @@
     }
 
     function renderAuthStatus() {
+      memberAdmin.sync();
       document.body.classList.toggle("can-manage-official-data", canManageOfficialData());
       document.body.classList.toggle("approved-club-member", isApprovedMember());
       const gate = document.querySelector('#memberGate');
