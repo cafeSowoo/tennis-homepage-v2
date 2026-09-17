@@ -4144,10 +4144,10 @@
       return authState.initialized && remoteWritesEnabled() && isOwnerSignedIn();
     }
 
-    function requireApprovedMember() {
-      if (!remoteWritesEnabled()) throw new Error("회원 참석 상태 저장은 서버 연결이 필요합니다.");
+    function requireApprovedMember(action = "참석 상태를 변경") {
+      if (!remoteWritesEnabled()) throw new Error("회원 기능은 서버 연결이 필요합니다.");
       if (!authState.initialized || !authState.user) throw new Error("카카오 로그인 후 이용해 주세요.");
-      if (!isApprovedMember()) throw new Error("승인된 활성 회원만 참석 상태를 변경할 수 있습니다.");
+      if (!isApprovedMember()) throw new Error(`승인된 활성 회원만 ${action}할 수 있습니다.`);
     }
 
     function remoteWritesEnabled() {
@@ -5920,6 +5920,13 @@
         .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     }
 
+    function canDeleteDiscussion(row) {
+      return Boolean(row && row.source !== "kakao" && remoteWritesEnabled() && (
+        canManageOfficialData() || isClubAdmin() ||
+        (isApprovedMember() && String(row.memberId) === myMemberId())
+      ));
+    }
+
     function renderDiscussionMessages(item) {
       const rows = discussionsForSchedule(item.id);
       const snapshot = kakaoCommentSnapshots.get(String(item.id));
@@ -5954,6 +5961,7 @@
                     <span class="shrink-0 text-xs text-on-surface-variant font-medium">${row.source === "kakao" ? "카카오 · " : "홈페이지 · "}${escapeHTML(row.displayTime || discussionTimeLabel(row.createdAt))}</span>
                   </div>
                   <p class="whitespace-pre-wrap text-sm text-on-surface-variant leading-relaxed">${escapeHTML(row.message)}</p>
+                  ${canDeleteDiscussion(row) ? `<button type="button" class="mt-2 text-xs text-error underline" data-delete-discussion="${escapeHTML(row.id)}" aria-label="${escapeHTML(author)} 댓글 삭제">삭제</button>` : ""}
                 </div>
               </div>
             `;
@@ -6112,13 +6120,13 @@
 
               ${renderDiscussionMessages(item)}
 
-              ${canManageOfficialData() && isApprovedMember() && myMemberName() ? `
+              ${remoteWritesEnabled() && isApprovedMember() && myMemberName() ? `
                 <div class="flex items-start gap-3 md:gap-4">
                   ${memberAvatarHTML(myMemberName(), {
                     className: "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-xs sm:text-sm font-black text-white shadow-sm"
                   })}
                   <div class="relative w-full">
-                    <textarea class="w-full resize-none rounded-xl border border-outline-variant bg-surface p-3 pr-12 text-xs sm:text-sm outline-none transition focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" data-discussion-input placeholder="Leave a message for the players..." rows="2"></textarea>
+                    <textarea class="w-full resize-none rounded-xl border border-outline-variant bg-surface p-3 pr-12 text-xs sm:text-sm outline-none transition focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" data-discussion-input maxlength="2000" placeholder="댓글을 입력해 주세요 (최대 2,000자)" rows="2"></textarea>
                     <button class="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary p-0 text-on-primary shadow transition-all hover:bg-primary-container hover:text-on-primary-container sm:h-9 sm:w-9" type="button" data-send-discussion>
                       ${icon("send", "text-[14px] sm:text-[16px]")}
                     </button>
@@ -6126,7 +6134,7 @@
                 </div>
               ` : `
                 <div class="rounded-xl border border-dashed border-outline-variant/50 bg-surface-container-low/50 p-4 text-center">
-                  <p class="text-xs font-semibold text-on-surface-variant">${isApprovedMember() ? "회원 댓글 작성 기능을 준비 중입니다." : "카카오 로그인 후 회원 승인을 기다려 주세요."}</p>
+                  <p class="text-xs font-semibold text-on-surface-variant">${!remoteWritesEnabled() ? "서버 연결 후 댓글을 작성할 수 있습니다." : "카카오 로그인 후 승인된 회원만 댓글을 작성할 수 있습니다."}</p>
                 </div>
               `}
             </article>
@@ -8150,38 +8158,59 @@
       await persistScheduleAttendees(schedule.id, attendeeIdsForSchedule(schedule).filter(id => id !== memberId));
     }
 
-        async function addDiscussionMessage(message) {
-      const schedule = findScheduleById(state.selectedId);
+    const pendingDiscussionWrites = new Set();
+
+    async function addDiscussionMessage(message) {
+      requireApprovedMember("댓글을 작성");
+      const schedule = schedules.find(item => String(item.id) === String(state.selectedId));
       const author = myMember();
       const trimmed = message.trim();
       if (!schedule || !trimmed) return;
-      if (!isApprovedMember() || !author) throw new Error("승인된 회원만 댓글을 작성할 수 있습니다.");
-
-      const discussion = {
-        id: `local-discussion-${Date.now()}`,
-        scheduleId: schedule.id,
-        memberId: author.id,
-        message: trimmed,
-        createdAt: new Date().toISOString(),
-        source: "local"
-      };
-
-          if (remoteWritesEnabled()) {
-        requireOfficialWriteAccess();
-        const { data, error } = await supabaseClient
-          .from("discussions")
-          .insert(toSupabaseDiscussion(discussion))
-          .select()
-          .single();
+      if ([...trimmed].length > 2000) throw new Error("댓글은 최대 2,000자까지 입력할 수 있습니다.");
+      const requestKey = `add:${schedule.id}`;
+      if (pendingDiscussionWrites.has(requestKey)) return;
+      pendingDiscussionWrites.add(requestKey);
+      const sendButton = document.querySelector("[data-send-discussion]");
+      if (sendButton) sendButton.disabled = true;
+      try {
+        const discussion = {
+          id: `discussion-${crypto.randomUUID()}`,
+          scheduleId: schedule.id,
+          memberId: author.id,
+          message: trimmed,
+          createdAt: new Date().toISOString(),
+          source: "supabase"
+        };
+        const { data, error } = await supabaseClient.from("discussions")
+          .insert(toSupabaseDiscussion(discussion)).select().single();
         if (error) throw error;
         dataStore.discussions.push(fromSupabaseDiscussion(data));
-      } else {
-        const localDiscussions = loadLocalDiscussions();
-        localDiscussions.push(discussion);
-        saveLocalDiscussions(localDiscussions);
-        dataStore.discussions.push(discussion);
+        rebuildDataIndexes();
+        if (String(state.selectedId) === String(schedule.id)) renderCurrentDetail();
+      } finally {
+        pendingDiscussionWrites.delete(requestKey);
+        if (sendButton) sendButton.disabled = false;
       }
-      refreshViews();
+    }
+
+    async function deleteDiscussionMessage(id) {
+      const row = discussions.find(item => String(item.id) === String(id));
+      if (!canDeleteDiscussion(row)) throw new Error("이 댓글을 삭제할 권한이 없습니다.");
+      const requestKey = `delete:${id}`;
+      if (pendingDiscussionWrites.has(requestKey)) return;
+      if (!confirm("이 댓글을 삭제할까요?")) return;
+      pendingDiscussionWrites.add(requestKey);
+      try {
+        const { data, error } = await supabaseClient.from("discussions")
+          .delete().eq("id", String(id)).select("id").maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error("댓글이 없거나 삭제 권한이 변경됐습니다. 새로고침해 주세요.");
+        dataStore.discussions = dataStore.discussions.filter(item => String(item.id) !== String(id));
+        rebuildDataIndexes();
+        if (String(state.selectedId) === String(row.scheduleId)) renderCurrentDetail();
+      } finally {
+        pendingDiscussionWrites.delete(requestKey);
+      }
     }
 
         async function deleteSchedule(id) {
@@ -8562,6 +8591,12 @@
             focusDiscussionComposer();
             return;
           }
+
+      const deleteDiscussionButton = event.target.closest("[data-delete-discussion]");
+      if (deleteDiscussionButton) {
+        deleteDiscussionMessage(deleteDiscussionButton.dataset.deleteDiscussion).catch(error => alert(error.message));
+        return;
+      }
 
       const sendDiscussionButton = event.target.closest("[data-send-discussion]");
       if (sendDiscussionButton) {

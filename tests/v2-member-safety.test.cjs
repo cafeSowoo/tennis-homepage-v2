@@ -95,3 +95,43 @@ test('approved member calendar renders attendance and host labels outside dot ca
   assert.doesNotThrow(() => ctx.renderCalendar());
   assert.match(grid.innerHTML, /김지석 참석 일정/); assert.match(grid.innerHTML, /김지석 Host 일정/);
 });
+function discussionContext() {
+  const c = memberContext();
+  Object.assign(c, {
+    canManageOfficialData: () => false, isClubAdmin: () => false,
+    myMember: () => c.authState.member,
+    document: { querySelector: () => null },
+    crypto: { randomUUID: () => 'unique-test-id' },
+    dataStore: { discussions: [] }, discussions: [],
+    rebuildDataIndexes: () => { c.discussions = c.dataStore.discussions; },
+    renderCurrentDetail: () => {}, confirm: () => true,
+    toSupabaseDiscussion: row => ({ id:row.id, schedule_id:row.scheduleId, member_id:row.memberId, message:row.message, source:row.source }),
+    fromSupabaseDiscussion: row => ({ id:row.id, scheduleId:row.schedule_id, memberId:row.member_id, message:row.message, source:row.source })
+  });
+  vm.runInContext('const pendingDiscussionWrites = new Set();\n' + ['canDeleteDiscussion','addDiscussionMessage','deleteDiscussionMessage'].map(source).join('\n'),c);
+  return c;
+}
+test('comment deletion allows own homepage comments or admins, never Kakao imports', () => {
+  const c=discussionContext();
+  const own={memberId:'member-a',source:'supabase'},other={memberId:'member-b',source:'supabase'};
+  assert.equal(c.canDeleteDiscussion(own),true);assert.equal(c.canDeleteDiscussion(other),false);
+  assert.equal(c.canDeleteDiscussion({...own,source:'seed'}),true);
+  c.authState.memberAccount.status='disabled';assert.equal(c.canDeleteDiscussion(own),false);
+  c.isClubAdmin=()=>true;assert.equal(c.canDeleteDiscussion(other),true);
+  assert.equal(c.canDeleteDiscussion({...own,source:'kakao'}),false);
+});
+test('approved member comment writes use own identity and reject oversized text', async () => {
+  const c=discussionContext();let sent;
+  c.supabaseClient.from=table=>({insert:row=>{assert.equal(table,'discussions');sent=row;return{select:()=>({single:async()=>({data:row,error:null})})};}});
+  await c.addDiscussionMessage('  Test comment  ');
+  assert.equal(sent.member_id,'member-a');assert.equal(sent.source,'supabase');assert.equal(sent.message,'Test comment');assert.equal(c.discussions.length,1);
+  await assert.rejects(c.addDiscussionMessage('x'.repeat(2001)),/2,000/);
+  c.authState.memberAccount.status='pending';await assert.rejects(c.addDiscussionMessage('blocked'));
+});
+test('comment delete handles changed server permission without hiding the row', async () => {
+  const c=discussionContext();c.dataStore.discussions=[{id:'own',memberId:'member-a',scheduleId:'schedule-a',source:'supabase'}];c.rebuildDataIndexes();
+  c.supabaseClient.from=()=>({delete:()=>({eq:()=>({select:()=>({maybeSingle:async()=>({data:null,error:null})})})})});
+  await assert.rejects(c.deleteDiscussionMessage('own'),/삭제 권한/);assert.equal(c.discussions.length,1);
+  c.supabaseClient.from=()=>({delete:()=>({eq:()=>({select:()=>({maybeSingle:async()=>({data:{id:'own'},error:null})})})})});
+  await c.deleteDiscussionMessage('own');assert.equal(c.discussions.length,0);
+});
