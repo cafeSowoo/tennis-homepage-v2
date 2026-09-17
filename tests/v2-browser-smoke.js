@@ -1,0 +1,43 @@
+async page => {
+
+ page.removeAllListeners('dialog');
+ page.removeAllListeners('pageerror');
+ const errors=[],dialogs=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ page.on('dialog',async d=>{dialogs.push(d.message());await d.accept();});
+ await page.route('**/env.js*',r=>r.fulfill({contentType:'text/javascript',body:'window.TENNIS_CONFIG={supabaseUrl:"https://test.invalid",supabaseAnonKey:"test",allowRemoteWrites:true};'}));
+ await page.route('**/@supabase/supabase-js@*/dist/umd/supabase.js',r=>r.fulfill({contentType:'text/javascript',body:MOCK_SDK_SOURCE}));
+ await page.setViewportSize(VIEWPORT);
+ await page.goto('http://127.0.0.1:8766');
+ await page.waitForFunction(()=>document.body.classList.contains('approved-club-member'));
+ if (await page.locator('#pwaInstallDismiss').isVisible()) await page.locator('#pwaInstallDismiss').click();
+ if (page.viewportSize().width < 600) await page.locator('#calendarAddBtn').click();
+ await page.locator('[data-add-schedule]:visible').first().click();
+ await page.locator('#addScheduleDate').fill('2099-01-20');
+ await page.locator('#addScheduleTitle').fill('V2 브라우저 시험');
+ await page.locator('#addScheduleCapacity').fill('5');
+ await page.locator('#addScheduleSubmit').click();
+ await page.waitForFunction(()=>window.__v2Mock.tables.v2_schedules.length===1);
+ await page.waitForTimeout(250);
+ const afterCreate=await page.evaluate(()=>({calls:__v2Mock.calls.length,detail:document.querySelector('#detailContent').innerText,formHidden:document.querySelector('#addScheduleSheet').classList.contains('hidden')}));
+ await page.locator('[data-edit-current]').first().click();
+ await page.locator('#addScheduleTitle').fill('수정한 V2 일정');
+ await page.locator('#addScheduleSubmit').click();
+ await page.waitForFunction(()=>__v2Mock.tables.v2_schedules[0].version===2);
+ await page.locator('[data-join-current]').click();
+ await page.waitForFunction(()=>document.querySelector('#detailContent').innerText.includes('Players (1/5)'));
+ if (await page.locator('#pwaInstallDismiss').isVisible()) await page.locator('#pwaInstallDismiss').click();
+ await page.locator('[data-discussion-input]').fill('브라우저 시험 댓글');
+ await page.locator('[data-send-discussion]').evaluate(el=>el.scrollIntoView({block:'center'}));
+ await page.locator('[data-send-discussion]').click();
+ await page.waitForFunction(()=>document.querySelector('#detailContent').innerText.includes('브라우저 시험 댓글'));
+ await page.locator('[data-delete-current]').first().click();
+ await page.waitForFunction(()=>document.querySelector('#detailContent').innerText.includes('취소된 일정'));
+ const cancelled=await page.evaluate(()=>({responses:__v2Mock.tables.v2_schedule_rsvps.length,comments:__v2Mock.tables.v2_discussions.length,join:!!document.querySelector('[data-join-current]'),composer:!!document.querySelector('[data-discussion-input]'),deleteComment:!!document.querySelector('[data-delete-discussion]')}));
+ await page.locator('[data-delete-discussion]').click();
+ await page.waitForFunction(()=>__v2Mock.tables.v2_discussions.length===0);
+ await page.locator('#authButton').click();
+ await page.waitForFunction(()=>!document.querySelector('#memberGate').hidden);
+ const loggedOut=await page.evaluate(()=>({detail:document.querySelector('#detailContent').innerText,schedules:typeof schedules==='undefined'?null:schedules.length,gate:!document.querySelector('#memberGate').hidden,calls:__v2Mock.calls.map(c=>c.name)}));
+ return {errors,dialogs,cancelled,loggedOut};
+}

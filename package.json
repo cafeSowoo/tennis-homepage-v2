@@ -1,0 +1,11 @@
+{
+  "name": "tennis-homepage-v2",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "acorn": "8.15.0"
+  }
+}

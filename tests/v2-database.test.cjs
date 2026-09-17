@@ -1,0 +1,24 @@
+const {PGlite}=require('@electric-sql/pglite');
+const fs=require('node:fs');
+const test=require('node:test');
+const assert=require('node:assert/strict');
+test('V2 database policies and lifecycle under real PostgreSQL roles',async()=>{
+ const db=new PGlite();
+ await db.exec(`create role anon; create role authenticated; create role service_role;
+ create schema auth;
+ create table auth.users(id uuid primary key, email text, raw_app_meta_data jsonb default '{}');
+ create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;
+ grant usage on schema auth to authenticated,anon;
+ create table public.members(id text primary key,name text,status text);
+ create table public.courts(id text primary key,name text);
+ create table public.court_units(id text primary key,court_id text,label text);
+ create table public.schedules(id text primary key,source text,closed boolean,attendee_ids text[],absentee_ids text[],kakao_attendee_ids text[]);
+ `);
+ await db.exec(fs.readFileSync('supabase/migrations/20260916152242_club_member_accounts_and_member_rsvp.sql','utf8'));
+ await db.exec(fs.readFileSync('supabase/migrations/20260917095736_v2_independent_schedules.sql','utf8'));
+ await db.exec(fs.readFileSync('supabase/migrations/20260917100945_v2_rpc_input_guards.sql','utf8'));
+ const results=await db.exec('BEGIN;'+fs.readFileSync('supabase/tests/v2_independent_schedules.sql','utf8')+'ROLLBACK;');
+ const count=results.find(x=>x.rows?.[0]?.passed_checks)?.rows[0].passed_checks;
+ assert.ok(Number(count)>=30, 'all permission and lifecycle checks passed');
+ await db.close();
+});

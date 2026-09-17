@@ -14,24 +14,6 @@
   <link rel="manifest" href="manifest.webmanifest">
   <script>
     (function () {
-      const paths = [
-        "data/members.json",
-        "data/courts.json",
-        "data/court-units.json",
-        "data/schedules.json",
-        "data/events.json",
-        "data/discussions.json"
-      ];
-      window.__jsonPrefetch = Object.fromEntries(
-        paths.map(path => [
-          path,
-          fetch(path, { cache: "no-store" }).then(response => {
-            if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`);
-            return response.json();
-          })
-        ])
-      );
-
       const now = new Date();
       document.title = `아직도 성장중 - ${now.getFullYear()}년 ${now.getMonth() + 1}월 테니스 일정`;
     })();
@@ -41,6 +23,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <script src="env.js?v=20260526-auth-redirect"></script>
+  <script src="v2-data.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
   <script>
     tailwind.config = {
@@ -2193,7 +2176,9 @@
     }
 
     /* Keep dynamically rendered management controls hidden until authorized. */
-    body:not(.can-manage-official-data) :is([data-add-schedule], [data-add-event], [data-add-court], [data-edit-court], [data-edit-current], [data-delete-current], [data-add-attendee], [data-remove-attendee], [data-upload-schedule-photo], [data-follow-kakao], #calendarAddBtn) { display: none !important; }
+    :is([data-add-event], [data-add-court], [data-edit-court], [data-add-attendee], [data-remove-attendee], [data-upload-schedule-photo], [data-follow-kakao]) { display: none !important; }
+    body:not(.approved-club-member) :is([data-add-schedule], [data-edit-current], [data-delete-current], #calendarAddBtn) { display:none !important; }
+    [data-edit-current][hidden], [data-delete-current][hidden] { display:none !important; }
     body:not(.approved-club-member) :is([data-join-current], [data-leave-current], [data-decline-current], [data-clear-decline-current], [data-cycle-rsvp]) { display: none !important; }
   </style>
 </head>
@@ -2258,6 +2243,10 @@
     </div>
   </header>
 
+  <section id="memberGate" class="fixed inset-0 z-[65] bg-white px-8 pt-32 text-center" hidden>
+    <h1 class="text-xl font-bold">성장중 회원 일정</h1>
+    <p id="memberGateText" class="mt-4">카카오 로그인 후 승인된 회원만 이용할 수 있습니다.</p>
+  </section>
   <main class="min-h-screen px-margin-mobile pb-16 pt-20 md:pt-24 md:ml-64 md:px-margin-desktop">
     <section id="dashboard" class="view active active-animate">
       <div class="dashboard-summary flex items-start justify-between gap-3">
@@ -2496,10 +2485,9 @@
           </div>
         </section>
 
-        <fieldset class="space-y-2">
-          <legend class="text-sm font-bold text-on-surface">참석자</legend>
-          <div id="addScheduleMembers" class="scrollbar-none grid max-h-44 grid-cols-4 gap-1.5 overflow-y-auto rounded-lg border border-outline-variant/60 bg-surface-container-low p-3 sm:grid-cols-5"></div>
-        </fieldset>
+        <label class="block text-sm font-bold">정원
+          <input id="addScheduleCapacity" name="capacity" type="number" min="1" step="1" value="16" required class="w-full rounded-lg border p-3">
+        </label><p class="text-xs text-on-surface-variant">참석 여부는 각 회원이 직접 선택합니다.</p><div id="addScheduleMembers" hidden></div>
 
         <div class="grid grid-cols-3 gap-2">
           <label class="min-w-0">
@@ -3078,29 +3066,8 @@
     }
 
     async function loadData() {
-      if (supabaseClient) {
-        await loadSupabaseData();
-        return;
-      }
-
-      const [memberRows, courtRows, courtUnitRows, scheduleRows, eventRows, discussionRows] = await Promise.all([
-        fetchJSON("data/members.json"),
-        fetchJSON("data/courts.json"),
-        fetchJSON("data/court-units.json"),
-        fetchJSON("data/schedules.json"),
-        fetchJSON("data/events.json"),
-        fetchJSON("data/discussions.json")
-      ]);
-
-      const deletedIds = loadDeletedScheduleIds();
-      fileSchedules = scheduleRows;
-      fileEvents = eventRows;
-      fileDiscussions = discussionRows;
-      dataStore.members = memberRows;
-      dataStore.courts = courtRows;
-      dataStore.courtUnits = courtUnitRows;
-      syncStoredLocalData(deletedIds);
-      rebuildDataIndexes();
+      if (!supabaseClient) throw new Error('회원 서비스 연결 설정이 없습니다.');
+      await loadSupabaseData();
     }
 
     function fromSupabaseSchedule(row) {
@@ -3289,42 +3256,37 @@
     }
 
     async function loadSupabaseData() {
-      const [membersResult, courtsResult, courtUnitsResult, schedulesResult, eventsResult, discussionsResult, declinesResult, syncResult, rsvpResult] = await Promise.all([
-        supabaseClient.from("members").select("*").order("name"),
-        supabaseClient.from("courts").select("*").order("name"),
-        supabaseClient.from("court_units").select("*").order("court_id").order("sort_order").order("label"),
-        supabaseClient.from("schedules").select("*").order("date").order("time"),
-        supabaseClient.from("events").select("*").order("date").order("start_time", { nullsFirst: true }),
-        supabaseClient.from("discussions").select("*").order("created_at"),
-        supabaseClient.from("schedule_declines").select("*").order("created_at"),
-        supabaseClient.from("kakao_sync_state").select("last_collected_at,schedule_count").eq("id", "kakao"),
-        supabaseClient.from("schedule_rsvp_overrides").select("schedule_id,member_id,state")
-      ]);
-
-      const memberRows = supabaseRowsOrFallback("members", membersResult, { required: true });
-      const courtRows = supabaseRowsOrFallback("courts", courtsResult, { required: true });
-      const courtUnitRows = supabaseRowsOrFallback("court_units", courtUnitsResult, { required: true });
-      const scheduleRows = supabaseRowsOrFallback("schedules", schedulesResult, { required: true });
-      const eventRows = supabaseRowsOrFallback("events", eventsResult);
-      const discussionRows = supabaseRowsOrFallback("discussions", discussionsResult);
-      const declineRows = supabaseRowsOrFallback("schedule_declines", declinesResult);
-      rsvpOverrides = rsvpResult.error ? [] : (rsvpResult.data || []);
-      const sync = syncResult.error ? null : syncResult.data?.[0];
-      const syncLabel = document.querySelector("#kakaoSyncStatus");
-      syncLabel.textContent = sync ? `카카오 전체 확인 · ${discussionTimeLabel(sync.last_collected_at)} · ${sync.schedule_count}개 일정` : "";
-      syncLabel.classList.toggle("hidden", !sync);
-
+      const request = ++v2LoadRequest;
+      const userId = authState.user?.id;
+      if (!userId) { clearV2Data(); return; }
+      await loadCurrentMemberAccount();
+      if (request !== v2LoadRequest || userId !== authState.user?.id) return;
+      if (authState.memberAccount?.status !== 'approved') { clearV2Data(); renderAuthStatus(); return; }
+      const memberRows = await TennisV2.rows(supabaseClient, 'members');
+      if (request !== v2LoadRequest || userId !== authState.user?.id) return;
       dataStore.members = memberRows;
+      members = memberRows;
+      syncCurrentMemberFromData();
+      if (!isApprovedMember()) { clearV2Data(); renderAuthStatus(); return; }
+      const [courtRows, unitRows, scheduleRows, responseRows, commentRows] = await Promise.all([
+        TennisV2.rows(supabaseClient, 'courts'), TennisV2.rows(supabaseClient, 'court_units'),
+        TennisV2.rows(supabaseClient, 'v2_schedules'), TennisV2.rows(supabaseClient, 'v2_schedule_rsvps', 'schedule_id'),
+        TennisV2.rows(supabaseClient, 'v2_discussions')
+      ]);
+      if (request !== v2LoadRequest || userId !== authState.user?.id) return;
+      await loadCurrentMemberAccount();
+      if (request !== v2LoadRequest || userId !== authState.user?.id) return;
+      if (!isApprovedMember()) { clearV2Data(); renderAuthStatus(); return; }
       dataStore.courts = courtRows.map(fromSupabaseCourt);
-      dataStore.courtUnits = courtUnitRows.map(fromSupabaseCourtUnit);
-          dataStore.schedules = scheduleRows.map(fromSupabaseSchedule);
-          dataStore.events = eventRows.map(fromSupabaseEvent);
-          dataStore.discussions = discussionRows.map(fromSupabaseDiscussion);
-          dataStore.scheduleDeclines = declineRows.map(fromSupabaseScheduleDecline);
-          if (!ALLOW_REMOTE_WRITES) applyClientLocalData();
-          rebuildDataIndexes();
-          await loadKakaoComments();
-        }
+      dataStore.courtUnits = unitRows.map(fromSupabaseCourtUnit);
+      dataStore.schedules = scheduleRows.map(row => TennisV2.schedule(row, responseRows));
+      dataStore.events = [];
+      dataStore.discussions = commentRows.map(fromSupabaseDiscussion);
+      dataStore.scheduleDeclines = responseRows.filter(r => r.state === 'declined').map(r => ({scheduleId:r.schedule_id,memberId:r.member_id}));
+      rsvpOverrides = [];
+      rebuildDataIndexes();
+      renderAuthStatus();
+    }
 
     function loadLocalSchedules() {
       try {
@@ -3476,7 +3438,7 @@
       const memberById = new Map(dataStore.members.map(member => [member.id, member]));
       const courtById = new Map(dataStore.courts.map(court => [court.id, court]));
       const courtUnitById = new Map((dataStore.courtUnits || []).map(unit => [unit.id, unit]));
-      const attendeeOverrides = ALLOW_REMOTE_WRITES ? {} : loadAttendeeOverrides();
+      const attendeeOverrides = {};
 
       members = dataStore.members;
       syncCurrentMemberFromData();
@@ -3494,12 +3456,12 @@
           .map(row => String(row.scheduleId))
       );
       schedules = dataStore.schedules.map((schedule, index) => {
-        const court = courtById.get(schedule.courtId) || {};
-        const courtUnit = courtUnitById.get(schedule.courtUnitId) || null;
+        const court = courtById.get(schedule.courtId) || {name:schedule.place || '미정'};
+        const courtUnit = courtUnitById.get(schedule.courtUnitId) || (schedule.unitLabel ? {label:schedule.unitLabel} : null);
         const overrideIds = attendeeOverrides[String(schedule.id)];
         const attendeeIds = Array.isArray(overrideIds) ? overrideIds : schedule.attendeeIds;
         const attendees = Array.isArray(attendeeIds)
-          ? attendeeIds.map(id => memberById.get(id)?.name).filter(Boolean)
+          ? attendeeIds.map(id => memberById.get(id)?.name || '탈퇴 회원')
           : [...(schedule.attendees || [])];
         const host = schedule.hostId ? memberById.get(schedule.hostId) : null;
 
@@ -3529,7 +3491,7 @@
       ].filter(Boolean));
       byDate = schedules.reduce((acc, item) => ((acc[item.date] ||= []).push(item), acc), {});
       eventsByDate = calendarEvents.reduce((acc, item) => ((acc[item.date] ||= []).push(item), acc), {});
-      upcoming = schedules.filter(schedule => new Date(schedule.date + "T00:00:00") >= today);
+      upcoming = schedules.filter(schedule => schedule.status !== 'cancelled' && new Date(schedule.date + "T00:00:00") >= today);
     }
 
     function courtUnitsForCourt(courtId) {
@@ -3659,7 +3621,6 @@
     }
 
     function refreshViews() {
-      syncStoredLocalData();
       rebuildDataIndexes();
       renderAuthStatus();
       renderDashboard();
@@ -4082,6 +4043,35 @@
         : null;
     }
 
+    let v2LoadRequest = 0;
+    function clearV2Data() {
+      v2LoadRequest++;
+      state.selectedId = ''; state.selectedEventId = ''; state.selectedDate = ''; state.detailType = 'schedule';
+      state.currentMonth = todayIso.slice(0,7); state.query = '';
+      const search = document.querySelector('#globalSearch'); if (search) search.value = '';
+      const viewer = document.querySelector('#memberPhotoViewer');
+      if (viewer) { viewer.classList.add('hidden'); viewer.setAttribute('aria-hidden','true'); }
+      const photo = document.querySelector('#memberPhotoViewerImage'); if (photo) { photo.removeAttribute('src'); photo.alt = ''; }
+      const caption = document.querySelector('#memberPhotoViewerTitle'); if (caption) caption.textContent = '멤버';
+      for (const key of ['members','courts','courtUnits','schedules','events','discussions','scheduleDeclines']) dataStore[key] = [];
+      rsvpOverrides = [];
+      kakaoCommentSnapshots.clear();
+      rebuildDataIndexes();
+      for (const selector of ['#detailContent','#memberDetailContent']) {
+        const node = document.querySelector(selector); if (node) node.replaceChildren();
+      }
+      document.querySelectorAll('[data-edit-current],[data-delete-current]').forEach(b => b.hidden = true);
+      document.querySelectorAll('#addScheduleSheet,#addEventSheet,#addCourtSheet,#attendeeSheet').forEach(node => {node.classList.add('hidden');node.setAttribute('aria-hidden','true');});
+      document.body.style.overflow = '';
+      const form = document.querySelector('#addScheduleForm'); if (form) form.reset();
+      document.querySelector('#kakaoSyncStatus')?.classList.add('hidden');
+    }
+    function ownsV2Schedule(item) {
+      return Boolean(isApprovedMember() && item?.source === 'v2' && (item.creatorMemberId === myMemberId() || isClubAdmin()));
+    }
+    function canEditV2Schedule(item) {
+      return ownsV2Schedule(item) && item.status !== 'cancelled' && new Date(item.startsAt) > new Date();
+    }
     let memberAccountRequest = 0;
 
     async function loadCurrentMemberAccount() {
@@ -4140,9 +4130,7 @@
       return currentUserEmail().toLowerCase() === OWNER_EMAIL.toLowerCase();
     }
 
-    function canManageOfficialData() {
-      return authState.initialized && remoteWritesEnabled() && isOwnerSignedIn();
-    }
+    function canManageOfficialData() { return false; }
 
     function requireApprovedMember(action = "참석 상태를 변경") {
       if (!remoteWritesEnabled()) throw new Error("회원 기능은 서버 연결이 필요합니다.");
@@ -4154,19 +4142,7 @@
       return Boolean(supabaseClient && ALLOW_REMOTE_WRITES);
     }
 
-    function requireOfficialWriteAccess() {
-      if (!remoteWritesEnabled()) return false;
-      if (!authState.initialized) {
-        throw new Error("로그인 상태를 확인하는 중입니다. 잠시 후 다시 시도해 주세요.");
-      }
-      if (!authState.user) {
-        throw new Error(`공식 데이터 수정은 ${OWNER_EMAIL} Google 로그인 후 가능합니다.`);
-      }
-      if (!isOwnerSignedIn()) {
-        throw new Error(`${OWNER_EMAIL} 계정으로 로그인해야 공식 데이터를 수정할 수 있습니다.`);
-      }
-      return true;
-    }
+    function requireOfficialWriteAccess() { throw new Error('V2에서는 기존 공유 데이터를 수정하지 않습니다.'); }
 
     function authRedirectUrl() {
       const currentOrigin = window.location.origin;
@@ -4203,25 +4179,8 @@
       return index >= 0 ? decodeURIComponent(url.slice(index + marker.length)) : "";
     }
 
-    async function uploadCourtImage(file, courtId, previousImage = "") {
-      if (!file) return previousImage || "";
-      if (!supabaseClient?.storage) throw new Error("이미지 업로드를 위한 Supabase Storage 설정이 없습니다.");
-      if (!file.type.startsWith("image/")) throw new Error("이미지 파일만 업로드할 수 있습니다.");
-      if (file.size > 5 * 1024 * 1024) throw new Error("이미지는 5MB 이하로 올려 주세요.");
-
-      const extension = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const path = `${courtId}/${Date.now().toString(36)}.${extension}`;
-      const { error } = await supabaseClient.storage
-        .from(COURT_IMAGE_BUCKET)
-        .upload(path, file, {
-          cacheControl: "31536000",
-          contentType: file.type,
-          upsert: false
-        });
-      if (error) throw error;
-
-      const { data } = supabaseClient.storage.from(COURT_IMAGE_BUCKET).getPublicUrl(path);
-      return data.publicUrl;
+    async function uploadCourtImage(file,courtId,previousImage = "") {
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
     function clampNumber(value, min, max) {
@@ -4294,22 +4253,8 @@
       };
     }
 
-    async function uploadSchedulePhoto(schedule, compressedPhoto) {
-      if (!schedule) throw new Error("사진을 연결할 일정을 찾을 수 없습니다.");
-      if (!supabaseClient?.storage) throw new Error("사진 업로드를 위한 Supabase Storage 설정이 없습니다.");
-
-      const path = `${schedule.id}/${Date.now().toString(36)}.${compressedPhoto.extension}`;
-      const { error } = await supabaseClient.storage
-        .from(SCHEDULE_PHOTO_BUCKET)
-        .upload(path, compressedPhoto.blob, {
-          cacheControl: "31536000",
-          contentType: compressedPhoto.type,
-          upsert: false
-        });
-      if (error) throw error;
-
-      const { data } = supabaseClient.storage.from(SCHEDULE_PHOTO_BUCKET).getPublicUrl(path);
-      return { path, publicUrl: data.publicUrl };
+    async function uploadSchedulePhoto(schedule,compressedPhoto) {
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
     function updateSchedulePhotoEditorPreview() {
@@ -4359,32 +4304,7 @@
     }
 
     async function saveSchedulePhoto() {
-      if (!pendingSchedulePhoto) return;
-      requireOfficialWriteAccess();
-      const saveButton = document.querySelector("[data-save-schedule-photo]");
-      const schedule = findScheduleById(pendingSchedulePhoto.scheduleId);
-      if (!schedule) throw new Error("사진을 저장할 일정을 찾을 수 없습니다.");
-      saveButton?.setAttribute("disabled", "true");
-      try {
-        const previousPath = schedule.photoPath || storagePathFromUrl(schedule.photoUrl, SCHEDULE_PHOTO_BUCKET);
-        const uploaded = await uploadSchedulePhoto(schedule, pendingSchedulePhoto.compressedPhoto);
-        const updates = {
-          photoUrl: uploaded.publicUrl,
-          photoPath: uploaded.path,
-          photoPositionX: Math.round(pendingSchedulePhoto.x),
-          photoPositionY: Math.round(pendingSchedulePhoto.y),
-          photoZoom: Number(pendingSchedulePhoto.zoom.toFixed(2)),
-          photoUploadedAt: new Date().toISOString()
-        };
-        await updateSchedule(schedule.id, updates);
-        if (previousPath && previousPath !== uploaded.path) {
-          const { error } = await supabaseClient.storage.from(SCHEDULE_PHOTO_BUCKET).remove([previousPath]);
-          if (error) console.warn("Previous schedule photo could not be removed.", error);
-        }
-        closeSchedulePhotoEditor();
-      } finally {
-        saveButton?.removeAttribute("disabled");
-      }
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
     function previewCourtImage(file) {
@@ -4424,6 +4344,8 @@
     function renderAuthStatus() {
       document.body.classList.toggle("can-manage-official-data", canManageOfficialData());
       document.body.classList.toggle("approved-club-member", isApprovedMember());
+      const gate = document.querySelector('#memberGate');
+      if (gate) { gate.hidden = isApprovedMember(); document.querySelector('#memberGateText').textContent = !authState.user ? '상단의 카카오 로그인 버튼으로 로그인해 주세요.' : authState.memberAccount?.status === 'disabled' ? '사용 중지된 계정입니다. 관리자에게 문의해 주세요.' : '회원 승인과 연결을 기다리고 있습니다. 승인 후 새로고침해 주세요.'; }
       const button = document.querySelector("#authButton");
       if (!button) return;
 
@@ -4502,7 +4424,7 @@
         const previousUserId = authState.user?.id;
         authState.session = session || null;
         authState.user = session?.user || null;
-        if (!authState.user || previousUserId !== authState.user.id) clearMemberAuthState();
+        if (!authState.user || previousUserId !== authState.user.id) { clearMemberAuthState(); clearV2Data(); refreshViews(); }
         renderAuthStatus();
         // Clear protected data immediately; never retain it across account changes.
         kakaoCommentsRequest++;
@@ -4522,7 +4444,8 @@
             renderAuthStatus();
             initHeaderAvatar();
             refreshViews();
-            await loadKakaoComments();
+            try { await loadSupabaseData(); refreshViews(); }
+            catch { clearV2Data(); refreshViews(); }
           })();
         }, 0);
       });
@@ -4897,7 +4820,7 @@
 
         function reminderSchedulesForDate(targetDate) {
           return schedules
-            .filter(schedule => schedule.date === targetDate && isMySchedule(schedule))
+            .filter(schedule => schedule.status !== 'cancelled' && schedule.date === targetDate && isMySchedule(schedule))
             .sort(compareSchedulesByTime);
         }
 
@@ -5101,7 +5024,7 @@
         }
 
         function nextScheduleFrom(dateValue = todayIso) {
-          return schedules.find(schedule => schedule.date >= dateValue);
+          return schedules.find(schedule => schedule.status !== 'cancelled' && schedule.date >= dateValue);
         }
 
         function todayRows() {
@@ -5870,16 +5793,7 @@
       return `${date.getMonth() + 1}월 ${date.getDate()}일 ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
     }
 
-    async function loadKakaoComments() {
-      const request = ++kakaoCommentsRequest;
-      const userId = authState.user?.id;
-      kakaoCommentSnapshots.clear();
-      if (!supabaseClient || !userId) return;
-      const { data, error } = await supabaseClient.from("kakao_schedule_comments").select("id,comments,comments_complete,synced_at");
-      if (request !== kakaoCommentsRequest || authState.user?.id !== userId) return;
-      if (!error) kakaoCommentSnapshots = new Map((data || []).map(row => [String(row.id), row]));
-      if (document.querySelector("#detail.active") && state.detailType === "schedule") renderDetail();
-    }
+    async function loadKakaoComments() { kakaoCommentSnapshots.clear(); }
 
     function kakaoSourceLink(item) {
       try {
@@ -5921,10 +5835,7 @@
     }
 
     function canDeleteDiscussion(row) {
-      return Boolean(row && row.source !== "kakao" && remoteWritesEnabled() && (
-        canManageOfficialData() || isClubAdmin() ||
-        (isApprovedMember() && String(row.memberId) === myMemberId())
-      ));
+      return Boolean(row && remoteWritesEnabled() && isApprovedMember() && (isClubAdmin() || row.memberId === myMemberId()));
     }
 
     function renderDiscussionMessages(item) {
@@ -5971,10 +5882,12 @@
     }
 
     function renderDetail(item = findScheduleById(state.selectedId)) {
-      if (!item) return;
+      if (!item || !isApprovedMember()) { document.querySelector('#detailContent').replaceChildren(); return; }
+      document.querySelectorAll('[data-edit-current]').forEach(b => b.hidden = !canEditV2Schedule(item));
+      document.querySelectorAll('[data-delete-current]').forEach(b => { b.hidden = !ownsV2Schedule(item) || item.status === 'cancelled'; b.setAttribute('aria-label','일정 취소'); });
       document.querySelector("#detailCrumbTitle").textContent = "Details";
-      const capacity = MATCH_CAPACITY;
-      const attendeeCount = item.attendees.length;
+      const capacity = item.capacity || 16;
+      const attendeeCount = item.attendeeIds.length;
       const spotsLeft = Math.max(0, capacity - attendeeCount);
       const myAttending = isMySchedule(item);
       const myHosting = isMyHostSchedule(item);
@@ -6027,11 +5940,11 @@
         </button>
       `).join("");
 
-      const actionCard = isApprovedMember() ? `
+      const actionCard = isApprovedMember() && item.status !== 'cancelled' && new Date(item.startsAt) > new Date() ? `
         <article class="sticky-detail-bar app-card p-4 md:p-5">
           <div class="flex flex-row items-center justify-between gap-4 w-full">
             <div class="flex flex-1 md:w-full items-center gap-2 justify-end">
-              <button class="${myAttending ? "bg-[#ff3b30] text-white hover:opacity-90" : "btn-primary"} flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60" type="button" ${myAttending ? "data-leave-current" : "data-join-current"} ${!myAttending && !spotsLeft ? "disabled" : ""}>
+              <button class="${myAttending ? "bg-[#ff3b30] text-white hover:opacity-90" : "btn-primary"} flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60" type="button" ${myAttending ? "data-leave-current" : "data-join-current"} ${!myAttending && (!spotsLeft || item.closed) ? "disabled" : ""}>
                 ${icon(myAttending ? "person_remove" : "sports_tennis", "text-[16px]")}
                 <span>${myAttending ? "참석 취소" : spotsLeft ? "참석하기" : "마감됨"}</span>
               </button>
@@ -6090,7 +6003,8 @@
                 </div>
 
                 <!-- Overlap Alert Banners -->
-                ${renderKakaoMetadata(item)}
+                <p class="mt-3 text-sm text-on-surface-variant">작성자 · ${escapeHTML(item.creatorName || '')} · ${item.status === 'cancelled' ? '취소된 일정 · 기록 보존' : new Date(item.startsAt) <= new Date() ? '시작된 일정 · 참석 기록 확정' : item.closed ? '모집 마감' : '모집 중'}</p>
+                ${item.version > 1 ? '<p class="mt-1 text-xs">일정 정보가 변경되었습니다. 참석 상태는 유지됩니다. 마지막 수정: ' + escapeHTML(discussionTimeLabel(item.updatedAt)) + '</p>' : ''}
                 ${conflictBanners}
 
                 ${renderMatchWeatherCard(item, { embedded: true })}
@@ -6120,7 +6034,7 @@
 
               ${renderDiscussionMessages(item)}
 
-              ${remoteWritesEnabled() && isApprovedMember() && myMemberName() ? `
+              ${remoteWritesEnabled() && isApprovedMember() && myMemberName() && item.status !== "cancelled" ? `
                 <div class="flex items-start gap-3 md:gap-4">
                   ${memberAvatarHTML(myMemberName(), {
                     className: "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-xs sm:text-sm font-black text-white shadow-sm"
@@ -6255,7 +6169,7 @@
         function renderUpcoming() {
           const quickOverview = document.querySelector("#quickOverview");
           if (!quickOverview) return;
-          const myUpcoming = schedules.filter(schedule => schedule.date >= todayIso && (isMySchedule(schedule) || isMyHostSchedule(schedule)));
+          const myUpcoming = schedules.filter(schedule => schedule.status !== 'cancelled' && schedule.date >= todayIso && (isMySchedule(schedule) || isMyHostSchedule(schedule)));
           const cards = myUpcoming.length ? myUpcoming.map((schedule, index) => {
             const hostOnly = isMyHostSchedule(schedule) && !isMySchedule(schedule);
             return `
@@ -6452,9 +6366,8 @@
     }
 
     function activeMemberSchedules() {
-      return state.memberMonth === "all"
-        ? schedules
-        : schedules.filter(schedule => schedule.date.startsWith(state.memberMonth));
+      return schedules.filter(schedule => schedule.status !== 'cancelled' &&
+        (state.memberMonth === 'all' || schedule.date.startsWith(state.memberMonth)));
     }
 
     function renderMemberMonthFilter() {
@@ -6862,11 +6775,16 @@
     }
 
     function openAddSchedule(dateValue = state.selectedDate?.startsWith(state.currentMonth) ? state.selectedDate : defaultDateForCurrentMonth(), schedule = null) {
+      requireApprovedMember('일정을 작성');
+      if (schedule && !canEditV2Schedule(schedule)) { alert('수정할 수 없는 일정입니다.'); return; }
       scheduleFormMode = schedule ? "edit" : "create";
       editingScheduleId = schedule ? String(schedule.id) : "";
       const sheet = document.querySelector("#addScheduleSheet");
       const form = document.querySelector("#addScheduleForm");
       form.reset();
+      form.dataset.requestId = crypto.randomUUID();
+      form.dataset.version = String(schedule?.version || '');
+      document.querySelector('#addScheduleCapacity').value = schedule?.capacity || 16;
       document.querySelector("#addScheduleSheetTitle").textContent = schedule ? "일정 수정" : "일정 추가";
       document.querySelector("#addScheduleSubmit").innerHTML = `<span class="material-symbols-outlined text-[18px]">${schedule ? "save" : "add_circle"}</span> ${schedule ? "저장" : "추가"}`;
       document.querySelector("#addScheduleDate").value = schedule?.date || dateValue;
@@ -6880,10 +6798,10 @@
       document.querySelector("#addScheduleTitle").value = schedule?.title || "";
       form.querySelector('input[name="regular"]').checked = Boolean(schedule?.regular);
       form.querySelector('input[name="closed"]').checked = Boolean(schedule?.closed);
-      form.querySelector('input[name="host"]').checked = schedule ? isMyHostSchedule(schedule) : false;
+      form.querySelector('input[name="host"]').checked = Boolean(schedule?.hostId);
       const selectedAttendeeIds = schedule ? attendeeIdsForSchedule(schedule) : [];
       const currentMember = myMember();
-      if (!schedule && currentMember) selectedAttendeeIds.push(currentMember.id);
+      // Each member submits their own attendance.
       selectedAttendeeIds.forEach(memberId => {
         const checkbox = form.querySelector(`input[name="attendeeIds"][value="${memberId}"]`);
         if (checkbox) checkbox.checked = true;
@@ -7642,7 +7560,7 @@
       if (startMinutes >= endMinutes) {
         throw new Error("종료 시간은 시작 시간보다 늦어야 합니다.");
       }
-      const attendeeIds = formData.getAll("attendeeIds");
+      const attendeeIds = [];
       const hostId = formData.get("host") === "on" ? myMemberId() : undefined;
       const day = dayNameFromDate(date);
       const title = formData.get("title").trim() || buildScheduleTitle({
@@ -7655,7 +7573,10 @@
       });
 
       return {
-        id: `local-${Date.now()}`,
+        id: form.dataset.requestId || crypto.randomUUID(),
+        startsAt: new Date(`${date}T${startTime}:00+09:00`).toISOString(),
+        endsAt: new Date(`${date}T${endTime}:00+09:00`).toISOString(),
+        capacity: Number(formData.get("capacity")),
         date,
         day,
         time: `${formatKoreanTime(startTime)} ~ ${formatKoreanTime(endTime)}`,
@@ -7730,226 +7651,42 @@
       };
     }
 
-    async function syncCourtUnitsForCourt(courtId, nextUnits) {
-      const unitIds = new Set();
-      nextUnits.forEach(unit => {
-        if (unitIds.has(unit.id)) throw new Error("하위코트 이름이 중복되었습니다.");
-        unitIds.add(unit.id);
-      });
-
-      if (nextUnits.length) {
-        const { data, error } = await supabaseClient
-          .from("court_units")
-          .upsert(nextUnits.map(toSupabaseCourtUnit), { onConflict: "id" })
-          .select();
-        if (error) throw error;
-
-        const storedUnits = (data || []).map(fromSupabaseCourtUnit);
-        storedUnits.forEach(unit => {
-          const index = dataStore.courtUnits.findIndex(item => String(item.id) === String(unit.id));
-          if (index >= 0) {
-            dataStore.courtUnits[index] = unit;
-          } else {
-            dataStore.courtUnits.push(unit);
-          }
-        });
-      }
-
-      const keepIds = new Set(nextUnits.map(unit => String(unit.id)));
-      const existingUnits = dataStore.courtUnits.filter(unit => String(unit.courtId) === String(courtId));
-      const removedUnits = existingUnits.filter(unit => !keepIds.has(String(unit.id)));
-      const protectedUnits = removedUnits.filter(unit =>
-        dataStore.schedules.some(schedule => String(schedule.courtUnitId || "") === String(unit.id))
-      );
-      if (protectedUnits.length) {
-        throw new Error(`일정에서 사용 중인 하위코트는 삭제할 수 없습니다: ${protectedUnits.map(courtUnitLabel).join(", ")}`);
-      }
-      const removableUnits = removedUnits;
-
-      if (removableUnits.length) {
-        const { error } = await supabaseClient
-          .from("court_units")
-          .delete()
-          .in("id", removableUnits.map(unit => String(unit.id)));
-        if (error) throw error;
-        dataStore.courtUnits = dataStore.courtUnits.filter(unit => !removableUnits.some(removed => String(removed.id) === String(unit.id)));
-      }
+    async function syncCourtUnitsForCourt(courtId,nextUnits) {
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
     async function saveCourt(form) {
-      requireOfficialWriteAccess();
-      const existingCourt = courtFormMode === "edit"
-        ? dataStore.courts.find(court => String(court.id) === String(editingCourtId))
-        : null;
-      const draftCourtId = existingCourt?.id || makeCourtId(new FormData(form).get("name") || "");
-      const nextUnits = courtUnitsFromForm(form, draftCourtId);
-      const court = createCourtFromForm(form, existingCourt, nextUnits, draftCourtId);
-      const file = form.elements.imageFile?.files?.[0] || null;
-      court.image = await uploadCourtImage(file, court.id, existingCourt?.image || court.image);
-
-      const { data, error } = await supabaseClient
-        .from("courts")
-        .upsert(toSupabaseCourt(court), { onConflict: "id" })
-        .select()
-        .single();
-      if (error) throw error;
-
-      const storedCourt = fromSupabaseCourt(data);
-      const existingIndex = dataStore.courts.findIndex(item => String(item.id) === String(storedCourt.id));
-      if (existingIndex >= 0) {
-        dataStore.courts[existingIndex] = storedCourt;
-      } else {
-        dataStore.courts.push(storedCourt);
-      }
-      await syncCourtUnitsForCourt(storedCourt.id, nextUnits);
-      refreshViews();
-      closeAddCourt();
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
     async function deleteCourt(courtId) {
-      requireOfficialWriteAccess();
-      const court = dataStore.courts.find(item => String(item.id) === String(courtId));
-      if (!court) return;
-      if (dataStore.schedules.some(schedule => String(schedule.courtId) === String(court.id))) {
-        throw new Error("이 코트를 사용하는 일정이 있어서 삭제할 수 없습니다. 먼저 해당 일정을 다른 코트로 옮겨 주세요.");
-      }
-      if (!confirm(`${court.name} 코트를 삭제할까요?`)) return;
-
-      const { error } = await supabaseClient
-        .from("courts")
-        .delete()
-        .eq("id", String(court.id));
-      if (error) throw error;
-
-      const path = storagePathFromUrl(court.image);
-      if (path) {
-        const { error: storageError } = await supabaseClient.storage.from(COURT_IMAGE_BUCKET).remove([path]);
-        if (storageError) console.warn("Court image could not be removed.", storageError);
-      }
-
-      dataStore.courts = dataStore.courts.filter(item => String(item.id) !== String(court.id));
-      refreshViews();
-      closeAddCourt();
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
         async function addSchedule(schedule) {
-          if (remoteWritesEnabled()) {
-        requireOfficialWriteAccess();
-        const { data, error } = await supabaseClient
-          .from("schedules")
-          .insert(toSupabaseSchedule(schedule))
-          .select()
-          .single();
-        if (error) throw error;
-        dataStore.schedules.push(fromSupabaseSchedule(data));
-      } else {
-        addLocalSchedule(schedule);
-        return;
-      }
-
-      state.selectedId = schedule.id;
-      state.selectedDate = schedule.date;
-      state.currentMonth = schedule.date.slice(0, 7);
-      refreshViews();
+      requireApprovedMember('일정을 작성');
+      const userId = authState.user.id;
+      const row = await TennisV2.rpc(supabaseClient,'v2_create_schedule',{p_id:schedule.id,p_input:TennisV2.input(schedule)});
+      if (authState.user?.id !== userId) return;
+      state.selectedId = row.id; state.selectedDate = schedule.date; state.currentMonth = schedule.date.slice(0,7);
+      await reloadV2AfterWrite();
     }
 
         async function updateSchedule(scheduleId, updates) {
-      const rawSchedule = dataStore.schedules.find(item => String(item.id) === String(scheduleId));
-      if (!rawSchedule) return;
-
-          if (remoteWritesEnabled()) {
-        requireOfficialWriteAccess();
-        const { error } = await supabaseClient
-          .from("schedules")
-          .update(toSupabaseSchedule({ ...rawSchedule, ...updates }))
-          .eq("id", String(scheduleId));
-        if (error) throw error;
-        if (rawSchedule.source === "kakao") {
-          await loadSupabaseData();
-          state.selectedId = scheduleId;
-          refreshViews();
-          return;
-        }
-      } else if (rawSchedule.source === "local") {
-        saveLocalSchedules(loadLocalSchedules().map(item =>
-          String(item.id) === String(scheduleId) ? { ...item, ...updates } : item
-        ));
-      } else {
-        const overrides = loadScheduleOverrides();
-        overrides[String(scheduleId)] = {
-          ...(overrides[String(scheduleId)] || {}),
-          ...updates
-        };
-        saveScheduleOverrides(overrides);
-      }
-
-      Object.assign(rawSchedule, updates);
-      state.selectedId = scheduleId;
-      state.detailType = "schedule";
-      state.selectedDate = updates.date || rawSchedule.date;
-      state.currentMonth = state.selectedDate.slice(0, 7);
-      refreshViews();
+      requireApprovedMember('일정을 수정');
+      const raw = findScheduleById(scheduleId);
+      if (!canEditV2Schedule(raw)) throw new Error('작성자 또는 관리자만 시작 전 일정을 수정할 수 있습니다.');
+      const form = document.querySelector('#addScheduleForm');
+      await TennisV2.rpc(supabaseClient,'v2_update_schedule',{p_id:raw.id,p_version:Number(form.dataset.version),p_input:TennisV2.input({...raw,...updates})});
+      await reloadV2AfterWrite();
     }
 
         async function addEvent(event) {
-      let storedEvent = event;
-
-          if (remoteWritesEnabled()) {
-        requireOfficialWriteAccess();
-        const { data, error } = await supabaseClient
-          .from("events")
-          .insert(toSupabaseEvent(event))
-          .select()
-          .single();
-        if (error) throw error;
-        storedEvent = fromSupabaseEvent(data);
-      } else {
-        const localEvents = loadLocalEvents();
-        localEvents.push(event);
-        saveLocalEvents(localEvents);
-      }
-
-      dataStore.events.push(storedEvent);
-      state.selectedEventId = storedEvent.id;
-      state.detailType = "event";
-      state.selectedDate = storedEvent.date;
-      state.currentMonth = storedEvent.date.slice(0, 7);
-      refreshViews();
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
-        async function updateEvent(eventId, updates) {
-      const rawEvent = dataStore.events.find(item => String(item.id) === String(eventId));
-      if (!rawEvent) return;
-
-          if (remoteWritesEnabled()) {
-        requireOfficialWriteAccess();
-        const { data, error } = await supabaseClient
-          .from("events")
-          .update(toSupabaseEvent({ ...rawEvent, ...updates }))
-          .eq("id", String(eventId))
-          .select()
-          .single();
-        if (error) throw error;
-        updates = fromSupabaseEvent(data);
-      } else if (rawEvent.source === "local") {
-        saveLocalEvents(loadLocalEvents().map(item =>
-          String(item.id) === String(eventId) ? { ...item, ...updates } : item
-        ));
-      } else {
-        const overrides = loadEventOverrides();
-        overrides[String(eventId)] = {
-          ...(overrides[String(eventId)] || {}),
-          ...updates
-        };
-        saveEventOverrides(overrides);
-      }
-
-      Object.assign(rawEvent, updates);
-      state.selectedEventId = eventId;
-      state.detailType = "event";
-      state.selectedDate = updates.date || rawEvent.date;
-      state.currentMonth = state.selectedDate.slice(0, 7);
-      refreshViews();
+        async function updateEvent(eventId,updates) {
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
     function attendeeIdsForSchedule(schedule) {
@@ -7958,38 +7695,8 @@
       return (schedule.attendees || []).map(memberIdForName).filter(Boolean);
     }
 
-        async function persistScheduleAttendees(scheduleId, attendeeIds) {
-      const normalizedIds = [...new Set(attendeeIds.filter(Boolean).map(String))];
-      const rawSchedule = dataStore.schedules.find(item => String(item.id) === String(scheduleId));
-      if (!rawSchedule) return;
-
-          if (remoteWritesEnabled()) {
-        requireOfficialWriteAccess();
-        const { error } = await supabaseClient
-          .from("schedules")
-          .update({ attendee_ids: normalizedIds })
-          .eq("id", String(scheduleId));
-        if (error) throw error;
-        if (rawSchedule.source === "kakao") {
-          await loadSupabaseData();
-          state.selectedId = scheduleId;
-          refreshViews();
-          return;
-        }
-      } else if (rawSchedule.source === "local") {
-        const localSchedules = loadLocalSchedules().map(item =>
-          String(item.id) === String(scheduleId) ? { ...item, attendeeIds: normalizedIds } : item
-        );
-        saveLocalSchedules(localSchedules);
-      } else {
-        const overrides = loadAttendeeOverrides();
-        overrides[String(scheduleId)] = normalizedIds;
-        saveAttendeeOverrides(overrides);
-      }
-
-      rawSchedule.attendeeIds = normalizedIds;
-      state.selectedId = scheduleId;
-      refreshViews();
+        async function persistScheduleAttendees(scheduleId,attendeeIds) {
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
     function renderAttendeeOptions() {
@@ -8030,36 +7737,29 @@
           await persistScheduleAttendees(schedule.id, [...attendeeIds, memberId]);
         }
 
+    async function reloadV2AfterWrite() {
+      try { await loadSupabaseData(); refreshViews(); }
+      catch { clearV2Data(); refreshViews(); throw new Error('저장됐지만 화면을 새로 불러오지 못했습니다. 새로고침해 주세요.'); }
+    }
     const pendingRsvpRequests = new Set();
 
     async function persistMyScheduleRsvp(scheduleId, nextState) {
       requireApprovedMember();
-      if (!["attending", "declined", "pending"].includes(nextState)) throw new Error("올바르지 않은 참석 상태입니다.");
+      if (!['attending','declined','pending'].includes(nextState)) throw new Error('올바르지 않은 참석 상태입니다.');
       const id = String(scheduleId);
       if (pendingRsvpRequests.has(id)) return;
       const schedule = schedules.find(item => String(item.id) === id);
-      if (!schedule) throw new Error("일정을 찾지 못했습니다.");
-      if (nextState === "attending" && !isMySchedule(schedule)) {
-        if (schedule.closed) throw new Error("마감된 일정입니다.");
-        if (attendeeIdsForSchedule(schedule).length >= MATCH_CAPACITY) throw new Error("참석 인원이 마감되었습니다.");
+      if (!schedule) throw new Error('일정을 찾지 못했습니다.');
+      if (schedule.status === 'cancelled' || new Date(schedule.startsAt) <= new Date()) throw new Error('취소되거나 시작된 일정입니다.');
+      if (nextState === 'attending' && !isMySchedule(schedule)) {
+        if (schedule.closed) throw new Error('마감된 일정입니다.');
+        if (attendeeIdsForSchedule(schedule).length >= (schedule.capacity || 16)) throw new Error('참석 인원이 마감되었습니다.');
       }
       pendingRsvpRequests.add(id);
       try {
-        const { error } = await supabaseClient.rpc("set_my_schedule_rsvp", {
-          p_schedule_id: id,
-          p_state: nextState
-        });
-        if (error) throw error;
-        // Reload the server's resolved state, including Kakao overrides and declines.
-        try {
-          await loadSupabaseData();
-        } catch {
-          throw new Error("참석 상태는 저장됐지만 화면을 새로 불러오지 못했습니다. 새로고침해 주세요.");
-        }
-        refreshViews();
-      } finally {
-        pendingRsvpRequests.delete(id);
-      }
+        await TennisV2.rpc(supabaseClient,'v2_set_my_rsvp',{p_id:id,p_state:nextState});
+        await reloadV2AfterWrite();
+      } finally { pendingRsvpRequests.delete(id); }
     }
 
     async function joinCurrentSchedule() {
@@ -8085,62 +7785,13 @@
       await persistMyScheduleRsvp(scheduleId, nextScheduleRsvpState(getScheduleRsvpState(schedule)));
     }
 
-        async function persistKakaoChoice(scheduleId, memberId, choice) {
-          requireOfficialWriteAccess();
-          const { error } = await supabaseClient.rpc("set_schedule_rsvp", {p_schedule_id: String(scheduleId), p_member_id: String(memberId), p_state: choice});
-          if (error) throw error;
-          await loadSupabaseData();
-          state.selectedId = scheduleId;
-          refreshViews();
-        }
+        async function persistKakaoChoice(scheduleId,memberId,choice) {
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
+    }
 
-        async function persistScheduleDecline(scheduleId, declined) {
-          const memberId = myMemberId();
-          if (!memberId) throw new Error(`${myMemberName() || "현재 로그인한 회원"} 멤버 정보를 찾지 못했습니다.`);
-          if (!remoteWritesEnabled()) {
-            throw new Error("불참 저장은 Supabase 연결과 공식 쓰기 권한이 필요합니다.");
-          }
-
-          requireOfficialWriteAccess();
-
-          if (findScheduleById(scheduleId)?.source === "kakao") {
-            await persistKakaoChoice(scheduleId, memberId, declined ? "declined" : "pending");
-            return;
-          }
-          if (declined) {
-            const row = {
-              scheduleId,
-              memberId,
-              createdAt: new Date().toISOString()
-            };
-            const { data, error } = await supabaseClient
-              .from("schedule_declines")
-              .upsert(toSupabaseScheduleDecline(row), { onConflict: "schedule_id,member_id" })
-              .select()
-              .single();
-            if (error) throw error;
-
-            dataStore.scheduleDeclines = [
-              ...(dataStore.scheduleDeclines || []).filter(item =>
-                !(String(item.scheduleId) === String(scheduleId) && String(item.memberId) === String(memberId))
-              ),
-              fromSupabaseScheduleDecline(data)
-            ];
-          } else {
-            const { error } = await supabaseClient
-              .from("schedule_declines")
-              .delete()
-              .eq("schedule_id", String(scheduleId))
-              .eq("member_id", String(memberId));
-            if (error) throw error;
-
-            dataStore.scheduleDeclines = (dataStore.scheduleDeclines || []).filter(item =>
-              !(String(item.scheduleId) === String(scheduleId) && String(item.memberId) === String(memberId))
-            );
-          }
-
-          rebuildDataIndexes();
-        }
+        async function persistScheduleDecline(scheduleId,declined) {
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
+    }
 
         function focusDiscussionComposer() {
           const input = document.querySelector("[data-discussion-input]");
@@ -8161,113 +7812,48 @@
     const pendingDiscussionWrites = new Set();
 
     async function addDiscussionMessage(message) {
-      requireApprovedMember("댓글을 작성");
+      requireApprovedMember('댓글을 작성');
       const schedule = schedules.find(item => String(item.id) === String(state.selectedId));
-      const author = myMember();
       const trimmed = message.trim();
       if (!schedule || !trimmed) return;
-      if ([...trimmed].length > 2000) throw new Error("댓글은 최대 2,000자까지 입력할 수 있습니다.");
-      const requestKey = `add:${schedule.id}`;
+      if (schedule.status === 'cancelled') throw new Error('취소된 일정입니다.');
+      if ([...trimmed].length > 2000) throw new Error('댓글은 최대 2,000자까지 입력할 수 있습니다.');
+      const requestKey = 'add:' + schedule.id;
       if (pendingDiscussionWrites.has(requestKey)) return;
+      const input = document.querySelector('[data-discussion-input]');
+      const requestId = input?.dataset.message === trimmed && input.dataset.requestId ? input.dataset.requestId : crypto.randomUUID();
+      if (input) { input.dataset.message = trimmed; input.dataset.requestId = requestId; }
       pendingDiscussionWrites.add(requestKey);
-      const sendButton = document.querySelector("[data-send-discussion]");
-      if (sendButton) sendButton.disabled = true;
+      const send = document.querySelector('[data-send-discussion]'); if (send) send.disabled = true;
       try {
-        const discussion = {
-          id: `discussion-${crypto.randomUUID()}`,
-          scheduleId: schedule.id,
-          memberId: author.id,
-          message: trimmed,
-          createdAt: new Date().toISOString(),
-          source: "supabase"
-        };
-        const { data, error } = await supabaseClient.from("discussions")
-          .insert(toSupabaseDiscussion(discussion)).select().single();
-        if (error) throw error;
-        dataStore.discussions.push(fromSupabaseDiscussion(data));
-        rebuildDataIndexes();
-        if (String(state.selectedId) === String(schedule.id)) renderCurrentDetail();
-      } finally {
-        pendingDiscussionWrites.delete(requestKey);
-        if (sendButton) sendButton.disabled = false;
-      }
+        await TennisV2.rpc(supabaseClient,'v2_add_discussion',{p_id:requestId,p_schedule_id:schedule.id,p_message:trimmed});
+        await reloadV2AfterWrite();
+      } finally { pendingDiscussionWrites.delete(requestKey); if(send) send.disabled=false; }
     }
 
     async function deleteDiscussionMessage(id) {
       const row = discussions.find(item => String(item.id) === String(id));
-      if (!canDeleteDiscussion(row)) throw new Error("이 댓글을 삭제할 권한이 없습니다.");
-      const requestKey = `delete:${id}`;
-      if (pendingDiscussionWrites.has(requestKey)) return;
-      if (!confirm("이 댓글을 삭제할까요?")) return;
-      pendingDiscussionWrites.add(requestKey);
+      if (!canDeleteDiscussion(row)) throw new Error('이 댓글을 삭제할 권한이 없습니다.');
+      const key = 'delete:' + id;
+      if (pendingDiscussionWrites.has(key) || !confirm('이 댓글을 삭제할까요?')) return;
+      pendingDiscussionWrites.add(key);
       try {
-        const { data, error } = await supabaseClient.from("discussions")
-          .delete().eq("id", String(id)).select("id").maybeSingle();
-        if (error) throw error;
-        if (!data) throw new Error("댓글이 없거나 삭제 권한이 변경됐습니다. 새로고침해 주세요.");
-        dataStore.discussions = dataStore.discussions.filter(item => String(item.id) !== String(id));
-        rebuildDataIndexes();
-        if (String(state.selectedId) === String(row.scheduleId)) renderCurrentDetail();
-      } finally {
-        pendingDiscussionWrites.delete(requestKey);
-      }
+        const deleted = await TennisV2.rpc(supabaseClient,'v2_delete_discussion',{p_id:id});
+        if (!deleted) throw new Error('댓글이 없거나 삭제 권한이 변경됐습니다. 새로고침해 주세요.');
+        await reloadV2AfterWrite();
+      } finally { pendingDiscussionWrites.delete(key); }
     }
 
         async function deleteSchedule(id) {
-      const schedule = findScheduleById(id);
-      if (!schedule) return;
-      if (!confirm(`${schedule.title} 일정을 삭제할까요?`)) return;
-
-          if (remoteWritesEnabled()) {
-        requireOfficialWriteAccess();
-        const { error } = await supabaseClient
-          .from("schedules")
-          .delete()
-          .eq("id", String(schedule.id));
-        if (error) throw error;
-      } else if (schedule.source === "local") {
-        saveLocalSchedules(loadLocalSchedules().filter(item => String(item.id) !== String(schedule.id)));
-      } else {
-        saveDeletedScheduleIds([...loadDeletedScheduleIds(), schedule.id]);
-      }
-
-      dataStore.schedules = dataStore.schedules.filter(item => String(item.id) !== String(schedule.id));
-      state.selectedDate = schedule.date;
-      const nextSchedule = dataStore.schedules.find(item => item.date === schedule.date) || dataStore.schedules[0];
-      state.selectedId = nextSchedule?.id ?? 0;
-      refreshViews();
-      switchView("schedule");
+      const row = findScheduleById(id);
+      if (!ownsV2Schedule(row)) throw new Error('이 일정을 취소할 권한이 없습니다.');
+      if (row.status === 'cancelled' || !confirm('일정을 취소할까요? 참석과 댓글 기록은 보존됩니다.')) return;
+      await TennisV2.rpc(supabaseClient,'v2_cancel_schedule',{p_id:row.id,p_version:row.version});
+      await reloadV2AfterWrite();
     }
 
         async function deleteEvent(id) {
-      const event = findEventById(id);
-      if (!event) return;
-      if (!confirm(`${event.title} 일정을 삭제할까요?`)) return;
-
-          if (remoteWritesEnabled()) {
-        requireOfficialWriteAccess();
-        const { error } = await supabaseClient
-          .from("events")
-          .delete()
-          .eq("id", String(event.id));
-        if (error) throw error;
-      } else if (event.source === "local") {
-        saveLocalEvents(loadLocalEvents().filter(item => String(item.id) !== String(event.id)));
-      } else {
-        const overrides = loadEventOverrides();
-        overrides[String(event.id)] = {
-          ...(overrides[String(event.id)] || {}),
-          deleted: true
-        };
-        saveEventOverrides(overrides);
-      }
-
-      dataStore.events = dataStore.events.filter(item => String(item.id) !== String(event.id));
-      state.selectedDate = event.date;
-      state.selectedEventId = "";
-      state.detailType = "schedule";
-      refreshViews();
-      switchView("schedule");
+      throw new Error('이 기능은 기존 운영 경로에서 관리합니다. V2에서는 변경하지 않습니다.');
     }
 
     function deleteCurrentDetail() {
@@ -8464,7 +8050,7 @@
     }, true);
 
     document.addEventListener("click", event => {
-      if (event.target.closest("[data-add-schedule], [data-add-event], [data-add-court], [data-edit-court], [data-edit-current], [data-delete-current], [data-add-attendee], [data-remove-attendee], [data-upload-schedule-photo], [data-follow-kakao], #calendarAddBtn") && !canManageOfficialData()) {
+      if (event.target.closest('[data-add-event],[data-add-court],[data-edit-court],[data-add-attendee],[data-remove-attendee],[data-upload-schedule-photo],[data-follow-kakao]') || (event.target.closest('[data-add-schedule],[data-edit-current],[data-delete-current],#calendarAddBtn') && !isApprovedMember())) {
         event.preventDefault();
         return;
       }
@@ -8854,6 +8440,9 @@
     });
     document.querySelector("#addScheduleForm").addEventListener("submit", async event => {
       event.preventDefault();
+      const submit = document.querySelector('#addScheduleSubmit');
+      if (submit.disabled) return;
+      submit.disabled = true;
       try {
         const schedule = createLocalSchedule(event.currentTarget);
         if (scheduleFormMode === "edit" && editingScheduleId) {
@@ -8867,7 +8456,10 @@
         }
       } catch (error) {
         alert(error.message);
-      }
+      } finally { submit.disabled = false; }
+    });
+    document.querySelector('#addScheduleForm').addEventListener('input', event => {
+      if (scheduleFormMode === 'create') event.currentTarget.dataset.requestId = crypto.randomUUID();
     });
     document.querySelector("#addEventForm").addEventListener("submit", async event => {
       event.preventDefault();
@@ -8962,14 +8554,16 @@
         });
       } catch (error) {
         console.error(error);
-        document.querySelector("main").innerHTML = emptyStateHTML(
-          "데이터를 불러오지 못했습니다",
-          "잠시 후 다시 새로고침해 주세요. 문제가 계속되면 데이터 연결 상태를 확인해 주세요.",
-          { showReload: true }
-        );
+        clearV2Data(); renderAuthStatus(); refreshViews();
+        document.querySelector('#memberGateText').textContent = '데이터를 불러오지 못했습니다. 연결을 확인한 뒤 새로고침해 주세요.';
       }
     }
 
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && authState.initialized) {
+        loadSupabaseData().then(refreshViews).catch(() => { clearV2Data(); renderAuthStatus(); refreshViews(); });
+      }
+    });
     initApp();
 
     const PWA_DISMISS_KEY = "tennis.v2.pwaInstallDismissed";
