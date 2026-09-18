@@ -5340,6 +5340,12 @@
           return courtUnitsForCourt(courtId).find(unit => normalizeAiTestCourtNumber(unit.label) === source) || null;
         }
 
+        function aiReservationWarning(status) {
+          if (status === "lottery_waiting") return "추첨 대기 예약입니다. 당첨·예약 확정 여부를 확인한 뒤 등록해 주세요.";
+          if (status === "cancelled") return "취소된 예약입니다. 유효한 예약을 다시 확보했는지 확인한 뒤 등록해 주세요.";
+          return "";
+        }
+
         function makeAiTestDraft(draft) {
           const matchedCourt = matchAiTestCourt(draft.facility_name);
           const matchedUnit = matchedCourt ? matchAiTestCourtUnit(matchedCourt.id, draft.court_number) : null;
@@ -5356,7 +5362,7 @@
             _court_unit_id: matchedUnit?.id || "",
             _facility_other: matchedCourt ? "" : (draft.facility_name || ""),
             _other_court_number: matchedCourt ? "" : (draft.court_number || ""),
-            _selected: true
+            _selected: !aiReservationWarning(draft.status)
           };
         }
 
@@ -5382,6 +5388,7 @@
 
         function snapshotAiDraftForSchedule(draft) {
           return {
+            status: draft.status ?? null,
             use_date: draft.use_date,
             start_time: draft.start_time,
             end_time: draft.end_time,
@@ -5449,8 +5456,9 @@
           const current = aiScheduleImportPosition + 1;
           const indicator = document.querySelector("#addScheduleAiImportStatus");
           if (indicator) {
-            indicator.textContent = `AI 가져오기 ${current}/${total} · 저장 후 ${current < total ? "다음 일정으로 이동" : "완료"}`;
-            indicator.classList.remove("hidden");
+            const warning = aiReservationWarning(draft.status);
+            indicator.textContent = `AI 가져오기 ${current}/${total} · 저장 후 ${current < total ? "다음 일정으로 이동" : "완료"}${warning ? "\n" + warning : ""}`;
+            indicator.className = `mt-1 whitespace-pre-line text-xs font-semibold ${warning ? "text-amber-700" : "text-primary"}`;
           }
           document.querySelector("#addScheduleSheetTitle").textContent = `AI 일정 추가 (${current}/${total})`;
           document.querySelector("#addScheduleSubmit").innerHTML = `<span class="material-symbols-outlined text-[18px]">${current < total ? "arrow_forward" : "add_circle"}</span> ${current < total ? "추가 후 다음" : "추가 완료"}`;
@@ -5659,6 +5667,7 @@
                   일정 ${index + 1}
                 </label>
               </div>
+              ${aiReservationWarning(draft.status) ? `<p class="mb-3 rounded-lg bg-amber-50 p-3 text-xs font-semibold text-amber-800" data-ai-reservation-warning>${escapeHTML(aiReservationWarning(draft.status))}</p>` : ""}
               <div class="grid grid-cols-2 gap-2.5">
                 <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">이용일
                   <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="date" data-ai-field="use_date" value="${escapeHTML(draft.use_date || "")}">
