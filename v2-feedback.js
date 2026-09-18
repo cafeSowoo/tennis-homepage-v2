@@ -63,7 +63,9 @@ window.V2Feedback = {
       if (!append) { rows=[]; list.replaceChildren(); }
       try {
         const offset=rows.length;
-        const {data,error}=await client().from('v2_feedback').select('*').order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+49);
+        let query=client().from('v2_feedback').select('*');
+        if (!isAdmin()) query=query.eq('author_user_id',userId());
+        const {data,error}=await query.order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+49);
         if (!valid(n)) return;
         if (error) throw error;
         rows=append ? rows.concat(data || []) : (data || []); render(); $('[data-more]').hidden=(data || []).length<50; notice.textContent=success;

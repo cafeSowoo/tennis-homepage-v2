@@ -145,6 +145,9 @@
     #feedbackDialog .feedback-body { white-space:pre-wrap; }
     #feedbackDialog .feedback-admin-actions { display:flex; gap:8px; flex-wrap:wrap; }
     #feedbackDialog .feedback-danger { color:#dc2626; border-color:#fecaca; background:#fff7f7; }
+    #adminViewToggle { position:fixed; left:12px; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:55; border:1px solid #d1d5db; border-radius:24px; background:white; color:#374151; padding:9px 12px; font-size:12px; box-shadow:0 2px 8px #0001; }
+    #adminViewToggle[aria-pressed="true"] { background:#ecfdf5; border-color:#00685d; color:#00685d; }
+    #adminViewToggle[hidden] { display:none !important; }
     #memberAdminButton[hidden] { display: none !important; }
     #memberAdminDialog::backdrop { background: rgba(0,0,0,.4); }
     /* CSS 디자인 시스템 토큰 및 변수 바인딩 */
@@ -3056,6 +3059,7 @@
     const today = new Date(`${todayIso}T00:00:00`);
         const state = { query: "", place: "all", person: "all", scheduleWindow: "upcoming", overviewMode: "mine", memberSort: "count", memberMonth: "all", selectedId: 0, selectedEventId: "", selectedMemberId: "", detailType: "schedule", detailReturnTo: "schedule", selectedDate: "", currentMonth: todayIso.slice(0, 7) };
     const authState = { session: null, user: null, memberAccount: null, member: null, initialized: false };
+    let memberViewUserId = "";
     const dataStore = { members: [], courts: [], courtUnits: [], schedules: [], events: [], discussions: [], scheduleDeclines: [] };
     let members = [];
     const memberAdmin = window.V2MemberAdmin.create({client: () => supabaseClient, isAdmin: () => isClubAdmin(), members: () => members, userId: () => authState.user?.id});
@@ -4323,6 +4327,7 @@
 
     let v2LoadRequest = 0;
     function clearV2Data() {
+      memberViewUserId = "";
       memberAdmin.invalidate();
       feedback.invalidate();
       v2LoadRequest++;
@@ -4623,6 +4628,7 @@
     }
 
     function renderAuthStatus() {
+      syncAdminViewToggle();
       memberAdmin.sync();
       feedback.sync();
       document.body.classList.toggle("can-manage-official-data", canManageOfficialData());
@@ -5303,8 +5309,38 @@
           return authState.memberAccount?.status === "approved" && Boolean(myMemberId());
         }
 
-        function isClubAdmin() {
+        function hasClubAdminRole() {
           return isApprovedMember() && authState.memberAccount?.role === "admin";
+        }
+
+        function isClubAdmin() {
+          return hasClubAdminRole() && memberViewUserId !== authState.user?.id;
+        }
+
+        function syncAdminViewToggle() {
+          if (!hasClubAdminRole() || memberViewUserId !== authState.user?.id) memberViewUserId = "";
+          let button = document.querySelector("#adminViewToggle");
+          if (!button) {
+            button = document.createElement("button");
+            button.id = "adminViewToggle";
+            button.type = "button";
+            button.title = "화면 보기만 전환합니다. 실제 계정 권한은 유지됩니다.";
+            button.addEventListener("click", toggleAdminView);
+            document.body.append(button);
+          }
+          const preview = hasClubAdminRole() && !isClubAdmin();
+          button.hidden = !hasClubAdminRole();
+          button.setAttribute("aria-pressed", String(preview));
+          button.textContent = preview ? "회원 보기 중 · 관리자 복귀" : "일반 회원으로 보기";
+        }
+
+        function toggleAdminView() {
+          if (!hasClubAdminRole()) return;
+          memberViewUserId = isClubAdmin() ? authState.user.id : "";
+          // Drop privileged lists before rendering the new view, including pending responses.
+          memberAdmin.invalidate();
+          feedback.invalidate();
+          refreshViews();
         }
 
         function aiTestStatusLabel(status) {
