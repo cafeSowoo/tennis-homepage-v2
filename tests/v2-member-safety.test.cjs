@@ -86,7 +86,7 @@ test('approved member calendar renders attendance and host labels outside dot ca
     state: { currentMonth: '2026-09', selectedDate: '' }, todayIso: '2026-09-01',
     byDate: { '2026-09-01': [{ id: 'own-schedule', date: '2026-09-01' }] }, eventsByDate: {},
     firstDayOffset: () => 0, daysInMonth: () => 1, monthLabel: () => '9월', syncDocumentTitle() {},
-    compareSchedulesByMyStatusThenTime: () => 0, compareCalendarItemsByTime: () => 0, compareDashboardCalendarItems: () => 0,
+    compareSchedulesByTime: () => 0, compareCalendarItemsByTime: () => 0,
     isMySchedule: () => true, isMyHostSchedule: () => true, isDeclinedSchedule: () => false,
     isBookClubSchedule: () => false, isYonseiSchedule: () => false,
     myMemberName: () => '김지석', escapeHTML: value => value,
@@ -153,4 +153,21 @@ test('schedule list encodes member titles in both text and accessible attributes
  assert.ok(result.includes('&lt;b data-title-probe=&quot;yes&quot;&gt;제목&lt;/b&gt;'));
  assert.ok(!result.includes('<b data-title-probe='));
  assert.ok(result.includes('<span class="weekend">(토)</span>'));
+});
+
+test('schedule ordering uses start time and Korean title regardless of RSVP', () => {
+  const ctx = { isMySchedule: () => { throw Error('Attendance must not affect sorting'); } };
+  vm.createContext(ctx);
+  vm.runInContext(['timeStart','scheduleStartMinutes','compareSchedulesByTime','calendarItemStartMinutes','compareCalendarItemsByTime'].map(source).join('\n'),ctx);
+  const rows = [
+    {id:'1',date:'2026-09-20',time:'20:00 ~ 22:00',title:'새아침',attendeeIds:['me']},
+    {id:'2',date:'2026-09-20',time:'오후 8:00 ~ 오후 10:00',title:'달빛'},
+    {id:'3',date:'2026-09-20',time:'12:00 ~ 15:00',title:'송도지소'},
+    {id:'4',date:'2026-09-21',time:'오전 9:00 ~ 오전 10:00',title:'다음날'}
+  ];
+  for (const compare of [ctx.compareSchedulesByTime,ctx.compareCalendarItemsByTime]) {
+    assert.deepEqual([...rows].sort(compare).map(r=>r.id),['3','2','1','4']);
+    rows[0].attendeeIds=[];rows[2].attendeeIds=['me'];
+    assert.deepEqual([...rows].sort(compare).map(r=>r.id),['3','2','1','4']);
+  }
 });
