@@ -45,3 +45,9 @@ The V2 homepage includes a reservation-capture sheet/modal that approved active 
 - Multiple selected drafts can be queued with `선택한 N건 일정 추가로 가져오기`. The normal schedule sheet opens one draft at a time; after the user reviews and saves one schedule, the next queued draft is prefilled in the same sheet.
 - The actual database write continues to use the existing `v2_create_schedule` path only when the user presses the normal schedule submit button.
 - Drafts mapped to `기타 (직접 입력)` cannot be sent to the real schedule form until the tester chooses an existing court, because the current V2 schedule schema requires an existing `court_id`.
+
+## In-flight request isolation (2026-09-18)
+
+The UI binds each analysis to the selected File object and signed-in user. Selecting or clearing an image (including logout cleanup) invalidates the pending request and resets the analysis button. Late successes, failures, and asynchronously decoded errors cannot overwrite a newer image/result. Responses also require the same approved identity. Duplicate starts for an active request are ignored.
+
+This invalidates client-side results; it does not cancel an image request already sent to the provider. Regression tests run the actual UI functions with deferred mock responses, covering image replacement, removal, logout, account changes, approval revocation, and delayed error decoding. All 26 automated tests pass. No DB or Edge Function changes are required.
