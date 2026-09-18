@@ -4801,7 +4801,8 @@
     }
 
     function scheduleStartMinutes(item) {
-      if (timeStart(item) === "24:00") return 24 * 60;
+      const clock = timeStart(item).match(/^(\d{1,2}):(\d{2})$/);
+      if (clock) return Number(clock[1]) * 60 + Number(clock[2]);
       const match = timeStart(item).match(/(오전|오후)\s*(\d{1,2}):(\d{2})/);
       if (!match) return 0;
       const [, period, hourText, minuteText] = match;
@@ -4814,14 +4815,8 @@
     function compareSchedulesByTime(a, b) {
       return a.date.localeCompare(b.date) ||
         scheduleStartMinutes(a) - scheduleStartMinutes(b) ||
+        String(a.title || "").localeCompare(String(b.title || ""), "ko") ||
         String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
-    }
-
-    function compareSchedulesByMyStatusThenTime(a, b) {
-      const aIsMine = isMySchedule(a);
-      const bIsMine = isMySchedule(b);
-      if (aIsMine !== bIsMine) return aIsMine ? -1 : 1;
-      return compareSchedulesByTime(a, b);
     }
 
     function calendarItemStartMinutes(item) {
@@ -4834,14 +4829,8 @@
     function compareCalendarItemsByTime(a, b) {
       return a.date.localeCompare(b.date) ||
         calendarItemStartMinutes(a) - calendarItemStartMinutes(b) ||
+        String(a.title || "").localeCompare(String(b.title || ""), "ko") ||
         String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
-    }
-
-    function compareDashboardCalendarItems(a, b) {
-      const aIsMine = Boolean(a.time && isMySchedule(a));
-      const bIsMine = Boolean(b.time && isMySchedule(b));
-      if (aIsMine !== bIsMine) return aIsMine ? -1 : 1;
-      return compareCalendarItemsByTime(a, b);
     }
 
     function toTwentyFourHourLabel(koreanTime) {
@@ -6017,12 +6006,12 @@
 
       for (let day = 1; day <= totalDays; day++) {
         const iso = `${state.currentMonth}-${String(day).padStart(2, "0")}`;
-        const dateSchedules = [...(byDate[iso] || [])].sort(compareSchedulesByMyStatusThenTime);
+        const dateSchedules = [...(byDate[iso] || [])].sort(compareSchedulesByTime);
         const dateEvents = [...(eventsByDate[iso] || [])].sort(compareCalendarItemsByTime);
         const calendarItems = [
           ...dateSchedules.map(item => ({ type: "schedule", item })),
           ...dateEvents.map(item => ({ type: "event", item }))
-        ].sort((a, b) => compareDashboardCalendarItems(a.item, b.item));
+        ].sort((a, b) => compareCalendarItemsByTime(a.item, b.item));
         const isToday = iso === todayIso;
         const isPast = iso < todayIso;
         const hasMySchedule = dateSchedules.some(isMySchedule);
@@ -6157,7 +6146,7 @@
       // active-animate가 없거나 hidden인 경우 둘 다 hidden 상태(혹은 닫히는 도중)로 간주
       const wasHidden = panel.classList.contains("hidden") || !panel.classList.contains("active-animate");
 
-      const items = [...(byDate[state.selectedDate] || [])].sort(compareSchedulesByMyStatusThenTime);
+      const items = [...(byDate[state.selectedDate] || [])].sort(compareSchedulesByTime);
       const eventItems = [...(eventsByDate[state.selectedDate] || [])].sort(compareCalendarItemsByTime);
       const sample = items[0] || eventItems[0] || { date: state.selectedDate, day: ["일","월","화","수","목","금","토"][new Date(`${state.selectedDate}T00:00:00`).getDay()] };
       const tennisHTML = items.length
@@ -7984,7 +7973,7 @@
 
         renderCalendar();
 
-        const items = [...(byDate[state.selectedDate] || [])].sort(compareSchedulesByMyStatusThenTime);
+        const items = [...(byDate[state.selectedDate] || [])].sort(compareSchedulesByTime);
         const eventItems = [...(eventsByDate[state.selectedDate] || [])].sort(compareCalendarItemsByTime);
         const sample = items[0] || eventItems[0] || { date: state.selectedDate, day: ["일","월","화","수","목","금","토"][new Date(`${state.selectedDate}T00:00:00`).getDay()] };
 
