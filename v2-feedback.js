@@ -45,7 +45,11 @@ window.V2Feedback = {
           const label = node('label','처리 상태'); const select = document.createElement('select'); select.setAttribute('aria-label','처리 상태');
           for (const [value,text] of Object.entries(statuses)) { const option = node('option',text); option.value=value; select.append(option); }
           select.value=row.status; label.append(select); const save = node('button','상태 저장'); save.type='button';
-          save.onclick = () => change(row,select.value); article.append(label,save);
+          save.onclick = () => change(row,select.value);
+          const remove = node('button','삭제'); remove.type='button'; remove.className='feedback-danger';
+          remove.setAttribute('aria-label',`${row.author_name} 의견 삭제`); remove.onclick = () => destroy(row);
+          const actions = document.createElement('div'); actions.className='feedback-admin-actions'; actions.append(save,remove);
+          article.append(label,actions);
         }
         list.append(article);
       }
@@ -73,6 +77,17 @@ window.V2Feedback = {
         const {error}=await client().rpc('v2_set_feedback_status',{p_id:row.id,p_status:status,p_version:row.version});
         if(!valid(n)) return; if(error) throw error;
         await load(false,'상태를 저장했습니다.');
+      } catch(error) { if(valid(n)) notice.textContent=errorText(error); }
+      finally { if(valid(n)) lock(false); }
+    }
+    async function destroy(row) {
+      if(busy || !isAdmin()) return;
+      if(!window.confirm('이 의견을 삭제할까요? 삭제 후 복구할 수 없습니다.')) return;
+      const n=epoch; lock(true);
+      try {
+        const {error}=await client().rpc('v2_delete_feedback',{p_id:row.id,p_version:row.version});
+        if(!valid(n)) return; if(error) throw error;
+        await load(false,'의견을 삭제했습니다.');
       } catch(error) { if(valid(n)) notice.textContent=errorText(error); }
       finally { if(valid(n)) lock(false); }
     }
