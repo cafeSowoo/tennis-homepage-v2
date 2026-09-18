@@ -1,12 +1,12 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),acorn=require('acorn');
 const html=fs.readFileSync('index.html','utf8');
 const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
-const names=['invalidateAiTestAnalysis','clearAiTestImage','selectAiTestImage','analyzeAiTestImage'];
+const names=['setCaptureResultMode','invalidateAiTestAnalysis','clearAiTestImage','selectAiTestImage','analyzeAiTestImage'];
 const functions=[];
 for(const source of scripts) for(const n of acorn.parse(source,{ecmaVersion:'latest'}).body) if(n.type==='FunctionDeclaration'&&names.includes(n.id.name)) functions.push(source.slice(n.start,n.end));
 function setup(){
  const nodes=new Map(),calls=[];let status='';
- const node=()=>({innerHTML:'분석하기',disabled:false,textContent:'',value:'',classList:{add(){},remove(){}},removeAttribute(){}});
+ const node=()=>({innerHTML:'분석하기',disabled:false,textContent:'',value:'',classList:{add(){},remove(){},toggle(){}},removeAttribute(){}});
  const c={aiTestAnalysis:null,aiTestFile:null,aiTestPreviewUrl:'',aiTestDrafts:[],aiTestRawResponse:null,authState:{user:{id:'A'}},approved:true,
  document:{querySelector(s){if(!nodes.has(s))nodes.set(s,node());return nodes.get(s);}},URL:{createObjectURL:()=> 'blob:mock',revokeObjectURL(){}},
  isApprovedMember:()=>c.approved,renderAiTestDrafts(){},makeAiTestDraft:x=>x,aiTestFormatBytes:()=>'',setAiTestStatus:x=>status=x,aiTestErrorMessage:async()=> 'failed',FormData:class{append(){}},
