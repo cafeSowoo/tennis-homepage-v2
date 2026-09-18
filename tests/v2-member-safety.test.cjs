@@ -171,3 +171,12 @@ test('schedule ordering uses start time and Korean title regardless of RSVP', ()
     assert.deepEqual([...rows].sort(compare).map(r=>r.id),['3','2','1','4']);
   }
 });
+
+test('cancelled schedules are excluded from calendar and default lists without removing records', () => {
+ const c={};vm.createContext(c);vm.runInContext(source('isVisibleSchedule'),c);
+ const records=[{id:'active',status:'active'},{id:'cancelled',status:'cancelled'}];
+ assert.deepEqual(records.filter(c.isVisibleSchedule).map(r=>r.id),['active']);
+ assert.equal(records.length,2);
+ assert.match(html,/byDate = schedules\.filter\(isVisibleSchedule\)\.reduce/);
+ assert.match(html,/schedules\.filter\(item => isVisibleSchedule\(item\) && inScheduleWindow/);
+});

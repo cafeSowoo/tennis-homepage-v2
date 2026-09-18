@@ -5,7 +5,7 @@ const functions=[];
 for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))for(const n of acorn.parse(m[1],{ecmaVersion:'latest'}).body)if(n.type==='FunctionDeclaration'&&names.includes(n.id.name))functions.push(m[1].slice(n.start,n.end));
 function setup(){
  const nodes=new Map();function get(id){if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',className:'',dataset:{},reset(){},querySelector:get});return nodes.get(id);}
- const c={matchAiTestCourt:()=>({id:'court'}),matchAiTestCourtUnit:()=>null,document:{querySelector:get},crypto:{randomUUID:()=> 'id'},window:{setTimeout(){}},renderScheduleTimePicker(){},scrollScheduleTimePickerToSelection(){},renderAddScheduleFormOptions(){},renderAddScheduleCourtUnitOptions(){},aiScheduleImportQueue:[{},{}],aiScheduleImportPosition:0};
+ const c={todayIsoLocal:()=>"2026-09-18",matchAiTestCourt:()=>({id:'court'}),matchAiTestCourtUnit:()=>null,document:{querySelector:get},crypto:{randomUUID:()=> 'id'},window:{setTimeout(){}},renderScheduleTimePicker(){},scrollScheduleTimePickerToSelection(){},renderAddScheduleFormOptions(){},renderAddScheduleCourtUnitOptions(){},aiScheduleImportQueue:[{},{}],aiScheduleImportPosition:0};
  vm.createContext(c);vm.runInContext(functions.join('\n'),c);return {c,get};
 }
 test('waiting and cancelled drafts are unselected, while normal reservations retain selection',()=>{
@@ -23,3 +23,5 @@ test('reservation warnings survive handoff and clear when the next draft is conf
  c.aiScheduleImportPosition=1;c.fillAddScheduleFormFromAiDraft(c.snapshotAiDraftForSchedule(c.makeAiTestDraft({status:'confirmed'})));
  assert(!indicator.textContent.includes('취소'));assert(!indicator.textContent.includes('추첨'));assert(indicator.textContent.includes('2/2'));assert(indicator.className.includes('text-primary'));
 });
+
+test("past dates start unselected; today and future remain selectable",()=>{const {c}=setup();assert.equal(c.makeAiTestDraft({use_date:"2026-09-17"})._selected,false);assert.equal(c.makeAiTestDraft({use_date:"2026-09-18"})._selected,true);assert.equal(c.makeAiTestDraft({use_date:"2026-09-27"})._selected,true);});

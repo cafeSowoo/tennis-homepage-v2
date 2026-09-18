@@ -2334,6 +2334,20 @@
     #aiTestAnalyzeButton.hidden, #aiTestResultCard.hidden { display:none !important; }
     #aiTestImagePreview { max-height:160px; }
     @media(max-width:767px) { #aiCaptureSheet [data-sheet-panel] { margin:0 auto; } }
+    #aiCaptureSheet.has-capture-results #aiTestImagePreviewWrap { display:flex; align-items:center; margin-top:8px; background:white; }
+    #aiCaptureSheet.has-capture-results #aiTestImagePreview { width:48px; height:48px; object-fit:cover; margin:8px; border-radius:8px; }
+    #aiCaptureSheet.has-capture-results #aiTestImagePreviewWrap > div { flex:1; min-width:0; border:0; padding:8px; }
+    #aiCaptureSheet.has-capture-results #aiTestAnalyzeButton,
+    #aiCaptureSheet.has-capture-results #aiTestStatus,
+    #aiCaptureSheet.has-capture-results #aiTestImagePreviewWrap #aiTestFileMeta { display:none !important; }
+    #aiCaptureSheet.has-capture-results #aiTestChooseImage { margin-top:0; }
+    #aiCaptureSheet.has-capture-results .grid > section:first-child > div:first-child { display:none; }
+    #aiTestImportActions { position:sticky; bottom:-20px; z-index:2; background:white; border-radius:14px 14px 0 0; box-shadow:0 -8px 20px #ffffffed; padding-bottom:20px; }
+    #aiCaptureSheet.has-capture-results .grid > section:first-child { display:flex; align-items:center; gap:10px; padding:10px; }
+    #aiCaptureSheet.has-capture-results #aiTestChooseImage { flex-shrink:0; padding:8px; font-size:11px; }
+    #aiCaptureSheet.has-capture-results #aiTestImagePreviewWrap { flex:1; min-width:0; margin:0; border:0; }
+    #aiCaptureSheet.has-capture-results #aiTestImagePreview { width:32px; height:32px; margin:0; }
+    #aiTestResultCard > div:first-child > span { white-space:nowrap; flex-shrink:0; }
   </style>
 </head>
 <body class="apple-ui min-h-screen bg-[#f5f5f7] font-body-md text-body-md text-[#1d1d1f] antialiased">
@@ -2556,7 +2570,7 @@
         <div class="flex gap-1">
           <button class="app-icon-btn" type="button" aria-label="공유"><span class="material-symbols-outlined text-[18px]">share</span></button>
           <button class="app-icon-btn" type="button" data-edit-current aria-label="일정 수정"><span class="material-symbols-outlined text-[18px]">edit</span></button>
-          <button class="app-icon-btn" type="button" data-delete-current aria-label="일정 삭제"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+          <button class="app-icon-btn" type="button" data-delete-current aria-label="일정 취소" title="일정 취소"><span class="material-symbols-outlined text-[18px]">event_busy</span></button>
         </div>
       </div>
       <div id="detailContent"></div>
@@ -3791,7 +3805,7 @@
         ...courts.map(court => court.name),
         ...schedules.map(schedule => schedule.place)
       ].filter(Boolean));
-      byDate = schedules.reduce((acc, item) => ((acc[item.date] ||= []).push(item), acc), {});
+      byDate = schedules.filter(isVisibleSchedule).reduce((acc, item) => ((acc[item.date] ||= []).push(item), acc), {});
       eventsByDate = calendarEvents.reduce((acc, item) => ((acc[item.date] ||= []).push(item), acc), {});
       upcoming = schedules.filter(schedule => schedule.status !== 'cancelled' && new Date(schedule.date + "T00:00:00") >= today);
     }
@@ -4864,6 +4878,10 @@
       return hour * 60 + Number(minuteText);
     }
 
+    function isVisibleSchedule(schedule) {
+      return schedule.status !== "cancelled";
+    }
+
     function compareSchedulesByTime(a, b) {
       return a.date.localeCompare(b.date) ||
         scheduleStartMinutes(a) - scheduleStartMinutes(b) ||
@@ -5467,7 +5485,7 @@
             _court_unit_id: matchedUnit?.id || "",
             _facility_other: matchedCourt ? "" : (draft.facility_name || ""),
             _other_court_number: matchedCourt ? "" : (draft.court_number || ""),
-            _selected: !aiReservationWarning(draft.status)
+            _selected: !aiReservationWarning(draft.status) && (!draft.use_date || draft.use_date >= todayIsoLocal())
           };
         }
 
@@ -5529,7 +5547,7 @@
           button.disabled = selected.length === 0 || Boolean(invalid);
           button.innerHTML = `
             <span class="material-symbols-outlined text-[18px]">playlist_add</span>
-            ${selected.length ? `선택한 ${selected.length}건 일정 추가로 가져오기` : "선택한 일정 가져오기"}`;
+            ${selected.length ? `선택한 ${selected.length}건 확인하기` : "일정을 선택해 주세요"}`;
           hint.textContent = invalid
             ? `선택한 일정 중 ${invalid.index + 1}번째 항목: ${invalid.error}`
             : "기존 일정 추가 화면에서 한 건씩 확인하고 저장하면 다음 일정이 자동으로 이어집니다.";
@@ -5664,8 +5682,15 @@
           }
         }
 
+        function setCaptureResultMode(ready) {
+          document.querySelector('#aiCaptureSheet')?.classList.toggle('has-capture-results', ready);
+          const choose = document.querySelector('#aiTestChooseImage');
+          if (choose) choose.innerHTML = '<span class="material-symbols-outlined text-[20px]">image</span>' + (ready ? '이미지 변경' : '이미지 선택');
+        }
+
         function clearAiTestImage({ keepStatus = false } = {}) {
           invalidateAiTestAnalysis();
+          setCaptureResultMode(false);
           if (aiTestPreviewUrl) URL.revokeObjectURL(aiTestPreviewUrl);
           aiTestPreviewUrl = "";
           aiTestFile = null;
@@ -5690,6 +5715,7 @@
 
         function selectAiTestImage(file) {
           invalidateAiTestAnalysis();
+          setCaptureResultMode(false);
           const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
           if (!file) return clearAiTestImage();
           if (!allowedTypes.has(file.type)) {
@@ -5735,7 +5761,7 @@
             return;
           }
           const selected = aiTestDrafts.filter(draft => draft._selected).length;
-          summary.textContent = `총 ${aiTestDrafts.length}건 · 선택 ${selected}건 · 수정 내용은 이 화면에만 유지됩니다.`;
+          summary.textContent = `일정 ${aiTestDrafts.length}건을 찾았습니다 · ${selected}건 선택`;
         }
 
         function renderAiTestDrafts() {
@@ -5752,6 +5778,7 @@
             return;
           }
 
+          const expanded = new Set(Array.from(container.querySelectorAll?.('[data-ai-edit][open]') || []).map(el => el.closest('[data-ai-draft-index]').dataset.aiDraftIndex));
           container.innerHTML = aiTestDrafts.map((draft, index) => {
             const hasExistingCourt = draft._court_id !== "__other__" && courts.some(court => court.id === draft._court_id);
             const units = hasExistingCourt ? courtUnitsForCourt(draft._court_id) : [];
@@ -5771,9 +5798,13 @@
               <div class="mb-3 flex items-center justify-between gap-3">
                 <label class="inline-flex items-center gap-2 text-sm font-semibold text-[#1d1d1f]">
                   <input class="rounded border-[#c7c7cc] text-primary focus:ring-primary" type="checkbox" data-ai-field="_selected" ${draft._selected ? "checked" : ""}>
-                  일정 ${index + 1}
+                  <span>${escapeHTML(draft.use_date || '날짜 확인 필요')} <span class="text-xs text-[#86868b]">${draft.use_date && draft.use_date < todayIsoLocal() ? '지난 일정' : ''}</span></span>
                 </label>
               </div>
+              <p class="mb-1 text-sm font-semibold">${escapeHTML(draft.start_time || '--:--')} ~ ${escapeHTML(draft.end_time || '--:--')}</p>
+              <p class="mb-2 text-xs text-[#6e6e73]">${escapeHTML(courts.find(c => c.id === draft._court_id)?.name || draft._facility_other || draft.facility_name || '시설 확인 필요')} · ${escapeHTML(units.find(u => u.id === draft._court_unit_id) ? courtUnitLabel(units.find(u => u.id === draft._court_unit_id)) : draft._other_court_number || draft.court_number || '코트 미지정')}</p>
+              ${scheduleError ? `<p class="mb-2 text-xs text-amber-700">${escapeHTML(scheduleError)}</p>` : ''}
+              <details data-ai-edit ${expanded.has(String(index)) ? 'open' : ''}><summary class="cursor-pointer text-xs font-semibold text-primary py-2">일정 수정</summary>
               ${aiReservationWarning(draft.status) ? `<p class="mb-3 rounded-lg bg-amber-50 p-3 text-xs font-semibold text-amber-800" data-ai-reservation-warning>${escapeHTML(aiReservationWarning(draft.status))}</p>` : ""}
               <div class="grid grid-cols-2 gap-2.5">
                 <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">이용일
@@ -5810,15 +5841,6 @@
                 </button>
                 ${scheduleError ? `<p class="mt-1.5 text-[10px] leading-relaxed text-amber-700">${escapeHTML(scheduleError)}</p>` : ""}
               </div>
-              <details class="mt-3 rounded-xl bg-[#f5f5f7] px-3 py-2.5">
-                <summary class="cursor-pointer text-[11px] font-semibold text-[#6e6e73]">AI 참고 정보</summary>
-                <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
-                  <div><dt class="text-[#86868b]">예약 상태</dt><dd class="mt-0.5 font-semibold text-[#424245]">${escapeHTML(aiTestStatusLabel(draft.status))}</dd></div>
-                  <div><dt class="text-[#86868b]">신청일</dt><dd class="mt-0.5 font-semibold text-[#424245]">${escapeHTML(draft.application_date || "-")}</dd></div>
-                  <div><dt class="text-[#86868b]">알림 수신일</dt><dd class="mt-0.5 font-semibold text-[#424245]">${escapeHTML(draft.notification_date || "-")}</dd></div>
-                  <div><dt class="text-[#86868b]">AI 원본 코트</dt><dd class="mt-0.5 font-semibold text-[#424245]">${escapeHTML(draft.court_number || "-")}</dd></div>
-                  <div class="col-span-2"><dt class="text-[#86868b]">AI 원본 시설명</dt><dd class="mt-0.5 break-words font-semibold text-[#424245]">${escapeHTML(draft.facility_name || "-")}</dd></div>
-                </dl>
               </details>
             </article>`;
           }).join("");
@@ -5887,6 +5909,8 @@
 
             aiTestRawResponse = data;
             aiTestDrafts = data.schedules.map(makeAiTestDraft);
+            setCaptureResultMode(true);
+            document.querySelector("#aiCaptureSheet [data-sheet-panel]")?.scrollTo?.({top:0,behavior:"smooth"});
             const rawDetails = document.querySelector("#aiTestRawDetails");
             const rawJson = document.querySelector("#aiTestRawJson");
             if (rawJson) rawJson.textContent = JSON.stringify(data, null, 2);
@@ -7048,7 +7072,7 @@
                     ${icon("edit", "text-[16px] sm:text-[18px]")} <span>수정</span>
                   </button>
                   <button class="w-full rounded-lg border border-error bg-transparent py-2.5 md:py-3.5 text-xs sm:text-sm font-bold text-error transition hover:bg-error-container" type="button" data-delete-current>
-                    <span>삭제</span>
+                    <span>일정 취소</span>
                   </button>
                 </div>
               </div>
@@ -7202,7 +7226,7 @@
             windowButton.setAttribute("aria-pressed", String(state.scheduleWindow !== "upcoming"));
           }
           const inScheduleWindow = item => state.scheduleWindow !== "upcoming" || item.date >= todayIso;
-          const filteredSchedules = schedules.filter(item => inScheduleWindow(item) && matches(item)).map(item => ({ type: "schedule", item }));
+          const filteredSchedules = schedules.filter(item => isVisibleSchedule(item) && inScheduleWindow(item) && matches(item)).map(item => ({ type: "schedule", item }));
           const filteredEvents = calendarEvents.filter(item => inScheduleWindow(item) && matchesEvent(item)).map(item => ({ type: "event", item }));
           const filtered = [...filteredSchedules, ...filteredEvents].sort((a, b) => compareCalendarItemsByTime(a.item, b.item));
           const groups = filtered.reduce((acc, row) => ((acc[row.item.date] ||= []).push(row), acc), {});
@@ -7227,7 +7251,7 @@
     function renderCourts() {
       // Stitch bridge: Courts grid HTML markup starts here.
       document.querySelector("#courtCards").innerHTML = places.map(place => {
-        const items = schedules.filter(s => s.place === place);
+        const items = schedules.filter(s => isVisibleSchedule(s) && s.place === place);
         const next = items.find(s => new Date(s.date + "T00:00:00") >= today) || items[0];
         const court = courts.find(item => item.name === place || item.canonicalName === place) || next?.court || {};
         const image = court.image || courtImage(place);
@@ -7304,7 +7328,7 @@
     }
 
     function memberMonthOptions() {
-      return [...new Set(schedules.map(schedule => schedule.date.slice(0, 7)))].sort();
+      return [...new Set(schedules.filter(isVisibleSchedule).map(schedule => schedule.date.slice(0, 7)))].sort();
     }
 
     function activeMemberSchedules() {
@@ -7419,7 +7443,7 @@
       const status = member.status || "active";
 
       // Filter schedules where attendeeIds contains memberId OR attendees contains name
-      const memberSchedules = schedules.filter(s =>
+      const memberSchedules = schedules.filter(isVisibleSchedule).filter(s =>
         (s.attendeeIds && s.attendeeIds.includes(member.id)) ||
         (s.attendees && s.attendees.includes(name))
       );
@@ -7428,7 +7452,7 @@
       // Overall ranking
       const allStats = people.map(pName => {
         const pMember = members.find(m => m.name === pName);
-        const pSchedules = schedules.filter(s =>
+        const pSchedules = schedules.filter(isVisibleSchedule).filter(s =>
           (pMember && s.attendeeIds && s.attendeeIds.includes(pMember.id)) ||
           (s.attendees && s.attendees.includes(pName))
         );
@@ -8822,7 +8846,7 @@
         async function deleteSchedule(id) {
       const row = findScheduleById(id);
       if (!ownsV2Schedule(row)) throw new Error('이 일정을 취소할 권한이 없습니다.');
-      if (row.status === 'cancelled' || !confirm('일정을 취소할까요? 참석과 댓글 기록은 보존됩니다.')) return;
+      if (row.status === 'cancelled' || !confirm('이 일정을 취소할까요? 달력과 일정 목록에서 숨겨지며, 참석·댓글 기록은 보관됩니다.')) return;
       await TennisV2.rpc(supabaseClient,'v2_cancel_schedule',{p_id:row.id,p_version:row.version});
       await reloadV2AfterWrite();
     }
@@ -9288,7 +9312,10 @@
       }
       const overviewModeButton = event.target.closest("[data-overview-mode]");
       if (overviewModeButton) {
-        state.overviewMode = overviewModeButton.dataset.overviewMode === "open" ? "open" : "mine";
+        const requestedMode = overviewModeButton.dataset.overviewMode === "open" ? "open" : "mine";
+        state.overviewMode = requestedMode === state.overviewMode
+          ? (state.overviewMode === "mine" ? "open" : "mine")
+          : requestedMode;
         renderUpcoming();
         return;
       }
