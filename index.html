@@ -2595,12 +2595,12 @@
         </section>
 
         <label class="block text-sm font-bold">정원
-          <input id="addScheduleCapacity" name="capacity" type="number" min="1" step="1" value="16" required class="w-full rounded-lg border p-3">
+          <input id="addScheduleCapacity" name="capacity" type="number" min="1" step="1" value="4" required class="w-full rounded-lg border p-3">
         </label><p class="text-xs text-on-surface-variant">참석 여부는 각 회원이 직접 선택합니다.</p><div id="addScheduleMembers" hidden></div>
 
         <div class="grid grid-cols-3 gap-2">
           <label class="min-w-0">
-            <input class="peer sr-only" name="host" type="checkbox">
+            <input class="peer sr-only" name="host" type="checkbox" checked>
             <span class="flex h-10 min-w-0 items-center justify-center rounded-md border border-outline-variant/40 bg-surface-container-lowest px-2 text-center text-xs font-bold text-on-surface shadow-sm transition peer-checked:border-[#0c8d80] peer-checked:bg-[#0c8d80] peer-checked:text-white">
               <span class="truncate">Host</span>
             </span>
@@ -5295,7 +5295,7 @@
           editingScheduleId = "";
           form.dataset.requestId = crypto.randomUUID();
           form.dataset.version = "";
-          document.querySelector("#addScheduleCapacity").value = 16;
+          document.querySelector("#addScheduleCapacity").value = 4;
           document.querySelector("#addScheduleDate").value = draft.use_date;
           document.querySelector("#addScheduleStart").value = draft.start_time;
           document.querySelector("#addScheduleEnd").value = draft.end_time;
@@ -5307,7 +5307,7 @@
           renderAddScheduleCourtUnitOptions(draft._court_unit_id || "");
           form.querySelector('input[name="regular"]').checked = false;
           form.querySelector('input[name="closed"]').checked = false;
-          form.querySelector('input[name="host"]').checked = false;
+          form.querySelector('input[name="host"]').checked = true;
 
           const total = aiScheduleImportQueue.length;
           const current = aiScheduleImportPosition + 1;
@@ -6429,10 +6429,12 @@
                 <div class="w-full rounded-xl rounded-tl-none bg-surface-container-low p-4 border border-outline-variant/10 shadow-sm">
                   <div class="mb-1.5 flex items-baseline justify-between gap-3">
                     <span class="cursor-pointer text-sm font-bold text-on-surface transition hover:text-primary" data-member-id="${authorMemberId}" role="button" tabindex="0" aria-label="${escapeHTML(author)} 프로필 보기">${escapeHTML(author)}</span>
-                    <span class="shrink-0 text-xs text-on-surface-variant font-medium">${row.source === "kakao" ? "카카오 · " : "홈페이지 · "}${escapeHTML(row.displayTime || discussionTimeLabel(row.createdAt))}</span>
+                    <div class="flex shrink-0 flex-col items-end gap-1">
+                      <span class="text-xs text-on-surface-variant font-medium">${row.source === "kakao" ? "카카오 · " : "홈페이지 · "}${escapeHTML(row.displayTime || discussionTimeLabel(row.createdAt))}</span>
+                      ${canDeleteDiscussion(row) ? `<button type="button" class="text-xs text-error underline" data-delete-discussion="${escapeHTML(row.id)}" aria-label="${escapeHTML(author)} 댓글 삭제">삭제</button>` : ""}
+                    </div>
                   </div>
                   <p class="whitespace-pre-wrap text-sm text-on-surface-variant leading-relaxed">${escapeHTML(row.message)}</p>
-                  ${canDeleteDiscussion(row) ? `<button type="button" class="mt-2 text-xs text-error underline" data-delete-discussion="${escapeHTML(row.id)}" aria-label="${escapeHTML(author)} 댓글 삭제">삭제</button>` : ""}
                 </div>
               </div>
             `;
@@ -7350,7 +7352,7 @@
       form.reset();
       form.dataset.requestId = crypto.randomUUID();
       form.dataset.version = String(schedule?.version || '');
-      document.querySelector('#addScheduleCapacity').value = schedule?.capacity || 16;
+      document.querySelector('#addScheduleCapacity').value = schedule ? (schedule.capacity || 16) : 4;
       document.querySelector("#addScheduleSheetTitle").textContent = schedule ? "일정 수정" : "일정 추가";
       document.querySelector("#addScheduleSubmit").innerHTML = `<span class="material-symbols-outlined text-[18px]">${schedule ? "save" : "add_circle"}</span> ${schedule ? "저장" : "추가"}`;
       document.querySelector("#addScheduleDate").value = schedule?.date || dateValue;
@@ -7365,7 +7367,7 @@
       document.querySelector("#addScheduleTitle").value = schedule?.title || "";
       form.querySelector('input[name="regular"]').checked = Boolean(schedule?.regular);
       form.querySelector('input[name="closed"]').checked = Boolean(schedule?.closed);
-      form.querySelector('input[name="host"]').checked = Boolean(schedule?.hostId);
+      form.querySelector('input[name="host"]').checked = schedule ? Boolean(schedule.hostId) : true;
       const selectedAttendeeIds = schedule ? attendeeIdsForSchedule(schedule) : [];
       const currentMember = myMember();
       // Each member submits their own attendance.
@@ -9006,6 +9008,11 @@
     });
     document.querySelector("#addScheduleCourt").addEventListener("change", () => {
       renderAddScheduleCourtUnitOptions();
+    });
+    document.querySelector('#addScheduleForm input[name="regular"]')?.addEventListener("change", event => {
+      if (scheduleFormMode !== "create") return;
+      const capacity = document.querySelector("#addScheduleCapacity");
+      if (capacity) capacity.value = event.currentTarget.checked ? "16" : "4";
     });
     document.querySelector("#addScheduleStart").addEventListener("change", renderScheduleTimePicker);
     document.querySelector("#addScheduleEnd").addEventListener("change", renderScheduleTimePicker);
