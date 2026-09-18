@@ -143,6 +143,8 @@
     #feedbackDialog button:disabled { opacity:.5; }
     #feedbackDialog article { border-top:1px solid #e5e7eb; padding-top:12px; overflow-wrap:anywhere; }
     #feedbackDialog .feedback-body { white-space:pre-wrap; }
+    #feedbackDialog .feedback-admin-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    #feedbackDialog .feedback-danger { color:#dc2626; border-color:#fecaca; background:#fff7f7; }
     #memberAdminButton[hidden] { display: none !important; }
     #memberAdminDialog::backdrop { background: rgba(0,0,0,.4); }
     /* CSS 디자인 시스템 토큰 및 변수 바인딩 */
@@ -6429,7 +6431,7 @@
                 <div class="w-full rounded-xl rounded-tl-none bg-surface-container-low p-4 border border-outline-variant/10 shadow-sm">
                   <div class="mb-1.5 flex items-baseline justify-between gap-3">
                     <span class="cursor-pointer text-sm font-bold text-on-surface transition hover:text-primary" data-member-id="${authorMemberId}" role="button" tabindex="0" aria-label="${escapeHTML(author)} 프로필 보기">${escapeHTML(author)}</span>
-                    <div class="flex shrink-0 flex-col items-end gap-1">
+                    <div class="flex shrink-0 items-center gap-2">
                       <span class="text-xs text-on-surface-variant font-medium">${row.source === "kakao" ? "카카오 · " : "홈페이지 · "}${escapeHTML(row.displayTime || discussionTimeLabel(row.createdAt))}</span>
                       ${canDeleteDiscussion(row) ? `<button type="button" class="text-xs text-error underline" data-delete-discussion="${escapeHTML(row.id)}" aria-label="${escapeHTML(author)} 댓글 삭제">삭제</button>` : ""}
                     </div>
