@@ -5,7 +5,7 @@ __v2Mock.tables.v2_feedback=[];
 const originalCreate=window.supabase.createClient;
 window.supabase.createClient=function(){const c=originalCreate();const rpc=c.rpc;c.rpc=async(name,p)=>{
  const rows=__v2Mock.tables.v2_feedback;
- if(name==='v2_submit_feedback'){let row=rows.find(x=>x.id===p.p_id);if(!row){row={id:p.p_id,category:p.p_category,body:p.p_body,view_name:p.p_view,schedule_id:p.p_schedule_id,client_version:p.p_client_version,status:'new',version:1,author_name:'테스트 회원',created_at:new Date().toISOString()};rows.push(row);}return{data:row,error:null};}
+ if(name==='v2_submit_feedback'){let row=rows.find(x=>x.id===p.p_id);if(!row){row={id:p.p_id,author_user_id:__v2Mock.user.id,category:p.p_category,body:p.p_body,view_name:p.p_view,schedule_id:p.p_schedule_id,client_version:p.p_client_version,status:'new',version:1,author_name:'테스트 회원',created_at:new Date().toISOString()};rows.push(row);}return{data:row,error:null};}
  if(name==='v2_set_feedback_status'){const row=rows.find(x=>x.id===p.p_id);row.status=p.p_status;row.version++;return{data:row,error:null};}
  if(name==='v2_delete_feedback'){const index=rows.findIndex(x=>x.id===p.p_id);if(index>=0)rows.splice(index,1);return{data:true,error:null};}
  return rpc(name,p);
