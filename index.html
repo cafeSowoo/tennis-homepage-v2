@@ -3093,6 +3093,7 @@
     let photoViewerReturnFocus = null;
     let photoViewerAnimating = false;
     let aiTestFile = null;
+    let aiTestAnalysis = null;
     let aiTestPreviewUrl = "";
     let aiTestDrafts = [];
     let aiTestRawResponse = null;
@@ -5541,7 +5542,17 @@
           el.className = `mt-3 min-h-5 text-xs leading-relaxed ${tone === "error" ? "text-red-600" : tone === "success" ? "text-primary" : "text-[#86868b]"}`;
         }
 
+        function invalidateAiTestAnalysis() {
+          const request = aiTestAnalysis;
+          aiTestAnalysis = null;
+          if (request?.button) {
+            request.button.innerHTML = request.originalHTML;
+            request.button.disabled = !aiTestFile;
+          }
+        }
+
         function clearAiTestImage({ keepStatus = false } = {}) {
+          invalidateAiTestAnalysis();
           if (aiTestPreviewUrl) URL.revokeObjectURL(aiTestPreviewUrl);
           aiTestPreviewUrl = "";
           aiTestFile = null;
@@ -5564,6 +5575,7 @@
         }
 
         function selectAiTestImage(file) {
+          invalidateAiTestAnalysis();
           const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
           if (!file) return clearAiTestImage();
           if (!allowedTypes.has(file.type)) {
@@ -5734,8 +5746,13 @@
           if (!supabaseClient) throw new Error("Supabase 연결 설정이 없습니다.");
           if (!aiTestFile) throw new Error("먼저 이미지를 선택해 주세요.");
 
+          if (aiTestAnalysis) return;
           const button = document.querySelector("#aiTestAnalyzeButton");
           const originalHTML = button?.innerHTML || "";
+          const request = { file: aiTestFile, userId: authState.user?.id, button, originalHTML };
+          aiTestAnalysis = request;
+          const isCurrent = () => aiTestAnalysis === request && aiTestFile === request.file
+            && authState.user?.id === request.userId && isApprovedMember();
           if (button) {
             button.disabled = true;
             button.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> 분석 중';
@@ -5744,8 +5761,9 @@
 
           try {
             const formData = new FormData();
-            formData.append("image", aiTestFile, aiTestFile.name);
+            formData.append("image", request.file, request.file.name);
             const { data, error } = await supabaseClient.functions.invoke("parse-reservation-image", { body: formData });
+            if (!isCurrent()) return;
             if (error) throw error;
             if (!data || !Array.isArray(data.schedules)) throw new Error("AI 응답 형식을 확인할 수 없습니다.");
 
@@ -5758,15 +5776,15 @@
             renderAiTestDrafts();
             setAiTestStatus(`분석 완료 · 일정 ${aiTestDrafts.length}건을 찾았습니다.`, "success");
           } catch (error) {
+            if (!isCurrent()) return;
+            const message = await aiTestErrorMessage(error);
+            if (!isCurrent()) return;
             aiTestDrafts = [];
             aiTestRawResponse = null;
             renderAiTestDrafts();
-            setAiTestStatus(await aiTestErrorMessage(error), "error");
+            setAiTestStatus(message, "error");
           } finally {
-            if (button) {
-              button.disabled = !aiTestFile;
-              button.innerHTML = originalHTML;
-            }
+            if (aiTestAnalysis === request) invalidateAiTestAnalysis();
           }
         }
 
