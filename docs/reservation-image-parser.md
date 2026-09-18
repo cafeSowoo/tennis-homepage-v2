@@ -38,5 +38,8 @@ The V2 homepage now includes an admin-only `AI Test` view for validating the par
 - Parsed facility names are matched against the existing `courts` list. A successful match preselects the same facility dropdown used by normal schedules, and a parsed court number preselects a matching `court_units` option when available.
 - If no existing facility can be matched, the draft selects `기타 (직접 입력)` and keeps the parsed facility/court text in free-text test fields instead of inventing a database court ID.
 - The raw AI JSON can be inspected from the same screen.
-- The test screen has no save/register action and does not write to `v2_schedules` or any other table.
-- Once the behavior is stable, the same draft UI can be connected to the existing schedule creation flow in a separate change.
+- AI analysis itself still does not write to `v2_schedules` or any other table.
+- Each valid draft can be sent to the existing schedule-creation sheet with `이 일정 가져오기`.
+- Multiple selected drafts can be queued with `선택한 N건 일정 추가로 가져오기`. The normal schedule sheet opens one draft at a time; after the user reviews and saves one schedule, the next queued draft is prefilled in the same sheet.
+- The actual database write continues to use the existing `v2_create_schedule` path only when the user presses the normal schedule submit button.
+- Drafts mapped to `기타 (직접 입력)` cannot be sent to the real schedule form until the tester chooses an existing court, because the current V2 schedule schema requires an existing `court_id`.
