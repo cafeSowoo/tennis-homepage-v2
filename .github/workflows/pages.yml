@@ -38,7 +38,8 @@ jobs:
         run: |
           rm -rf _site
           mkdir -p _site
-          cp index.html v2-data.js v2-admin.js _site/
+          cp index.html v2-data.js v2-admin.js v2-feedback.js _site/
+          echo "window.TENNIS_BUILD = '${GITHUB_SHA::7}';" > _site/build-info.js
           cp -R club _site/
           cp manifest.webmanifest _site/
           sed "s/__CACHE_VERSION__/${GITHUB_SHA::7}/g" sw.js > _site/sw.js
