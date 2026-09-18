@@ -2330,6 +2330,10 @@
     #memberRequest fieldset label:has(input:checked) { background:#eff6ef; border-color:#3c8058; }
     #memberGate [hidden] { display:none !important; }
     @media(max-width:600px) { #memberGate { padding:88px 18px 32px; } .member-gate-card { padding:28px 24px; border-radius:22px; } #memberGateTitle { font-size:27px; } .member-gate-brand { margin-bottom:28px; } }
+    #aiCaptureSheet [data-sheet-panel] { max-width:600px; }
+    #aiTestAnalyzeButton.hidden, #aiTestResultCard.hidden { display:none !important; }
+    #aiTestImagePreview { max-height:160px; }
+    @media(max-width:767px) { #aiCaptureSheet [data-sheet-panel] { margin:0 auto; } }
   </style>
 </head>
 <body class="apple-ui min-h-screen bg-[#f5f5f7] font-body-md text-body-md text-[#1d1d1f] antialiased">
@@ -2650,37 +2654,32 @@
     <div data-sheet-panel class="scrollbar-none absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-[1.25rem] bg-white p-5 md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[88vh] md:w-[min(960px,calc(100%-32px))] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[1.25rem] md:p-6">
       <div class="mb-5 flex items-center justify-between gap-4" data-sheet-dismiss-zone>
         <div class="min-w-0">
-          <div class="flex flex-wrap items-center gap-2">
-            <p class="text-xs font-medium uppercase tracking-wide text-primary">AI Schedule</p>
-            <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Beta</span>
-          </div>
           <h3 class="mt-1 text-xl font-semibold text-[#1d1d1f]">캡쳐본으로 일정 입력</h3>
-          <p class="mt-1 text-xs leading-relaxed text-[#86868b]">캡처를 분석해 초안을 만든 뒤 기존 일정 추가 창에서 최종 확인합니다.</p>
+          <p class="mt-1 text-xs leading-relaxed text-[#86868b]">예약 이미지를 선택해 주세요. 불러온 일정은 확인 후 저장할 수 있습니다.</p>
         </div>
         <button id="closeAiCapture" class="app-icon-btn shrink-0" type="button" aria-label="닫기">
           <span class="material-symbols-outlined text-[20px]">close</span>
         </button>
       </div>
 
-      <div class="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <div class="grid gap-4">
         <section class="rounded-2xl border border-[var(--app-border)] bg-white p-4">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <h4 class="text-sm font-semibold text-[#1d1d1f]">1. 예약 캡처 선택</h4>
+              <h4 class="text-sm font-semibold text-[#1d1d1f]">예약 이미지</h4>
               <p class="mt-1 text-[11px] leading-relaxed text-[#86868b]">JPEG · PNG · WebP, 5MB 이하 · 이미지는 저장하지 않습니다.</p>
             </div>
             <span class="material-symbols-outlined text-primary">image_search</span>
           </div>
 
           <input id="aiTestImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp">
-          <button id="aiTestChooseImage" class="mt-4 flex min-h-32 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[#c7c7cc] bg-[#f9f9fb] px-4 py-5 text-center transition hover:border-primary/40 hover:bg-primary/5" type="button">
-            <span class="material-symbols-outlined text-[30px] text-primary">add_photo_alternate</span>
-            <span class="mt-2 text-sm font-semibold text-[#1d1d1f]">이미지 선택</span>
-            <span class="mt-1 text-xs text-[#86868b]">예약 표, 예약 카드, 추첨 화면, 당첨 문자</span>
+          <button id="aiTestChooseImage" class="btn-outline mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm" type="button">
+            <span class="material-symbols-outlined text-[20px]">add_photo_alternate</span>
+            이미지 선택
           </button>
 
           <div id="aiTestImagePreviewWrap" class="mt-4 hidden overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[#f5f5f7]">
-            <img id="aiTestImagePreview" class="max-h-64 w-full object-contain" alt="분석할 예약 캡처 미리보기">
+            <img id="aiTestImagePreview" class="max-h-64 w-full object-contain" alt="선택한 예약 이미지 미리보기">
             <div class="flex items-center justify-between gap-3 border-t border-[var(--app-border)] bg-white px-3 py-2.5">
               <div class="min-w-0">
                 <p id="aiTestFileName" class="truncate text-xs font-semibold text-[#1d1d1f]"></p>
@@ -2692,18 +2691,18 @@
             </div>
           </div>
 
-          <button id="aiTestAnalyzeButton" class="btn-primary mt-4 w-full justify-center py-3 text-sm" type="button" disabled>
-            <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
-            AI로 분석하기
+          <button id="aiTestAnalyzeButton" class="hidden btn-primary mt-4 w-full justify-center py-3 text-sm" type="button" disabled>
+            <span class="material-symbols-outlined text-[18px]">event_available</span>
+            일정 등록하기
           </button>
-          <p id="aiTestStatus" class="mt-3 min-h-5 text-xs leading-relaxed text-[#86868b]" aria-live="polite">이미지를 선택하면 분석할 수 있습니다.</p>
+          <p id="aiTestStatus" class="mt-3 min-h-5 text-xs leading-relaxed text-[#86868b]" aria-live="polite">예약 표, 예약 카드, 당첨 문자 등을 선택해 주세요.</p>
         </section>
 
-        <section class="rounded-2xl border border-[var(--app-border)] bg-white p-4">
+        <section id="aiTestResultCard" class="hidden rounded-2xl border border-[var(--app-border)] bg-white p-4">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <h4 class="text-sm font-semibold text-[#1d1d1f]">2. AI 일정 초안</h4>
-              <p id="aiTestSelectionSummary" class="mt-1 text-xs text-[#86868b]">분석 전입니다.</p>
+              <h4 class="text-sm font-semibold text-[#1d1d1f]">일정 확인</h4>
+              <p id="aiTestSelectionSummary" class="mt-1 text-xs text-[#86868b]"></p>
             </div>
             <span class="rounded-full bg-[#f5f5f7] px-2.5 py-1 text-[10px] font-semibold text-[#6e6e73]">확인 후 등록</span>
           </div>
@@ -2711,7 +2710,7 @@
           <div id="aiTestResults" class="mt-4 space-y-3">
             <div class="rounded-2xl bg-[#f5f5f7] px-4 py-8 text-center">
               <span class="material-symbols-outlined text-[28px] text-[#86868b]">document_scanner</span>
-              <p class="mt-2 text-sm font-semibold text-[#6e6e73]">분석 결과가 여기에 표시됩니다.</p>
+              <p class="mt-2 text-sm font-semibold text-[#6e6e73]">불러온 일정을 확인해 주세요.</p>
             </div>
           </div>
 
@@ -2724,7 +2723,7 @@
           </div>
 
           <details id="aiTestRawDetails" class="mt-4 hidden rounded-xl border border-[var(--app-border)] bg-[#f9f9fb] p-3">
-            <summary class="cursor-pointer text-xs font-semibold text-[#6e6e73]">AI 원본 JSON 보기</summary>
+            <summary class="cursor-pointer text-xs font-semibold text-[#6e6e73]">원본 데이터 보기</summary>
             <pre id="aiTestRawJson" class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed text-[#424245]"></pre>
           </details>
         </section>
@@ -5566,7 +5565,7 @@
             indicator.textContent = `AI 가져오기 ${current}/${total} · 저장 후 ${current < total ? "다음 일정으로 이동" : "완료"}${warning ? "\n" + warning : ""}`;
             indicator.className = `mt-1 whitespace-pre-line text-xs font-semibold ${warning ? "text-amber-700" : "text-primary"}`;
           }
-          document.querySelector("#addScheduleSheetTitle").textContent = `AI 일정 추가 (${current}/${total})`;
+          document.querySelector("#addScheduleSheetTitle").textContent = `일정 추가 (${current}/${total})`;
           document.querySelector("#addScheduleSubmit").innerHTML = `<span class="material-symbols-outlined text-[18px]">${current < total ? "arrow_forward" : "add_circle"}</span> ${current < total ? "추가 후 다음" : "추가 완료"}`;
         }
 
@@ -5683,9 +5682,10 @@
           if (rawJson) rawJson.textContent = "";
           previewWrap?.classList.add("hidden");
           rawDetails?.classList.add("hidden");
-          if (analyze) analyze.disabled = true;
+          if (analyze) { analyze.disabled = true; analyze.classList.add("hidden"); }
+          document.querySelector("#aiTestResultCard")?.classList.add("hidden");
           renderAiTestDrafts();
-          if (!keepStatus) setAiTestStatus("이미지를 선택하면 분석할 수 있습니다.");
+          if (!keepStatus) setAiTestStatus("예약 표, 예약 카드, 당첨 문자 등을 선택해 주세요.");
         }
 
         function selectAiTestImage(file) {
@@ -5721,16 +5721,17 @@
           previewWrap?.classList.remove("hidden");
           rawDetails?.classList.add("hidden");
           if (rawJson) rawJson.textContent = "";
-          if (analyze) analyze.disabled = false;
+          if (analyze) { analyze.disabled = false; analyze.classList.remove("hidden"); }
+          document.querySelector("#aiTestResultCard")?.classList.add("hidden");
           renderAiTestDrafts();
-          setAiTestStatus("이미지가 준비되었습니다. 분석하기를 눌러 주세요.");
+          setAiTestStatus("일정 등록하기를 누르면 내용을 확인할 수 있습니다.");
         }
 
         function renderAiTestSelectionSummary() {
           const summary = document.querySelector("#aiTestSelectionSummary");
           if (!summary) return;
           if (!aiTestDrafts.length) {
-            summary.textContent = aiTestRawResponse ? "추출된 일정이 없습니다." : "분석 전입니다.";
+            summary.textContent = aiTestRawResponse ? "추출된 일정이 없습니다." : "";
             return;
           }
           const selected = aiTestDrafts.filter(draft => draft._selected).length;
@@ -5745,7 +5746,7 @@
             container.innerHTML = `
               <div class="rounded-2xl bg-[#f5f5f7] px-4 py-8 text-center">
                 <span class="material-symbols-outlined text-[28px] text-[#86868b]">document_scanner</span>
-                <p class="mt-2 text-sm font-semibold text-[#6e6e73]">${aiTestRawResponse ? "이미지에서 일정을 찾지 못했습니다." : "분석 결과가 여기에 표시됩니다."}</p>
+                <p class="mt-2 text-sm font-semibold text-[#6e6e73]">${aiTestRawResponse ? "이미지에서 일정을 찾지 못했습니다." : "불러온 일정을 확인해 주세요."}</p>
               </div>`;
             renderAiTestImportActions();
             return;
@@ -5866,13 +5867,15 @@
           const originalHTML = button?.innerHTML || "";
           const request = { file: aiTestFile, userId: authState.user?.id, button, originalHTML };
           aiTestAnalysis = request;
+          document.querySelector("#aiTestResultCard")?.classList.remove("hidden");
+          document.querySelector("#aiTestResults").textContent = "일정을 불러오고 있습니다…";
           const isCurrent = () => aiTestAnalysis === request && aiTestFile === request.file
             && authState.user?.id === request.userId && isApprovedMember();
           if (button) {
             button.disabled = true;
-            button.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> 분석 중';
+            button.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> 불러오는 중';
           }
-          setAiTestStatus("이미지를 AI가 읽고 있습니다. 잠시만 기다려 주세요.");
+          setAiTestStatus("일정을 불러오고 있습니다. 잠시만 기다려 주세요.");
 
           try {
             const formData = new FormData();
@@ -5880,16 +5883,16 @@
             const { data, error } = await supabaseClient.functions.invoke("parse-reservation-image", { body: formData });
             if (!isCurrent()) return;
             if (error) throw error;
-            if (!data || !Array.isArray(data.schedules)) throw new Error("AI 응답 형식을 확인할 수 없습니다.");
+            if (!data || !Array.isArray(data.schedules)) throw new Error("일정 정보를 불러오지 못했습니다.");
 
             aiTestRawResponse = data;
             aiTestDrafts = data.schedules.map(makeAiTestDraft);
             const rawDetails = document.querySelector("#aiTestRawDetails");
             const rawJson = document.querySelector("#aiTestRawJson");
             if (rawJson) rawJson.textContent = JSON.stringify(data, null, 2);
-            rawDetails?.classList.remove("hidden");
+            // Raw response is retained for diagnostics, not displayed in the member flow.
             renderAiTestDrafts();
-            setAiTestStatus(`분석 완료 · 일정 ${aiTestDrafts.length}건을 찾았습니다.`, "success");
+            setAiTestStatus(`일정 ${aiTestDrafts.length}건을 찾았습니다.`, "success");
           } catch (error) {
             if (!isCurrent()) return;
             const message = await aiTestErrorMessage(error);
@@ -7770,7 +7773,7 @@
         const completed = aiScheduleImportCompleted;
         resetAiScheduleImportState();
         setAiTestStatus(
-          completed > 0 ? `${completed}건 등록 후 AI 일정 가져오기를 종료했습니다.` : "AI 일정 가져오기를 취소했습니다.",
+          completed > 0 ? `${completed}건 등록 후 일정 가져오기를 종료했습니다.` : "일정 가져오기를 취소했습니다.",
           completed > 0 ? "success" : "muted"
         );
         if (!fromHistory && !retainHistory && sheetHistoryActive && activeSheetType === "schedule") {
@@ -9533,12 +9536,12 @@
             if (aiScheduleImportPosition + 1 < aiScheduleImportQueue.length) {
               aiScheduleImportPosition += 1;
               fillAddScheduleFormFromAiDraft(aiScheduleImportQueue[aiScheduleImportPosition]);
-              setAiTestStatus(`AI 일정 ${aiScheduleImportCompleted}건 등록 완료 · 다음 일정을 확인해 주세요.`, "success");
+              setAiTestStatus(`일정 ${aiScheduleImportCompleted}건 등록 완료 · 다음 일정을 확인해 주세요.`, "success");
             } else {
               const completed = aiScheduleImportCompleted;
               resetAiScheduleImportState();
               closeAddSchedule({ retainHistory: true });
-              setAiTestStatus(`AI 일정 ${completed}건을 모두 등록했습니다.`, "success");
+              setAiTestStatus(`일정 ${completed}건을 모두 등록했습니다.`, "success");
             }
           } else {
             closeAddSchedule({ retainHistory: true });
