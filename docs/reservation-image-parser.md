@@ -51,3 +51,7 @@ The V2 homepage includes a reservation-capture sheet/modal that approved active 
 The UI binds each analysis to the selected File object and signed-in user. Selecting or clearing an image (including logout cleanup) invalidates the pending request and resets the analysis button. Late successes, failures, and asynchronously decoded errors cannot overwrite a newer image/result. Responses also require the same approved identity. Duplicate starts for an active request are ignored.
 
 This invalidates client-side results; it does not cancel an image request already sent to the provider. Regression tests run the actual UI functions with deferred mock responses, covering image replacement, removal, logout, account changes, approval revocation, and delayed error decoding. All 26 automated tests pass. No DB or Edge Function changes are required.
+
+## Waiting/cancelled reservation warnings (2026-09-18)
+
+Drafts marked `lottery_waiting` or `cancelled` start unchecked and show a visible warning outside the collapsed AI reference details. Members may still explicitly import them after checking the reservation. The queue preserves the parser status so the normal schedule form keeps the warning until that draft is saved or dismissed. Moving to a confirmed draft clears the preceding warning. This is a pre-registration warning, not a new database schedule status. Regression tests cover default selection, queue handoff, and warning reset; all 28 tests pass.
