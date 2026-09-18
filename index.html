@@ -25,6 +25,8 @@
   <script src="env.js?v=20260526-auth-redirect"></script>
   <script src="v2-data.js"></script>
   <script src="v2-admin.js"></script>
+  <script src="build-info.js"></script>
+  <script src="v2-feedback.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
   <script>
     tailwind.config = {
@@ -128,6 +130,19 @@
     };
   </script>
   <style>
+    #feedbackButton { position:fixed; right:12px; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:55; border:1px solid #d1d5db; border-radius:24px; background:white; color:#374151; padding:9px 14px; font-size:13px; box-shadow:0 2px 8px #0001; }
+    #feedbackButton[hidden] { display:none !important; }
+    #feedbackDialog { width:min(640px,calc(100% - 24px)); max-height:85dvh; padding:20px; border:0; border-radius:20px; overflow:auto; color:#1f2937; }
+    #feedbackDialog::backdrop { background:#0006; }
+    #feedbackDialog .feedback-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    #feedbackDialog h2, #feedbackDialog h3, #feedbackDialog h4 { font-weight:700; }
+    #feedbackDialog p, #feedbackDialog form, #feedbackDialog article { margin:12px 0; }
+    #feedbackDialog label, #feedbackDialog small { display:block; margin:8px 0; }
+    #feedbackDialog textarea, #feedbackDialog select { width:100%; border:1px solid #d1d5db; border-radius:8px; padding:8px; background:white; font-size:16px; }
+    #feedbackDialog button { border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; background:#f9fafb; }
+    #feedbackDialog button:disabled { opacity:.5; }
+    #feedbackDialog article { border-top:1px solid #e5e7eb; padding-top:12px; overflow-wrap:anywhere; }
+    #feedbackDialog .feedback-body { white-space:pre-wrap; }
     #memberAdminButton[hidden] { display: none !important; }
     #memberAdminDialog::backdrop { background: rgba(0,0,0,.4); }
     /* CSS 디자인 시스템 토큰 및 변수 바인딩 */
@@ -2815,6 +2830,7 @@
     const dataStore = { members: [], courts: [], courtUnits: [], schedules: [], events: [], discussions: [], scheduleDeclines: [] };
     let members = [];
     const memberAdmin = window.V2MemberAdmin.create({client: () => supabaseClient, isAdmin: () => isClubAdmin(), members: () => members, userId: () => authState.user?.id});
+    const feedback = window.V2Feedback.create({scheduleTitle: id => schedules.find(s => String(s.id) === id)?.title, client: () => supabaseClient, isApproved: () => isApprovedMember(), isAdmin: () => isClubAdmin(), userId: () => authState.user?.id, context: () => ({view: document.querySelector('.view.active')?.id || 'other', scheduleId: document.querySelector('#detail.active') && state.detailType === 'schedule' ? String(state.selectedId) : null})});
     let courts = [];
     let courtUnits = [];
     let schedules = [];
@@ -4051,6 +4067,7 @@
     let v2LoadRequest = 0;
     function clearV2Data() {
       memberAdmin.invalidate();
+      feedback.invalidate();
       v2LoadRequest++;
       state.selectedId = ''; state.selectedEventId = ''; state.selectedDate = ''; state.detailType = 'schedule';
       state.currentMonth = todayIso.slice(0,7); state.query = '';
@@ -4349,6 +4366,7 @@
 
     function renderAuthStatus() {
       memberAdmin.sync();
+      feedback.sync();
       document.body.classList.toggle("can-manage-official-data", canManageOfficialData());
       document.body.classList.toggle("approved-club-member", isApprovedMember());
       const gate = document.querySelector('#memberGate');
