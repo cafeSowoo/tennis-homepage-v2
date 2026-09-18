@@ -2255,17 +2255,20 @@
     }
 
     @media (max-width: 767px) {
+      #aiCaptureSheet [data-sheet-panel],
       #addScheduleSheet [data-sheet-panel],
       #addEventSheet [data-sheet-panel] {
         touch-action: pan-y;
         will-change: transform;
       }
 
+      #aiCaptureSheet [data-sheet-panel].is-sheet-dragging,
       #addScheduleSheet [data-sheet-panel].is-sheet-dragging,
       #addEventSheet [data-sheet-panel].is-sheet-dragging {
         transition: none !important;
       }
 
+      #aiCaptureSheet [data-sheet-dismiss-zone],
       #addScheduleSheet [data-sheet-dismiss-zone],
       #addEventSheet [data-sheet-dismiss-zone] {
         touch-action: none;
@@ -2527,85 +2530,6 @@
       <div id="memberGrid" class="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4"></div>
     </section>
 
-    <section id="ai-test" class="view">
-      <div class="mx-auto max-w-5xl">
-        <div class="mb-5 md:mb-6">
-          <div class="flex flex-wrap items-center gap-2">
-            <h2 class="app-page-title">예약 캡처로 일정 입력</h2>
-            <span class="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">AI Beta</span>
-          </div>
-          <p class="app-page-subtitle">예약 캡처를 분석해 초안을 만든 뒤, 기존 일정 추가 화면에서 한 건씩 확인해 등록합니다. AI가 직접 저장하지는 않습니다.</p>
-        </div>
-
-        <div class="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <section class="app-card p-4 md:p-5">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <h3 class="text-base font-semibold text-[#1d1d1f]">1. 예약 캡처 선택</h3>
-                <p class="mt-1 text-xs leading-relaxed text-[#86868b]">JPEG · PNG · WebP, 5MB 이하 · 이미지는 DB나 Storage에 저장하지 않습니다.</p>
-              </div>
-              <span class="material-symbols-outlined text-primary">image_search</span>
-            </div>
-
-            <input id="aiTestImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp">
-            <button id="aiTestChooseImage" class="mt-4 flex min-h-36 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[#c7c7cc] bg-[#f9f9fb] px-4 py-6 text-center transition hover:border-primary/40 hover:bg-primary/5" type="button">
-              <span class="material-symbols-outlined text-[30px] text-primary">add_photo_alternate</span>
-              <span class="mt-2 text-sm font-semibold text-[#1d1d1f]">이미지 선택</span>
-              <span class="mt-1 text-xs text-[#86868b]">예약 표, 예약 카드, 추첨 화면, 당첨 문자</span>
-            </button>
-
-            <div id="aiTestImagePreviewWrap" class="mt-4 hidden overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[#f5f5f7]">
-              <img id="aiTestImagePreview" class="max-h-72 w-full object-contain" alt="분석할 예약 캡처 미리보기">
-              <div class="flex items-center justify-between gap-3 border-t border-[var(--app-border)] bg-white px-3 py-2.5">
-                <div class="min-w-0">
-                  <p id="aiTestFileName" class="truncate text-xs font-semibold text-[#1d1d1f]"></p>
-                  <p id="aiTestFileMeta" class="mt-0.5 text-[11px] text-[#86868b]"></p>
-                </div>
-                <button id="aiTestClearImage" class="app-icon-btn shrink-0" type="button" aria-label="선택한 이미지 지우기" title="이미지 지우기">
-                  <span class="material-symbols-outlined text-[18px]">close</span>
-                </button>
-              </div>
-            </div>
-
-            <button id="aiTestAnalyzeButton" class="btn-primary mt-4 w-full justify-center py-3 text-sm" type="button" disabled>
-              <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
-              AI로 분석하기
-            </button>
-            <p id="aiTestStatus" class="mt-3 min-h-5 text-xs leading-relaxed text-[#86868b]" aria-live="polite">이미지를 선택하면 분석할 수 있습니다.</p>
-          </section>
-
-          <section class="app-card p-4 md:p-5">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <h3 class="text-base font-semibold text-[#1d1d1f]">2. AI 일정 초안</h3>
-                <p id="aiTestSelectionSummary" class="mt-1 text-xs text-[#86868b]">분석 전입니다.</p>
-              </div>
-              <span class="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">등록 안 됨</span>
-            </div>
-
-            <div id="aiTestResults" class="mt-4 space-y-3">
-              <div class="rounded-2xl bg-[#f5f5f7] px-4 py-8 text-center">
-                <span class="material-symbols-outlined text-[28px] text-[#86868b]">document_scanner</span>
-                <p class="mt-2 text-sm font-semibold text-[#6e6e73]">분석 결과가 여기에 표시됩니다.</p>
-              </div>
-            </div>
-
-            <div id="aiTestImportActions" class="mt-4 hidden rounded-2xl border border-primary/15 bg-primary/[0.035] p-3.5">
-              <button id="aiTestImportSelected" class="btn-primary w-full justify-center py-3 text-sm font-bold" type="button" disabled>
-                <span class="material-symbols-outlined text-[18px]">playlist_add</span>
-                선택한 일정 가져오기
-              </button>
-              <p id="aiTestImportHint" class="mt-2 text-[11px] leading-relaxed text-[#6e6e73]">기존 일정 추가 화면에서 한 건씩 확인한 뒤 직접 등록합니다.</p>
-            </div>
-
-            <details id="aiTestRawDetails" class="mt-4 hidden rounded-xl border border-[var(--app-border)] bg-[#f9f9fb] p-3">
-              <summary class="cursor-pointer text-xs font-semibold text-[#6e6e73]">AI 원본 JSON 보기</summary>
-              <pre id="aiTestRawJson" class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed text-[#424245]"></pre>
-            </details>
-          </section>
-        </div>
-      </div>
-    </section>
   </main>
 
   <!-- 모바일 하단 네비게이션 바 -->
@@ -2650,6 +2574,93 @@
       </div>
     </div>
   </div>
+
+  <section id="aiCaptureSheet" class="fixed inset-0 z-[80] hidden" aria-hidden="true">
+    <button id="aiCaptureBackdrop" class="absolute inset-0 bg-black/35" type="button" aria-label="캡쳐본 입력 닫기"></button>
+    <div data-sheet-panel class="scrollbar-none absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-[1.25rem] bg-white p-5 md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[88vh] md:w-[min(960px,calc(100%-32px))] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[1.25rem] md:p-6">
+      <div class="mb-5 flex items-center justify-between gap-4" data-sheet-dismiss-zone>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="text-xs font-medium uppercase tracking-wide text-primary">AI Schedule</p>
+            <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Beta</span>
+          </div>
+          <h3 class="mt-1 text-xl font-semibold text-[#1d1d1f]">캡쳐본으로 일정 입력</h3>
+          <p class="mt-1 text-xs leading-relaxed text-[#86868b]">캡처를 분석해 초안을 만든 뒤 기존 일정 추가 창에서 최종 확인합니다.</p>
+        </div>
+        <button id="closeAiCapture" class="app-icon-btn shrink-0" type="button" aria-label="닫기">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <section class="rounded-2xl border border-[var(--app-border)] bg-white p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h4 class="text-sm font-semibold text-[#1d1d1f]">1. 예약 캡처 선택</h4>
+              <p class="mt-1 text-[11px] leading-relaxed text-[#86868b]">JPEG · PNG · WebP, 5MB 이하 · 이미지는 저장하지 않습니다.</p>
+            </div>
+            <span class="material-symbols-outlined text-primary">image_search</span>
+          </div>
+
+          <input id="aiTestImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp">
+          <button id="aiTestChooseImage" class="mt-4 flex min-h-32 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[#c7c7cc] bg-[#f9f9fb] px-4 py-5 text-center transition hover:border-primary/40 hover:bg-primary/5" type="button">
+            <span class="material-symbols-outlined text-[30px] text-primary">add_photo_alternate</span>
+            <span class="mt-2 text-sm font-semibold text-[#1d1d1f]">이미지 선택</span>
+            <span class="mt-1 text-xs text-[#86868b]">예약 표, 예약 카드, 추첨 화면, 당첨 문자</span>
+          </button>
+
+          <div id="aiTestImagePreviewWrap" class="mt-4 hidden overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[#f5f5f7]">
+            <img id="aiTestImagePreview" class="max-h-64 w-full object-contain" alt="분석할 예약 캡처 미리보기">
+            <div class="flex items-center justify-between gap-3 border-t border-[var(--app-border)] bg-white px-3 py-2.5">
+              <div class="min-w-0">
+                <p id="aiTestFileName" class="truncate text-xs font-semibold text-[#1d1d1f]"></p>
+                <p id="aiTestFileMeta" class="mt-0.5 text-[11px] text-[#86868b]"></p>
+              </div>
+              <button id="aiTestClearImage" class="app-icon-btn shrink-0" type="button" aria-label="선택한 이미지 지우기" title="이미지 지우기">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+          </div>
+
+          <button id="aiTestAnalyzeButton" class="btn-primary mt-4 w-full justify-center py-3 text-sm" type="button" disabled>
+            <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+            AI로 분석하기
+          </button>
+          <p id="aiTestStatus" class="mt-3 min-h-5 text-xs leading-relaxed text-[#86868b]" aria-live="polite">이미지를 선택하면 분석할 수 있습니다.</p>
+        </section>
+
+        <section class="rounded-2xl border border-[var(--app-border)] bg-white p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h4 class="text-sm font-semibold text-[#1d1d1f]">2. AI 일정 초안</h4>
+              <p id="aiTestSelectionSummary" class="mt-1 text-xs text-[#86868b]">분석 전입니다.</p>
+            </div>
+            <span class="rounded-full bg-[#f5f5f7] px-2.5 py-1 text-[10px] font-semibold text-[#6e6e73]">확인 후 등록</span>
+          </div>
+
+          <div id="aiTestResults" class="mt-4 space-y-3">
+            <div class="rounded-2xl bg-[#f5f5f7] px-4 py-8 text-center">
+              <span class="material-symbols-outlined text-[28px] text-[#86868b]">document_scanner</span>
+              <p class="mt-2 text-sm font-semibold text-[#6e6e73]">분석 결과가 여기에 표시됩니다.</p>
+            </div>
+          </div>
+
+          <div id="aiTestImportActions" class="mt-4 hidden rounded-2xl border border-primary/15 bg-primary/[0.035] p-3.5">
+            <button id="aiTestImportSelected" class="btn-primary w-full justify-center py-3 text-sm font-bold" type="button" disabled>
+              <span class="material-symbols-outlined text-[18px]">playlist_add</span>
+              선택한 일정 가져오기
+            </button>
+            <p id="aiTestImportHint" class="mt-2 text-[11px] leading-relaxed text-[#6e6e73]">기존 일정 추가 화면에서 한 건씩 확인한 뒤 직접 등록합니다.</p>
+          </div>
+
+          <details id="aiTestRawDetails" class="mt-4 hidden rounded-xl border border-[var(--app-border)] bg-[#f9f9fb] p-3">
+            <summary class="cursor-pointer text-xs font-semibold text-[#6e6e73]">AI 원본 JSON 보기</summary>
+            <pre id="aiTestRawJson" class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed text-[#424245]"></pre>
+          </details>
+        </section>
+      </div>
+    </div>
+  </section>
 
   <section id="addScheduleSheet" class="fixed inset-0 z-[80] hidden" aria-hidden="true">
     <button id="addScheduleBackdrop" class="absolute inset-0 bg-black/35" type="button" aria-label="일정 추가 닫기"></button>
@@ -3977,7 +3988,8 @@
     }
 
     function isAnyModalSheetOpen() {
-      return isSheetOpen("#addScheduleSheet")
+      return isSheetOpen("#aiCaptureSheet")
+        || isSheetOpen("#addScheduleSheet")
         || isSheetOpen("#addEventSheet")
         || isSheetOpen("#addCourtSheet")
         || isSheetOpen("#attendeeSheet")
@@ -4063,6 +4075,11 @@
 
       if (photoViewerHistoryActive && window.location.hash !== PHOTO_VIEWER_HASH) {
         photoViewerHistoryActive = false;
+        return;
+      }
+
+      if (isSheetOpen("#aiCaptureSheet")) {
+        closeAiCaptureSheet({ fromHistory: true });
         return;
       }
 
@@ -4282,8 +4299,9 @@
         const node = document.querySelector(selector); if (node) node.replaceChildren();
       }
       document.querySelectorAll('[data-edit-current],[data-delete-current]').forEach(b => b.hidden = true);
-      document.querySelectorAll('#addScheduleSheet,#addEventSheet,#addCourtSheet,#attendeeSheet').forEach(node => {node.classList.add('hidden');node.setAttribute('aria-hidden','true');});
+      document.querySelectorAll('#aiCaptureSheet,#addScheduleSheet,#addEventSheet,#addCourtSheet,#attendeeSheet').forEach(node => {node.classList.add('hidden');node.setAttribute('aria-hidden','true');});
       document.body.style.overflow = '';
+      clearAiTestImage();
       const form = document.querySelector('#addScheduleForm'); if (form) form.reset();
       document.querySelector('#kakaoSyncStatus')?.classList.add('hidden');
     }
@@ -4568,7 +4586,6 @@
       document.body.classList.toggle("can-manage-official-data", canManageOfficialData());
       document.body.classList.toggle("approved-club-member", isApprovedMember());
       document.body.classList.toggle("club-admin", isClubAdmin());
-      if (!isApprovedMember() && document.querySelector("#ai-test.active")) switchView("dashboard");
       const gate = document.querySelector('#memberGate');
       if (gate) { gate.hidden = isApprovedMember(); document.querySelector('#memberGateText').textContent = !authState.user ? '상단의 카카오 로그인 버튼으로 로그인해 주세요.' : authState.memberAccount?.status === 'disabled' ? '사용 중지된 계정입니다. 관리자에게 문의해 주세요.' : '회원 승인과 연결을 기다리고 있습니다. 승인 후 새로고침해 주세요.'; }
       const button = document.querySelector("#authButton");
@@ -5421,6 +5438,62 @@
           document.querySelector("#addScheduleSubmit").innerHTML = `<span class="material-symbols-outlined text-[18px]">${current < total ? "arrow_forward" : "add_circle"}</span> ${current < total ? "추가 후 다음" : "추가 완료"}`;
         }
 
+        function openAiCaptureSheet({ preserve = false, reuseSheetHistory = false } = {}) {
+          requireApprovedMember('캡쳐본으로 일정을 입력');
+          const sheet = document.querySelector("#aiCaptureSheet");
+          if (!sheet) return;
+          if (!preserve) clearAiTestImage();
+          renderAiTest();
+          sheet.classList.remove("hidden");
+          sheet.setAttribute("aria-hidden", "false");
+          document.body.style.overflow = "hidden";
+          if (reuseSheetHistory && sheetHistoryActive) {
+            activeSheetType = "ai-capture";
+            history.replaceState({ tennisHomeView: "sheet", sheetType: "ai-capture" }, "");
+          } else {
+            openSheetHistory("ai-capture");
+          }
+        }
+
+        function closeAiCaptureSheet({ fromHistory = false, retainHistory = false } = {}) {
+          const sheet = document.querySelector("#aiCaptureSheet");
+          if (!sheet || sheet.classList.contains("hidden")) return;
+
+          if (!fromHistory && !retainHistory && sheetHistoryActive && activeSheetType === "ai-capture") {
+            history.back();
+            return;
+          }
+
+          if (!fromHistory && retainHistory && sheetHistoryActive && activeSheetType === "ai-capture") {
+            suppressSheetPopState = true;
+            sheetHistoryActive = false;
+            activeSheetType = "";
+            history.back();
+          } else if (!retainHistory && activeSheetType === "ai-capture") {
+            sheetHistoryActive = false;
+            activeSheetType = "";
+          }
+
+          resetSheetPanelTransform(sheet.querySelector("[data-sheet-panel]"));
+          if (sheet.contains(document.activeElement)) document.activeElement.blur();
+          sheet.classList.add("hidden");
+          sheet.setAttribute("aria-hidden", "true");
+          if (!isSheetOpen("#addScheduleSheet")) document.body.style.overflow = "";
+        }
+
+        function handoffAiCaptureToSchedule() {
+          const sheet = document.querySelector("#aiCaptureSheet");
+          const reuseHistory = Boolean(sheetHistoryActive && activeSheetType === "ai-capture" && isSheetOpen("#aiCaptureSheet"));
+          if (!reuseHistory) return false;
+          resetSheetPanelTransform(sheet.querySelector("[data-sheet-panel]"));
+          if (sheet.contains(document.activeElement)) document.activeElement.blur();
+          sheet.classList.add("hidden");
+          sheet.setAttribute("aria-hidden", "true");
+          activeSheetType = "schedule";
+          history.replaceState({ tennisHomeView: "sheet", sheetType: "schedule" }, "");
+          return true;
+        }
+
         function beginAiScheduleImport(drafts) {
           const items = drafts.filter(Boolean);
           if (!items.length) throw new Error("가져올 일정을 선택해 주세요.");
@@ -5429,10 +5502,11 @@
             throw new Error(`일정 ${invalidIndex + 1}: ${aiTestDraftScheduleError(items[invalidIndex])}`);
           }
 
-          openAddSchedule(items[0].use_date, null);
           aiScheduleImportQueue = items.map(snapshotAiDraftForSchedule);
           aiScheduleImportPosition = 0;
           aiScheduleImportCompleted = 0;
+          const reuseSheetHistory = handoffAiCaptureToSchedule();
+          openAddSchedule(items[0].use_date, null, { reuseSheetHistory });
           fillAddScheduleFormFromAiDraft(aiScheduleImportQueue[0]);
           setAiTestStatus(`${items.length}건을 일정 추가 화면으로 가져왔습니다. 한 건씩 확인해 주세요.`, "success");
         }
@@ -7488,7 +7562,7 @@
       setCourtUnitMode("none");
     }
 
-    function openAddSchedule(dateValue = state.selectedDate?.startsWith(state.currentMonth) ? state.selectedDate : defaultDateForCurrentMonth(), schedule = null) {
+    function openAddSchedule(dateValue = state.selectedDate?.startsWith(state.currentMonth) ? state.selectedDate : defaultDateForCurrentMonth(), schedule = null, { reuseSheetHistory = false } = {}) {
       requireApprovedMember('일정을 작성');
       if (schedule && !canEditV2Schedule(schedule)) { alert('수정할 수 없는 일정입니다.'); return; }
       if (!aiScheduleImportActive()) {
@@ -7529,7 +7603,12 @@
       sheet.classList.remove("hidden");
       sheet.setAttribute("aria-hidden", "false");
       document.body.style.overflow = "hidden";
-      openSheetHistory("schedule");
+      if (reuseSheetHistory && sheetHistoryActive) {
+        activeSheetType = "schedule";
+        history.replaceState({ tennisHomeView: "sheet", sheetType: "schedule" }, "");
+      } else {
+        openSheetHistory("schedule");
+      }
     }
 
     function closeAddSchedule({ fromHistory = false, retainHistory = false } = {}) {
@@ -7543,6 +7622,16 @@
           completed > 0 ? `${completed}건 등록 후 AI 일정 가져오기를 종료했습니다.` : "AI 일정 가져오기를 취소했습니다.",
           completed > 0 ? "success" : "muted"
         );
+        if (!fromHistory && !retainHistory && sheetHistoryActive && activeSheetType === "schedule") {
+          resetSheetPanelTransform(sheet.querySelector("[data-sheet-panel]"));
+          if (sheet.contains(document.activeElement)) document.activeElement.blur();
+          sheet.classList.add("hidden");
+          sheet.setAttribute("aria-hidden", "true");
+          scheduleFormMode = "create";
+          editingScheduleId = "";
+          openAiCaptureSheet({ preserve: true, reuseSheetHistory: true });
+          return;
+        }
       }
 
       if (!fromHistory && !retainHistory && sheetHistoryActive && activeSheetType === "schedule") {
@@ -8620,7 +8709,10 @@
     }
 
     function switchView(view) {
-      if (view === "ai-test" && !isApprovedMember()) view = "dashboard";
+      if (view === "ai-test") {
+        if (isApprovedMember()) openAiCaptureSheet();
+        return;
+      }
       const renderRequest = ++viewRenderRequest;
       const targetView = (view === "detail" || view === "member-detail")
         ? (view === "detail" ? "schedule" : "members")
@@ -8696,8 +8788,6 @@
               if (renderRequest === viewRenderRequest) renderMembers();
             }, 200);
           }
-        } else if (view === "ai-test") {
-          renderAiTest();
         } else if (view === "detail") {
           document.body.classList.remove("selected-date-active");
           renderCurrentDetail();
@@ -8873,7 +8963,7 @@
 
       const aiCaptureButton = event.target.closest("[data-ai-capture]");
       if (aiCaptureButton) {
-        switchView("ai-test");
+        openAiCaptureSheet();
         return;
       }
 
@@ -9168,6 +9258,7 @@
     document.querySelector("#nextMonth").addEventListener("click", () => changeCalendarMonth(1));
     setupCalendarSwipe();
     setupSelectedDatePanelSwipe();
+    setupSheetSwipeDismiss({ sheetId: "#aiCaptureSheet", onDismiss: closeAiCaptureSheet });
     setupSheetSwipeDismiss({ sheetId: "#addScheduleSheet", onDismiss: closeAddSchedule });
     setupSheetSwipeDismiss({ sheetId: "#addEventSheet", onDismiss: closeAddEvent });
     window.addEventListener("resize", updatePanelGeometry, { passive: true });
@@ -9184,6 +9275,11 @@
     document.querySelector("#addScheduleBackdrop").addEventListener("click", event => {
       if (document.querySelector("#addScheduleSheet").ignoreRecentPanelTouch?.()) return;
       closeAddSchedule(event);
+    });
+    document.querySelector("#closeAiCapture")?.addEventListener("click", closeAiCaptureSheet);
+    document.querySelector("#aiCaptureBackdrop")?.addEventListener("click", event => {
+      if (document.querySelector("#aiCaptureSheet")?.ignoreRecentPanelTouch?.()) return;
+      closeAiCaptureSheet(event);
     });
     document.querySelector("#closeAddCourt").addEventListener("click", closeAddCourt);
     document.querySelector("#cancelAddCourt").addEventListener("click", closeAddCourt);
@@ -9244,6 +9340,8 @@
         closeMemberPhotoViewer();
       } else if (event.key === "Escape" && !document.querySelector("#attendeeSheet").classList.contains("hidden")) {
         closeAttendeeSheet();
+      } else if (event.key === "Escape" && !document.querySelector("#aiCaptureSheet").classList.contains("hidden")) {
+        closeAiCaptureSheet();
       } else if (event.key === "Escape" && !document.querySelector("#addEventSheet").classList.contains("hidden")) {
         closeAddEvent();
       } else if (event.key === "Escape" && !document.querySelector("#addCourtSheet").classList.contains("hidden")) {

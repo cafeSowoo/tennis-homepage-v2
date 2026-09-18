@@ -12,6 +12,7 @@ async page => {
  await page.waitForFunction(()=>document.body.classList.contains('approved-club-member'));
  if (await page.locator('#pwaInstallDismiss').isVisible()) await page.locator('#pwaInstallDismiss').click();
  if (page.viewportSize().width < 600) await page.locator('#calendarAddBtn').click();
+ else await page.locator('#sideScheduleAddBtn').click();
  await page.locator('[data-add-schedule]:visible').first().click();
  await page.locator('#addScheduleDate').fill('2099-01-20');
  const title = `<b data-title-probe="yes">제목</b> " ' & (토)`;
