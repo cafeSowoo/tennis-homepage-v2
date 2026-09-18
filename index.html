@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#00685d">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="성장중">
+  <meta name="apple-mobile-web-app-title" content="테니스 봄">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>아직도 성장중 - 테니스 일정</title>
-  <link rel="icon" href="assets/logo.png" type="image/png">
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <title>테니스 봄 - 테니스 일정</title>
+  <link rel="icon" href="assets/tennis-bom-emblem.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/tennis-bom-emblem.png">
   <link rel="manifest" href="manifest.webmanifest">
   <script>
     (function () {
       const now = new Date();
-      document.title = `아직도 성장중 - ${now.getFullYear()}년 ${now.getMonth() + 1}월 테니스 일정`;
+      document.title = `테니스 봄 - ${now.getFullYear()}년 ${now.getMonth() + 1}월 테니스 일정`;
     })();
   </script>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -1095,55 +1095,68 @@
       background: linear-gradient(180deg, rgba(0, 104, 93, 0.05) 0%, #fff 100%);
     }
 
-    .schedule-rsvp-cycle {
+    .schedule-row-with-rsvp {
+      display: flex;
+      align-items: stretch;
+      overflow: hidden;
+    }
+
+    .schedule-row-main {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .schedule-rsvp-actions {
+      display: grid;
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      flex: 0 0 4.25rem;
+      width: 4.25rem;
+      align-self: stretch;
+      gap: 0.1875rem;
+      margin: 0.625rem 0.625rem 0.625rem 0;
+      padding: 0.1875rem;
+      border-radius: 0.75rem;
+      background: rgba(118, 118, 128, 0.08);
+    }
+
+    .schedule-rsvp-choice {
       display: inline-flex;
+      min-height: 0;
       align-items: center;
       justify-content: center;
-      min-width: 2.75rem;
-      padding: 0.3125rem 0.625rem;
-      border-radius: 0.5rem;
       border: 1px solid transparent;
+      border-radius: 0.6rem;
+      background: transparent;
+      color: #71717a;
       font-size: 0.6875rem;
       font-weight: 700;
       line-height: 1;
-      letter-spacing: 0;
-      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
-    .schedule-rsvp-cycle--pending {
-      border-color: #d4d4d8;
-      background: #f4f4f5;
-      color: #71717a;
+    .schedule-rsvp-choice:hover {
+      background: rgba(255, 255, 255, 0.72);
+      color: #1d1d1f;
     }
 
-    .schedule-rsvp-cycle--attending {
-      border-color: rgba(0, 104, 93, 0.28);
+    .schedule-rsvp-choice.is-active[data-rsvp-state="attending"] {
+      border-color: rgba(0, 104, 93, 0.24);
       background: rgba(0, 104, 93, 0.12);
       color: #00685d;
+      box-shadow: 0 1px 2px rgba(0, 104, 93, 0.08);
     }
 
-    .schedule-rsvp-cycle--declined {
+    .schedule-rsvp-choice.is-active[data-rsvp-state="declined"] {
       border-color: #d4d4d8;
       background: #e4e4e7;
       color: #52525b;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
-    .app-list-card.is-declined .schedule-rsvp-cycle--pending {
-      border-color: #d4d4d8 !important;
-      background: #f4f4f5 !important;
-      color: #71717a !important;
-    }
-
-    .app-list-card.is-declined .schedule-rsvp-cycle--attending {
-      border-color: rgba(0, 104, 93, 0.28) !important;
-      background: rgba(0, 104, 93, 0.12) !important;
-      color: #00685d !important;
-    }
-
-    .app-list-card.is-declined .schedule-rsvp-cycle--declined {
-      border-color: #d4d4d8 !important;
-      background: #e4e4e7 !important;
-      color: #52525b !important;
+    .app-list-card.is-declined .schedule-rsvp-choice.is-active[data-rsvp-state="declined"] {
+      border-color: #c7c7cc !important;
+      background: #dedee2 !important;
+      color: #3f3f46 !important;
     }
 
     .attendee-chip {
@@ -2280,7 +2293,7 @@
     :is([data-add-event], [data-add-court], [data-edit-court], [data-add-attendee], [data-remove-attendee], [data-upload-schedule-photo], [data-follow-kakao]) { display: none !important; }
     body:not(.approved-club-member) :is([data-add-schedule], [data-ai-capture], [data-edit-current], [data-delete-current], #calendarAddBtn, #sideScheduleAddBtn) { display:none !important; }
     [data-edit-current][hidden], [data-delete-current][hidden] { display:none !important; }
-    body:not(.approved-club-member) :is([data-join-current], [data-leave-current], [data-decline-current], [data-clear-decline-current], [data-cycle-rsvp]) { display: none !important; }
+    body:not(.approved-club-member) :is([data-join-current], [data-leave-current], [data-decline-current], [data-clear-decline-current], [data-rsvp-actions]) { display: none !important; }
     .ai-test-nav { display: none !important; }
     body.club-admin .ai-test-nav { display: flex !important; }
   </style>
@@ -2291,10 +2304,10 @@
   <nav id="sideNav" class="fixed left-0 top-0 z-50 hidden h-screen w-64 flex-col gap-base backdrop-blur-xl py-md md:flex">
     <div class="mb-lg px-margin-mobile">
       <button type="button" class="brand-home flex w-full items-center gap-3" aria-label="Home으로 이동">
-        <img class="h-12 w-12 shrink-0 object-contain" src="assets/logo.png" alt="">
+        <img class="h-12 w-12 shrink-0 object-contain" src="assets/tennis-bom-emblem.png" alt="">
         <div>
-          <h1 class="sr-only">아직도 성장중</h1>
-          <img class="brand-wordmark h-7 w-auto max-w-[142px] object-contain" src="assets/brand-wordmark.svg" alt="아직도 성장중">
+          <h1 class="sr-only">테니스 봄</h1>
+          <img class="brand-wordmark h-7 w-auto max-w-[142px] object-contain" src="assets/brand-wordmark.png" alt="테니스 봄">
           <p class="font-body-md text-sm text-on-surface-variant">Tennis Club Management</p>
         </div>
       </button>
@@ -2343,8 +2356,8 @@
         <input id="globalSearch" class="w-64 rounded-full py-2 pl-10 pr-4 outline-none transition-colors" placeholder="Search..." type="search">
       </label>
       <button type="button" class="brand-home flex items-center gap-2 sm:hidden" aria-label="Home으로 이동">
-        <img class="h-7 w-7 shrink-0 object-contain" src="assets/logo.png" alt="" aria-hidden="true">
-        <img class="brand-wordmark h-8 w-auto max-w-[168px] object-contain" src="assets/brand-wordmark.svg" alt="아직도 성장중">
+        <img class="h-7 w-7 shrink-0 object-contain" src="assets/tennis-bom-emblem.png" alt="" aria-hidden="true">
+        <img class="brand-wordmark h-8 w-auto max-w-[168px] object-contain" src="assets/brand-wordmark.png" alt="테니스 봄">
       </button>
     </div>
     <div class="relative flex items-center gap-sm">
@@ -2559,7 +2572,7 @@
   <div id="pwaInstallBanner" class="fixed inset-x-0 bottom-16 z-[60] hidden px-margin-mobile md:hidden" role="region" aria-label="홈 화면 추가 안내">
     <div class="pwa-banner-inner rounded-2xl bg-white p-4">
       <div class="flex items-start gap-3">
-        <img class="h-11 w-11 shrink-0 rounded-xl" src="assets/icons/icon-192.png" alt="" aria-hidden="true">
+        <img class="h-11 w-11 shrink-0 object-contain" src="assets/tennis-bom-emblem.png" alt="" aria-hidden="true">
         <div class="min-w-0 flex-1">
           <p class="text-sm font-semibold text-[#1d1d1f]">홈 화면에 추가</p>
           <p id="pwaInstallMessage" class="mt-1 text-xs leading-relaxed text-[#86868b]"></p>
@@ -4238,7 +4251,7 @@
     }
 
     function syncDocumentTitle(monthValue = state.currentMonth) {
-      document.title = `아직도 성장중 - ${monthLabelKo(monthValue)} 테니스 일정`;
+      document.title = `테니스 봄 - ${monthLabelKo(monthValue)} 테니스 일정`;
     }
 
     function currentUserEmail() {
@@ -5082,8 +5095,8 @@
             : "내일 테니스 일정이 있어요";
           const options = {
             body: formatReminderBody(kind, rows),
-            icon: "assets/icons/icon-192.png",
-            badge: "assets/icons/icon-192.png",
+            icon: "assets/tennis-bom-emblem.png",
+            badge: "assets/tennis-bom-emblem.png",
             tag: `tennis-reminder-${kind}-${targetDate}`,
             renotify: false,
             data: { url: "./" }
@@ -6169,12 +6182,6 @@
       });
     }
 
-    const SCHEDULE_RSVP_LABELS = {
-      pending: "미정",
-      attending: "참석",
-      declined: "불참"
-    };
-
     function getScheduleRsvpState(schedule) {
       if (!schedule) return "pending";
       if (isDeclinedSchedule(schedule)) return "declined";
@@ -6182,23 +6189,28 @@
       return "pending";
     }
 
-    function nextScheduleRsvpState(current) {
-      if (current === "pending") return "declined";
-      if (current === "declined") return "attending";
-      return "pending";
-    }
-
     function scheduleRsvpButtonHTML(item) {
       if (!myMemberId()) return "";
       const rsvpState = getScheduleRsvpState(item);
-      const label = SCHEDULE_RSVP_LABELS[rsvpState];
       return `
-        <button
-          class="schedule-rsvp-cycle schedule-rsvp-cycle--${rsvpState} shrink-0"
-          type="button"
-          data-cycle-rsvp="${item.id}"
-          aria-label="참석 상태 ${label}, 탭하여 ${SCHEDULE_RSVP_LABELS[nextScheduleRsvpState(rsvpState)]}(으)로 변경"
-        >${label}</button>
+        <div class="schedule-rsvp-actions" data-rsvp-actions role="group" aria-label="참석 여부 선택">
+          <button
+            class="schedule-rsvp-choice ${rsvpState === "attending" ? "is-active" : ""}"
+            type="button"
+            data-set-rsvp="${item.id}"
+            data-rsvp-state="attending"
+            aria-pressed="${rsvpState === "attending"}"
+            aria-label="${rsvpState === "attending" ? "참석 선택 취소, 미정으로 변경" : "참석으로 변경"}"
+          >참석</button>
+          <button
+            class="schedule-rsvp-choice ${rsvpState === "declined" ? "is-active" : ""}"
+            type="button"
+            data-set-rsvp="${item.id}"
+            data-rsvp-state="declined"
+            aria-pressed="${rsvpState === "declined"}"
+            aria-label="${rsvpState === "declined" ? "불참 선택 취소, 미정으로 변경" : "불참으로 변경"}"
+          >불참</button>
+        </div>
       `;
     }
 
@@ -6224,34 +6236,36 @@
 
       const iconName = isDeclined ? "event_busy" : isBookClub ? "menu_book" : empty ? "fitness_center" : "sports_tennis";
       const attendeeListHTML = scheduleAttendeesHTML(item);
-      const rsvpButtonHTML = scheduleRsvpButtonHTML(item);
+      const rsvpButtonsHTML = scheduleRsvpButtonHTML(item);
 
       // Stitch bridge: Compact schedule match card markup starts here.
       return `
-        <article class="app-list-card ${isMine ? "is-mine" : ""} ${isHost ? "is-host" : ""} ${isDeclined ? "is-declined" : ""}">
-          <button class="schedule-card-button block w-full p-4 pb-2" type="button" data-detail-id="${item.id}" aria-label="${escapeHTML(item.title)} 상세 보기">
-            <div class="flex min-w-0 items-center gap-4">
-              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${iconClass}">
-                ${icon(iconName, "text-[20px]")}
-              </div>
-              <div class="min-w-0">
-                <div class="flex min-w-0 items-center gap-2">
-                  <h4 class="min-w-0 truncate text-[15px] font-semibold text-[#1d1d1f]">${weekendDayTextHTML(item.title)}</h4>
-                  ${isHost ? `<span class="host-calendar-badge h-5 shrink-0 px-1.5 text-[9px] uppercase tracking-wide">Host</span>` : ""}
+        <article class="app-list-card schedule-row-with-rsvp ${isMine ? "is-mine" : ""} ${isHost ? "is-host" : ""} ${isDeclined ? "is-declined" : ""}">
+          <div class="schedule-row-main">
+            <button class="schedule-card-button block w-full p-4 pb-2" type="button" data-detail-id="${item.id}" aria-label="${escapeHTML(item.title)} 상세 보기">
+              <div class="flex min-w-0 items-center gap-4">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${iconClass}">
+                  ${icon(iconName, "text-[20px]")}
                 </div>
-                <p class="mt-1 flex items-center gap-1.5 truncate text-sm text-[#86868b]">
-                  ${icon("schedule", "text-[16px] text-primary")} <span class="tabular-nums font-medium">${scheduleTimeRangeLabel(item)}</span> @ <span class="text-[#1d1d1f] font-medium">${schedulePlaceLabel(item)}</span>
-                </p>
+                <div class="min-w-0">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <h4 class="min-w-0 truncate text-[15px] font-semibold text-[#1d1d1f]">${weekendDayTextHTML(item.title)}</h4>
+                    ${isHost ? `<span class="host-calendar-badge h-5 shrink-0 px-1.5 text-[9px] uppercase tracking-wide">Host</span>` : ""}
+                  </div>
+                  <p class="mt-1 flex items-center gap-1.5 truncate text-sm text-[#86868b]">
+                    ${icon("schedule", "text-[16px] text-primary")} <span class="tabular-nums font-medium">${scheduleTimeRangeLabel(item)}</span> @ <span class="text-[#1d1d1f] font-medium">${schedulePlaceLabel(item)}</span>
+                  </p>
+                </div>
               </div>
+            </button>
+            <div class="flex min-w-0 items-center gap-2 px-4 pb-4 pt-0">
+              <p class="flex min-w-0 flex-1 items-center gap-1 text-xs text-[#86868b]">
+                ${icon("group", "text-[14px] shrink-0")} <span class="min-w-0 truncate">${attendeeListHTML}</span>
+                ${item.kakaoCommentCount > 0 ? `<span class="ml-1 shrink-0" aria-label="카카오 댓글 ${Number(item.kakaoCommentCount)}개">· 댓글 ${Number(item.kakaoCommentCount)}</span>` : ""}
+              </p>
             </div>
-          </button>
-          <div class="flex min-w-0 items-center gap-2 px-4 pb-4 pt-0">
-            <p class="flex min-w-0 flex-1 items-center gap-1 text-xs text-[#86868b]">
-              ${icon("group", "text-[14px] shrink-0")} <span class="min-w-0 truncate">${attendeeListHTML}</span>
-              ${item.kakaoCommentCount > 0 ? `<span class="ml-1 shrink-0" aria-label="카카오 댓글 ${Number(item.kakaoCommentCount)}개">· 댓글 ${Number(item.kakaoCommentCount)}</span>` : ""}
-            </p>
-            ${rsvpButtonHTML}
           </div>
+          ${rsvpButtonsHTML}
         </article>
       `;
     }
@@ -7340,7 +7354,7 @@
             <article class="app-card p-4">
               <h3 class="text-xs font-medium text-[#86868b] uppercase tracking-wide mb-2">Club status</h3>
               <p class="text-xs leading-relaxed text-[#86868b]">
-                아직도 성장중 테니스 클럽의 활성 멤버입니다. 코트 위에서 매너 있는 플레이와 성장을 지향합니다.
+                테니스 봄 클럽의 활성 멤버입니다. 코트 위에서 매너 있는 플레이와 성장을 지향합니다.
               </p>
             </article>
           </div>
@@ -8596,11 +8610,14 @@
       await persistMyScheduleRsvp(state.selectedId, "pending");
     }
 
-    async function cycleScheduleRsvp(scheduleId) {
+    async function chooseScheduleRsvp(scheduleId, requestedState) {
       requireApprovedMember();
       const schedule = findScheduleById(scheduleId);
       if (!schedule) return;
-      await persistMyScheduleRsvp(scheduleId, nextScheduleRsvpState(getScheduleRsvpState(schedule)));
+      if (!['attending', 'declined'].includes(requestedState)) return;
+      const currentState = getScheduleRsvpState(schedule);
+      const nextState = currentState === requestedState ? 'pending' : requestedState;
+      await persistMyScheduleRsvp(scheduleId, nextState);
     }
 
         async function persistKakaoChoice(scheduleId,memberId,choice) {
@@ -9077,11 +9094,11 @@
         return;
       }
 
-      const cycleRsvpButton = event.target.closest("[data-cycle-rsvp]");
-      if (cycleRsvpButton) {
+      const rsvpChoiceButton = event.target.closest("[data-set-rsvp]");
+      if (rsvpChoiceButton) {
         event.preventDefault();
         event.stopPropagation();
-        cycleScheduleRsvp(cycleRsvpButton.dataset.cycleRsvp).catch(error => alert(error.message));
+        chooseScheduleRsvp(rsvpChoiceButton.dataset.setRsvp, rsvpChoiceButton.dataset.rsvpState).catch(error => alert(error.message));
         return;
       }
 
