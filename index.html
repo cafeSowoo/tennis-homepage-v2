@@ -2308,6 +2308,28 @@
     body.approved-club-member:not(.club-admin) .member-profile-nav { display: flex !important; }
     .ai-test-nav { display: none !important; }
     body.club-admin .ai-test-nav { display: flex !important; }
+    #memberGate { background:radial-gradient(ellipse at 18% 20%,#e4eee6 0,transparent 48%),#f5f7f3; padding:112px 24px 48px; }
+    .member-gate-card { max-width:520px; margin:0 auto; background:#fff; border:1px solid #e3e9e2; border-radius:28px; padding:40px; box-shadow:0 18px 60px #193e2410; text-align:left; }
+    .member-gate-brand { display:flex; align-items:center; gap:12px; margin-bottom:36px; }
+    .member-gate-brand img { width:46px; height:46px; object-fit:contain; }
+    .member-gate-eyebrow { color:#337858; font-size:12px; font-weight:800; letter-spacing:.14em; margin-bottom:12px; }
+    #memberGateTitle { font-size:30px; line-height:1.35; font-weight:800; letter-spacing:-.04em; }
+    #memberGateText { word-break:keep-all; color:#68716b; font-size:15px; line-height:1.8; margin-top:14px; }
+    .member-gate-login { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; min-height:54px; margin-top:28px; border-radius:14px; background:#fee500; color:#191919; font-size:15px; font-weight:750; transition:background .15s; }
+    .member-gate-login:hover { background:#f4dc00; }
+    .member-gate-login:focus-visible { outline:3px solid #21734b; outline-offset:4px; }
+    .member-gate-login:disabled { opacity:.6; cursor:wait; }
+    .member-gate-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; border-top:1px solid #edf0eb; padding-top:24px; margin-top:30px; }
+    .member-gate-step-number { display:block; color:#38805d; font-size:11px; font-weight:800; margin-bottom:8px; }
+    .member-gate-steps strong { font-size:13px; color:#36483c; }
+    .member-gate-steps p { color:#7b847d; font-size:11px; line-height:1.6; margin-top:5px; }
+    .member-gate-footer { text-align:center; color:#8b948b; font-size:12px; margin:22px auto 0; }
+    #memberRequest [data-waiting] { padding:20px; background:#f3f7f2; border-radius:16px; text-align:center; }
+    #memberRequest input[type=radio] { accent-color:#21734b; margin-right:8px; }
+    #memberRequest fieldset label { padding:14px; border:1px solid #e3e9e2; border-radius:12px; }
+    #memberRequest fieldset label:has(input:checked) { background:#eff6ef; border-color:#3c8058; }
+    #memberGate [hidden] { display:none !important; }
+    @media(max-width:600px) { #memberGate { padding:88px 18px 32px; } .member-gate-card { padding:28px 24px; border-radius:22px; } #memberGateTitle { font-size:27px; } .member-gate-brand { margin-bottom:28px; } }
   </style>
 </head>
 <body class="apple-ui min-h-screen bg-[#f5f5f7] font-body-md text-body-md text-[#1d1d1f] antialiased">
@@ -2388,10 +2410,25 @@
     </div>
   </header>
 
-  <section id="memberGate" class="fixed inset-0 z-[65] bg-white px-8 pt-32 pb-12 overflow-y-auto text-center" hidden>
-    <h1 class="text-xl font-bold">회원 연결 및 가입</h1>
-    <p id="memberGateText" class="mt-4">카카오 로그인 후 승인된 회원만 이용할 수 있습니다.</p>
-    <div id="memberRequest" class="mx-auto max-w-md" hidden></div>
+  <section id="memberGate" class="fixed inset-0 z-[65] overflow-y-auto" aria-labelledby="memberGateTitle" hidden>
+    <div class="member-gate-card">
+      <div class="member-gate-brand"><img src="assets/logo.png" alt=""><span class="brand-wordmark" role="img" aria-label="테니스 봄"></span></div>
+      <p class="member-gate-eyebrow">함께 치는 즐거움</p>
+      <h1 id="memberGateTitle">코트에서 만나는<br>우리의 다음 일정</h1>
+      <p id="memberGateText">카카오 계정으로 로그인하고,<br>함께할 일정과 참석 현황을 확인해 보세요.</p>
+      <button id="memberGateLogin" class="member-gate-login" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.5 2 10.8c0 2.77 1.86 5.2 4.66 6.58l-1.1 4.02c-.08.3.25.54.5.36l4.8-3.19c.38.04.76.06 1.14.06 5.52 0 10-3.5 10-7.83S17.52 3 12 3Z"/></svg>
+        <span>카카오 계정으로 로그인</span>
+      </button>
+      <p id="memberGateLoginNotice" role="status" aria-live="polite" class="mt-3 text-sm text-on-surface-variant"></p>
+      <div id="memberRequest" hidden></div>
+      <div id="memberGateSteps" class="member-gate-steps">
+        <div><span class="member-gate-step-number">01</span><strong>카카오 로그인</strong><p>사용하던 계정으로<br>간편하게 시작해요</p></div>
+        <div><span class="member-gate-step-number">02</span><strong>회원 확인</strong><p>기존 회원 연결 또는<br>신규 가입을 요청해요</p></div>
+        <div><span class="member-gate-step-number">03</span><strong>함께 플레이</strong><p>관리자 승인 후<br>일정에 참석해요</p></div>
+      </div>
+    </div>
+    <p class="member-gate-footer">기존 회원의 경기·참석 기록은 그대로 이어집니다.</p>
   </section>
   <main class="min-h-screen px-margin-mobile pb-16 pt-20 md:pt-24 md:ml-64 md:px-margin-desktop">
     <section id="dashboard" class="view active active-animate">
@@ -4639,7 +4676,13 @@
       document.body.classList.toggle("approved-club-member", isApprovedMember());
       document.body.classList.toggle("club-admin", isClubAdmin());
       const gate = document.querySelector('#memberGate');
-      if (gate) { gate.hidden = isApprovedMember(); document.querySelector('#memberGateText').textContent = !authState.user ? '상단의 카카오 로그인 버튼으로 로그인해 주세요.' : authState.memberAccount?.status === 'disabled' ? '사용 중지된 계정입니다. 관리자에게 문의해 주세요.' : authState.memberAccount?.status === 'pending' ? (authState.memberAccount.request_submitted_at ? '요청이 접수되었습니다. 승인 후 이용할 수 있습니다.' : '회원 정보를 확인하고 연결 또는 가입을 요청해 주세요.') : '회원 정보를 확인하고 있습니다. 잠시 후 새로고침해 주세요.'; }
+      if (gate) { gate.hidden = isApprovedMember(); document.querySelector('#memberGateText').textContent = !authState.user ? '카카오 계정으로 로그인하고, 함께할 일정과 참석 현황을 확인해 보세요.' : authState.memberAccount?.status === 'disabled' ? '사용 중지된 계정입니다. 관리자에게 문의해 주세요.' : authState.memberAccount?.status === 'pending' ? (authState.memberAccount.request_submitted_at ? '요청이 접수되었습니다. 승인 후 이용할 수 있습니다.' : '회원 정보를 확인하고 연결 또는 가입을 요청해 주세요.') : '회원 정보를 확인하고 있습니다. 잠시 후 새로고침해 주세요.'; }
+      const gateLogin = document.querySelector('#memberGateLogin');
+      gateLogin.hidden = Boolean(authState.user);
+      gateLogin.disabled = !supabaseClient || !authState.initialized;
+      document.querySelector('#memberGateSteps').hidden = Boolean(authState.user);
+      document.querySelector('#memberGateTitle').innerHTML = authState.user ? '회원 연결 및 가입' : '코트에서 만나는<br>우리의 다음 일정';
+      if (authState.user) document.querySelector('#memberGateLoginNotice').textContent = '';
       const button = document.querySelector("#authButton");
       if (!button) return;
 
@@ -4744,6 +4787,16 @@
         }, 0);
       });
     }
+
+    document.querySelector('#memberGateLogin').addEventListener('click', async () => {
+      if (authState.user) return;
+      const button = document.querySelector('#memberGateLogin');
+      const notice = document.querySelector('#memberGateLoginNotice');
+      button.disabled = true; notice.textContent = '카카오 로그인으로 이동하고 있습니다…';
+      try { await handleAuthButton(); }
+      catch { notice.textContent = '로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.'; }
+      finally { button.disabled = !supabaseClient; }
+    });
 
     async function handleAuthButton() {
       if (!supabaseClient?.auth) return;
