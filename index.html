@@ -5339,21 +5339,21 @@
                 <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">종료
                   <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="time" data-ai-field="end_time" value="${escapeHTML(draft.end_time || "")}">
                 </label>
-                <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">시설
+                <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">시설
                   <select class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" data-ai-field="_court_id">
                     ${courtOptions}
                   </select>
                 </label>
                 ${hasExistingCourt ? `
-                  <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">코트
+                  <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">코트
                     <select class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f] disabled:bg-[#f5f5f7] disabled:text-[#86868b]" data-ai-field="_court_unit_id" ${units.length ? "" : "disabled"}>
                       ${unitOptions}
                     </select>
                   </label>` : `
-                  <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">기타 시설명
+                  <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">기타 시설명
                     <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="text" data-ai-field="_facility_other" value="${escapeHTML(draft._facility_other || "")}" placeholder="시설명을 직접 입력">
                   </label>
-                  <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">코트 번호
+                  <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">코트 번호
                     <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="text" data-ai-field="_other_court_number" value="${escapeHTML(draft._other_court_number || "")}" placeholder="없으면 비워 둠">
                   </label>`}
               </div>
