@@ -1575,20 +1575,31 @@
       color: #9a6700;
     }
 
+    #dashboard .overview-strip {
+      display: flex;
+      align-items: stretch;
+      gap: 0.625rem;
+      min-width: 0;
+    }
+
     #dashboard .overview-mode-toggle {
-      display: inline-flex;
-      align-items: center;
+      display: grid;
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      flex: 0 0 4.5rem;
+      width: 4.5rem;
+      align-self: stretch;
       gap: 0.125rem;
       padding: 0.1875rem;
-      border-radius: 0.75rem;
+      border-radius: 0.875rem;
       background: rgba(118, 118, 128, 0.08);
     }
 
     #dashboard .overview-mode-button {
-      min-width: 4.25rem;
-      padding: 0.36rem 0.7rem;
+      width: 100%;
+      min-height: 0;
+      padding: 0 0.45rem;
       border-radius: 0.6rem;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 650;
       line-height: 1.2;
       color: var(--app-muted);
@@ -1603,6 +1614,12 @@
       background: #ffffff;
       color: #1d1d1f;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    #dashboard #quickOverview {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
     }
 
     #dashboard .dash-overview-card.is-host .dash-overview-label {
@@ -2045,6 +2062,11 @@
         padding: 0.75rem 1rem;
       }
 
+      #dashboard .overview-mode-toggle {
+        flex-basis: 4.75rem;
+        width: 4.75rem;
+      }
+
       #dashboard .dash-overview-title {
         font-size: 1rem;
       }
@@ -2365,12 +2387,12 @@
       </div>
 
       <div class="mt-5 space-y-5 md:space-y-6">
-          <div class="space-y-2.5">
+          <div class="overview-strip">
             <div class="overview-mode-toggle" role="group" aria-label="상단 일정 보기 전환">
               <button class="overview-mode-button is-active" type="button" data-overview-mode="mine" aria-pressed="true">내 일정</button>
               <button class="overview-mode-button" type="button" data-overview-mode="open" aria-pressed="false">모집 중</button>
             </div>
-            <section id="quickOverview" class="dashboard-overview group relative flex overflow-x-auto snap-x snap-mandatory gap-2.5 pb-1 scrollbar-none -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 md:overflow-hidden md:pb-0"></section>
+            <section id="quickOverview" class="dashboard-overview group relative flex snap-x snap-mandatory gap-2.5 scrollbar-none"></section>
           </div>
 
           <div class="calendar-section-wrapper relative">
