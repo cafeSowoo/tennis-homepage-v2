@@ -26,14 +26,15 @@ Returned draft fields:
 - `application_date`
 - `notification_date`
 
-The parser is not connected to the normal schedule-creation flow yet. For now it is exposed only through the admin test UI below.
+The parser is connected to the existing schedule-creation flow as a draft/pre-fill step. It never writes schedules directly.
 
-## Admin test UI
+## Reservation capture UI
 
-The V2 homepage now includes an admin-only `AI Test` view for validating the parser before it is connected to normal schedule creation.
+The V2 homepage includes a reservation-capture view that approved active members can open from schedule-add controls. The `AI Test` navigation item remains visible only to club admins, but it points to the same capture view.
 
-- The test menu is visible only when the signed-in account is a club admin.
-- A tester can choose one supported image, call `parse-reservation-image`, edit the schedule fields that would matter for registration, and toggle which drafts would be kept.
+- Approved members can choose one supported image, call `parse-reservation-image`, edit the schedule fields that would matter for registration, and toggle which drafts would be kept.
+- The dashboard calendar `+` menu includes `캡쳐본으로 입력하기` between tennis match creation and general-event creation.
+- The desktop sidebar `일정 추가` button opens a small chooser with `직접 입력하기` and `캡쳐본으로 입력하기`.
 - `status`, `application_date`, and `notification_date` remain parser/reference data and are shown only under each draft's `AI 참고 정보`; they are not schedule form fields.
 - Parsed facility names are matched against the existing `courts` list. A successful match preselects the same facility dropdown used by normal schedules, and a parsed court number preselects a matching `court_units` option when available.
 - If no existing facility can be matched, the draft selects `기타 (직접 입력)` and keeps the parsed facility/court text in free-text test fields instead of inventing a database court ID.

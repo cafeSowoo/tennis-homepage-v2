@@ -1769,6 +1769,18 @@
       font-weight: 500;
     }
 
+    #sideScheduleAddMenu {
+      border-radius: 0.875rem;
+      border: 1px solid var(--app-border);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+      padding: 0.375rem;
+    }
+
+    #sideScheduleAddMenu button {
+      border-radius: 0.625rem;
+      font-weight: 500;
+    }
+
     #dashboard #selectedDatePanel {
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
       border: 1px solid var(--app-border);
@@ -2197,7 +2209,7 @@
 
     /* Keep dynamically rendered management controls hidden until authorized. */
     :is([data-add-event], [data-add-court], [data-edit-court], [data-add-attendee], [data-remove-attendee], [data-upload-schedule-photo], [data-follow-kakao]) { display: none !important; }
-    body:not(.approved-club-member) :is([data-add-schedule], [data-edit-current], [data-delete-current], #calendarAddBtn) { display:none !important; }
+    body:not(.approved-club-member) :is([data-add-schedule], [data-ai-capture], [data-edit-current], [data-delete-current], #calendarAddBtn, #sideScheduleAddBtn) { display:none !important; }
     [data-edit-current][hidden], [data-delete-current][hidden] { display:none !important; }
     body:not(.approved-club-member) :is([data-join-current], [data-leave-current], [data-decline-current], [data-clear-decline-current], [data-cycle-rsvp]) { display: none !important; }
     .ai-test-nav { display: none !important; }
@@ -2238,8 +2250,18 @@
       </button>
     </div>
 
-    <div class="mt-auto px-margin-mobile">
-      <button class="btn-primary w-full py-3.5 text-label-md font-bold" type="button" data-add-schedule>
+    <div class="relative mt-auto px-margin-mobile">
+      <div id="sideScheduleAddMenu" class="absolute bottom-[calc(100%+10px)] left-margin-mobile right-margin-mobile z-[70] hidden origin-bottom bg-white transition-all duration-200 ease-out transform scale-95 opacity-0">
+        <button class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors" type="button" data-add-schedule>
+          <span class="material-symbols-outlined text-primary text-[18px]">edit_calendar</span>
+          <span>직접 입력하기</span>
+        </button>
+        <button class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors" type="button" data-ai-capture>
+          <span class="material-symbols-outlined text-primary text-[18px]">add_photo_alternate</span>
+          <span>캡쳐본으로 입력하기</span>
+        </button>
+      </div>
+      <button id="sideScheduleAddBtn" class="btn-primary w-full py-3.5 text-label-md font-bold" type="button" aria-controls="sideScheduleAddMenu" aria-expanded="false">
         일정 추가
       </button>
     </div>
@@ -2314,6 +2336,10 @@
                       <button class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors" type="button" data-add-schedule>
                         <span class="material-symbols-outlined text-primary text-[18px]">sports_tennis</span>
                         <span>테니스 매치 추가</span>
+                      </button>
+                      <button class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors" type="button" data-ai-capture>
+                        <span class="material-symbols-outlined text-primary text-[18px]">add_photo_alternate</span>
+                        <span>캡쳐본으로 입력하기</span>
                       </button>
                       <button class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors" type="button" data-add-event>
                         <span class="material-symbols-outlined text-[#0071e3] text-[18px]">event</span>
@@ -2433,8 +2459,8 @@
       <div class="mx-auto max-w-5xl">
         <div class="mb-5 md:mb-6">
           <div class="flex flex-wrap items-center gap-2">
-            <h2 class="app-page-title">AI 예약 이미지 테스트</h2>
-            <span class="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">관리자 테스트</span>
+            <h2 class="app-page-title">예약 캡처로 일정 입력</h2>
+            <span class="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">AI Beta</span>
           </div>
           <p class="app-page-subtitle">예약 캡처를 분석해 초안을 만든 뒤, 기존 일정 추가 화면에서 한 건씩 확인해 등록합니다. AI가 직접 저장하지는 않습니다.</p>
         </div>
@@ -2940,6 +2966,7 @@
     let declinedScheduleIds = new Set();
     let viewRenderRequest = 0;
     let calendarAddMenuCloseTimer = 0;
+    let sideScheduleAddMenuCloseTimer = 0;
     let fileSchedules = [];
     let fileEvents = [];
     let fileDiscussions = [];
@@ -4469,7 +4496,7 @@
       document.body.classList.toggle("can-manage-official-data", canManageOfficialData());
       document.body.classList.toggle("approved-club-member", isApprovedMember());
       document.body.classList.toggle("club-admin", isClubAdmin());
-      if (!isClubAdmin() && document.querySelector("#ai-test.active")) switchView("dashboard");
+      if (!isApprovedMember() && document.querySelector("#ai-test.active")) switchView("dashboard");
       const gate = document.querySelector('#memberGate');
       if (gate) { gate.hidden = isApprovedMember(); document.querySelector('#memberGateText').textContent = !authState.user ? '상단의 카카오 로그인 버튼으로 로그인해 주세요.' : authState.memberAccount?.status === 'disabled' ? '사용 중지된 계정입니다. 관리자에게 문의해 주세요.' : '회원 승인과 연결을 기다리고 있습니다. 승인 후 새로고침해 주세요.'; }
       const button = document.querySelector("#authButton");
@@ -5540,7 +5567,7 @@
         }
 
         async function analyzeAiTestImage() {
-          if (!isClubAdmin()) throw new Error("관리자 테스트 메뉴에서만 사용할 수 있습니다.");
+          if (!isApprovedMember()) throw new Error("승인된 회원만 사용할 수 있습니다.");
           if (!supabaseClient) throw new Error("Supabase 연결 설정이 없습니다.");
           if (!aiTestFile) throw new Error("먼저 이미지를 선택해 주세요.");
 
@@ -5581,7 +5608,7 @@
         }
 
         function renderAiTest() {
-          if (!isClubAdmin()) return;
+          if (!isApprovedMember()) return;
           renderAiTestDrafts();
         }
 
@@ -8471,7 +8498,7 @@
     }
 
     function switchView(view) {
-      if (view === "ai-test" && !isClubAdmin()) view = "dashboard";
+      if (view === "ai-test" && !isApprovedMember()) view = "dashboard";
       const renderRequest = ++viewRenderRequest;
       const targetView = (view === "detail" || view === "member-detail")
         ? (view === "detail" ? "schedule" : "members")
@@ -8610,6 +8637,29 @@
     }
     window.toggleCalendarAddMenu = toggleCalendarAddMenu;
 
+    function toggleSideScheduleAddMenu(show) {
+      const menu = document.querySelector("#sideScheduleAddMenu");
+      const button = document.querySelector("#sideScheduleAddBtn");
+      if (!menu || !button) return;
+
+      const isCurrentlyHidden = menu.classList.contains("hidden");
+      const forceShow = typeof show === "boolean" ? show : isCurrentlyHidden;
+      window.clearTimeout(sideScheduleAddMenuCloseTimer);
+
+      if (forceShow) {
+        menu.classList.remove("hidden");
+        menu.offsetHeight;
+        menu.classList.remove("scale-95", "opacity-0");
+        menu.classList.add("scale-100", "opacity-100");
+        button.setAttribute("aria-expanded", "true");
+      } else {
+        menu.classList.remove("scale-100", "opacity-100");
+        menu.classList.add("scale-95", "opacity-0");
+        button.setAttribute("aria-expanded", "false");
+        sideScheduleAddMenuCloseTimer = window.setTimeout(() => menu.classList.add("hidden"), 180);
+      }
+    }
+
     document.addEventListener("click", event => {
       if (window.innerWidth < 768 && state.selectedDate && document.querySelector("#dashboard.active")) {
         if (event.target.closest("#bottomNav")) return;
@@ -8633,7 +8683,7 @@
     }, true);
 
     document.addEventListener("click", event => {
-      if (event.target.closest('[data-add-event],[data-add-court],[data-edit-court],[data-add-attendee],[data-remove-attendee],[data-upload-schedule-photo],[data-follow-kakao]') || (event.target.closest('[data-add-schedule],[data-edit-current],[data-delete-current],#calendarAddBtn') && !isApprovedMember())) {
+      if (event.target.closest('[data-add-event],[data-add-court],[data-edit-court],[data-add-attendee],[data-remove-attendee],[data-upload-schedule-photo],[data-follow-kakao]') || (event.target.closest('[data-add-schedule],[data-ai-capture],[data-edit-current],[data-delete-current],#calendarAddBtn,#sideScheduleAddBtn') && !isApprovedMember())) {
         event.preventDefault();
         return;
       }
@@ -8665,6 +8715,16 @@
         }
       }
 
+      const sideAddMenu = document.querySelector("#sideScheduleAddMenu");
+      if (sideAddMenu && !sideAddMenu.classList.contains("hidden")) {
+        const clickedInsideSideMenu = event.target.closest("#sideScheduleAddMenu");
+        const clickedSideMenuBtn = event.target.closest("#sideScheduleAddMenu button");
+        const clickedSideToggle = event.target.closest("#sideScheduleAddBtn");
+        if (clickedSideMenuBtn || (!clickedInsideSideMenu && !clickedSideToggle)) {
+          toggleSideScheduleAddMenu(false);
+        }
+      }
+
       const reminderButton = event.target.closest("#scheduleReminderButton");
       if (reminderButton) {
         toggleScheduleReminders().catch(error => console.warn("Schedule reminder failed", error));
@@ -8686,6 +8746,12 @@
       const addButton = event.target.closest("[data-add-schedule]");
       if (addButton) {
         openAddSchedule();
+        return;
+      }
+
+      const aiCaptureButton = event.target.closest("[data-ai-capture]");
+      if (aiCaptureButton) {
+        switchView("ai-test");
         return;
       }
 
@@ -8867,6 +8933,11 @@
       event.preventDefault();
       event.stopPropagation();
       toggleCalendarAddMenu();
+    });
+    document.querySelector("#sideScheduleAddBtn")?.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleSideScheduleAddMenu();
     });
     document.querySelector("#placeFilter").addEventListener("change", event => { state.place = event.target.value; renderSchedule(); });
         document.querySelector("#personFilter").addEventListener("change", event => { state.person = event.target.value; renderSchedule(); });
