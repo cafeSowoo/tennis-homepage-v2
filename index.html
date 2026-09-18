@@ -1561,6 +1561,50 @@
       border-color: rgba(0, 104, 93, 0.14);
     }
 
+    #dashboard .dash-overview-card.is-open {
+      background: linear-gradient(180deg, rgba(245, 183, 44, 0.13) 0%, rgba(245, 183, 44, 0.045) 100%);
+      border-color: rgba(181, 127, 0, 0.18);
+    }
+
+    #dashboard .dash-overview-card.is-open:hover {
+      background: linear-gradient(180deg, rgba(245, 183, 44, 0.18) 0%, rgba(245, 183, 44, 0.07) 100%);
+      border-color: rgba(181, 127, 0, 0.26);
+    }
+
+    #dashboard .dash-overview-card.is-open .dash-overview-label {
+      color: #9a6700;
+    }
+
+    #dashboard .overview-mode-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.125rem;
+      padding: 0.1875rem;
+      border-radius: 0.75rem;
+      background: rgba(118, 118, 128, 0.08);
+    }
+
+    #dashboard .overview-mode-button {
+      min-width: 4.25rem;
+      padding: 0.36rem 0.7rem;
+      border-radius: 0.6rem;
+      font-size: 0.72rem;
+      font-weight: 650;
+      line-height: 1.2;
+      color: var(--app-muted);
+      transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    #dashboard .overview-mode-button:hover {
+      color: #1d1d1f;
+    }
+
+    #dashboard .overview-mode-button.is-active {
+      background: #ffffff;
+      color: #1d1d1f;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
     #dashboard .dash-overview-card.is-host .dash-overview-label {
       color: #9a3412;
     }
@@ -2321,7 +2365,13 @@
       </div>
 
       <div class="mt-5 space-y-5 md:space-y-6">
-          <section id="quickOverview" class="dashboard-overview group relative flex overflow-x-auto snap-x snap-mandatory gap-2.5 pb-1 scrollbar-none -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 md:overflow-hidden md:pb-0"></section>
+          <div class="space-y-2.5">
+            <div class="overview-mode-toggle" role="group" aria-label="상단 일정 보기 전환">
+              <button class="overview-mode-button is-active" type="button" data-overview-mode="mine" aria-pressed="true">내 일정</button>
+              <button class="overview-mode-button" type="button" data-overview-mode="open" aria-pressed="false">모집 중</button>
+            </div>
+            <section id="quickOverview" class="dashboard-overview group relative flex overflow-x-auto snap-x snap-mandatory gap-2.5 pb-1 scrollbar-none -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 md:overflow-hidden md:pb-0"></section>
+          </div>
 
           <div class="calendar-section-wrapper relative">
             <section class="calendar-card dash-card">
@@ -2943,7 +2993,7 @@
       : null;
     const todayIso = todayIsoLocal();
     const today = new Date(`${todayIso}T00:00:00`);
-        const state = { query: "", place: "all", person: "all", scheduleWindow: "upcoming", memberSort: "count", memberMonth: "all", selectedId: 0, selectedEventId: "", selectedMemberId: "", detailType: "schedule", detailReturnTo: "schedule", selectedDate: "", currentMonth: todayIso.slice(0, 7) };
+        const state = { query: "", place: "all", person: "all", scheduleWindow: "upcoming", overviewMode: "mine", memberSort: "count", memberMonth: "all", selectedId: 0, selectedEventId: "", selectedMemberId: "", detailType: "schedule", detailReturnTo: "schedule", selectedDate: "", currentMonth: todayIso.slice(0, 7) };
     const authState = { session: null, user: null, memberAccount: null, member: null, initialized: false };
     const dataStore = { members: [], courts: [], courtUnits: [], schedules: [], events: [], discussions: [], scheduleDeclines: [] };
     let members = [];
@@ -6761,37 +6811,87 @@
         function renderUpcoming() {
           const quickOverview = document.querySelector("#quickOverview");
           if (!quickOverview) return;
-          const myUpcoming = schedules.filter(schedule => schedule.status !== 'cancelled' && schedule.date >= todayIso && (isMySchedule(schedule) || isMyHostSchedule(schedule)));
-          const cards = myUpcoming.length ? myUpcoming.map((schedule, index) => {
-            const hostOnly = isMyHostSchedule(schedule) && !isMySchedule(schedule);
-            return `
-              <button class="dash-overview-card ${hostOnly ? "is-host" : "is-mine"} shrink-0 snap-center" type="button" data-detail-id="${schedule.id}">
-                <div class="dash-overview-row">
-                  <p class="dash-overview-label">${hostOnly ? "Host" : "My"} ${String(index + 1).padStart(2, "0")}</p>
-                  <p class="dash-overview-title truncate">${escapeHTML(schedule.place)}</p>
-                </div>
-                <p class="dash-overview-meta truncate">${escapeHTML(`${dateLabel(schedule)} · ${scheduleTimeRangeLabel(schedule)}`)}</p>
-              </button>
-            `;
-          }).join("") : `
-              <button class="dash-overview-card shrink-0 snap-center" type="button" data-view-link="schedule">
-                <div class="dash-overview-row">
-                  <p class="dash-overview-label">My 00</p>
-                  <p class="dash-overview-title truncate">아직 없음</p>
-                </div>
-                <p class="dash-overview-meta truncate">내 참석 예정 없음</p>
-              </button>
-            `;
+          document.querySelectorAll("[data-overview-mode]").forEach(button => {
+            const active = button.dataset.overviewMode === state.overviewMode;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", String(active));
+          });
+
+          let cards = "";
+          if (state.overviewMode === "open") {
+            const openSchedules = schedules
+              .filter(schedule => {
+                const capacity = Number(schedule.capacity) || MATCH_CAPACITY;
+                const attendeeCount = Array.isArray(schedule.attendeeIds)
+                  ? schedule.attendeeIds.length
+                  : (schedule.attendees || []).length;
+                return schedule.status !== "cancelled" &&
+                  !schedule.closed &&
+                  schedule.date >= todayIso &&
+                  new Date(schedule.startsAt) > new Date() &&
+                  !isMySchedule(schedule) &&
+                  attendeeCount < capacity;
+              })
+              .sort(compareSchedulesByTime);
+
+            cards = openSchedules.length ? openSchedules.map(schedule => {
+              const capacity = Number(schedule.capacity) || MATCH_CAPACITY;
+              const attendeeCount = Array.isArray(schedule.attendeeIds)
+                ? schedule.attendeeIds.length
+                : (schedule.attendees || []).length;
+              return `
+                <button class="dash-overview-card is-open shrink-0 snap-center" type="button" data-detail-id="${schedule.id}">
+                  <div class="dash-overview-row">
+                    <p class="dash-overview-label tabular-nums">${attendeeCount}/${capacity}</p>
+                    <p class="dash-overview-title truncate">${escapeHTML(schedule.place)}</p>
+                  </div>
+                  <p class="dash-overview-meta truncate">${escapeHTML(`${dateLabel(schedule)} · ${scheduleTimeRangeLabel(schedule)}`)}</p>
+                </button>
+              `;
+            }).join("") : `
+                <button class="dash-overview-card is-open shrink-0 snap-center" type="button" data-view-link="schedule">
+                  <div class="dash-overview-row">
+                    <p class="dash-overview-label">0/0</p>
+                    <p class="dash-overview-title truncate">모집 중 일정 없음</p>
+                  </div>
+                  <p class="dash-overview-meta truncate">현재 참여 가능한 일정이 없습니다</p>
+                </button>
+              `;
+          } else {
+            const myUpcoming = schedules.filter(schedule => schedule.status !== 'cancelled' && schedule.date >= todayIso && (isMySchedule(schedule) || isMyHostSchedule(schedule)));
+            cards = myUpcoming.length ? myUpcoming.map((schedule, index) => {
+              const hostOnly = isMyHostSchedule(schedule) && !isMySchedule(schedule);
+              return `
+                <button class="dash-overview-card ${hostOnly ? "is-host" : "is-mine"} shrink-0 snap-center" type="button" data-detail-id="${schedule.id}">
+                  <div class="dash-overview-row">
+                    <p class="dash-overview-label">${hostOnly ? "Host" : "My"} ${String(index + 1).padStart(2, "0")}</p>
+                    <p class="dash-overview-title truncate">${escapeHTML(schedule.place)}</p>
+                  </div>
+                  <p class="dash-overview-meta truncate">${escapeHTML(`${dateLabel(schedule)} · ${scheduleTimeRangeLabel(schedule)}`)}</p>
+                </button>
+              `;
+            }).join("") : `
+                <button class="dash-overview-card shrink-0 snap-center" type="button" data-view-link="schedule">
+                  <div class="dash-overview-row">
+                    <p class="dash-overview-label">My 00</p>
+                    <p class="dash-overview-title truncate">아직 없음</p>
+                  </div>
+                  <p class="dash-overview-meta truncate">내 참석 예정 없음</p>
+                </button>
+              `;
+          }
+
+          const modeLabel = state.overviewMode === "open" ? "모집 중 일정" : "내 일정";
 
           quickOverview.innerHTML = `
-            <button class="hidden md:absolute md:left-3 md:top-1/2 md:z-10 md:flex md:h-9 md:w-9 md:-translate-y-1/2 md:items-center md:justify-center md:rounded-full md:border md:border-outline-variant/40 md:bg-surface-container-lowest/85 md:backdrop-blur-md md:text-on-surface-variant md:shadow-float md:opacity-0 md:pointer-events-none md:transition-all md:duration-200 md:hover:bg-surface-container-high md:hover:text-primary md:hover:scale-105" type="button" data-overview-scroll="-1" aria-label="이전 내 일정">
+            <button class="hidden md:absolute md:left-3 md:top-1/2 md:z-10 md:flex md:h-9 md:w-9 md:-translate-y-1/2 md:items-center md:justify-center md:rounded-full md:border md:border-outline-variant/40 md:bg-surface-container-lowest/85 md:backdrop-blur-md md:text-on-surface-variant md:shadow-float md:opacity-0 md:pointer-events-none md:transition-all md:duration-200 md:hover:bg-surface-container-high md:hover:text-primary md:hover:scale-105" type="button" data-overview-scroll="-1" aria-label="이전 ${modeLabel}">
               ${icon("chevron_left", "text-[18px]")}
             </button>
             <div class="flex min-w-0 gap-3 overflow-x-auto scroll-smooth scrollbar-none md:w-full md:snap-x md:snap-mandatory" data-overview-track>
               ${cards}
               <div class="w-margin-mobile shrink-0 md:hidden" aria-hidden="true"></div>
             </div>
-            <button class="hidden md:absolute md:right-3 md:top-1/2 md:z-10 md:flex md:h-9 md:w-9 md:-translate-y-1/2 md:items-center md:justify-center md:rounded-full md:border md:border-outline-variant/40 md:bg-surface-container-lowest/85 md:backdrop-blur-md md:text-on-surface-variant md:shadow-float md:opacity-0 md:pointer-events-none md:transition-all md:duration-200 md:hover:bg-surface-container-high md:hover:text-primary md:hover:scale-105" type="button" data-overview-scroll="1" aria-label="다음 내 일정">
+            <button class="hidden md:absolute md:right-3 md:top-1/2 md:z-10 md:flex md:h-9 md:w-9 md:-translate-y-1/2 md:items-center md:justify-center md:rounded-full md:border md:border-outline-variant/40 md:bg-surface-container-lowest/85 md:backdrop-blur-md md:text-on-surface-variant md:shadow-float md:opacity-0 md:pointer-events-none md:transition-all md:duration-200 md:hover:bg-surface-container-high md:hover:text-primary md:hover:scale-105" type="button" data-overview-scroll="1" aria-label="다음 ${modeLabel}">
               ${icon("chevron_right", "text-[18px]")}
             </button>
           `;
@@ -8904,6 +9004,12 @@
       const memberDetailButton = event.target.closest("[data-member-id]");
       if (memberDetailButton) {
         openMemberDetailNavigation(memberDetailButton.dataset.memberId);
+        return;
+      }
+      const overviewModeButton = event.target.closest("[data-overview-mode]");
+      if (overviewModeButton) {
+        state.overviewMode = overviewModeButton.dataset.overviewMode === "open" ? "open" : "mine";
+        renderUpcoming();
         return;
       }
       const overviewScrollButton = event.target.closest("[data-overview-scroll]");
