@@ -9,7 +9,7 @@ const output=r.stdout?.split('### Ran Playwright code')[0]||'';
 assert.equal(r.status,0,output||r.stderr);
 const match=/### Result\s*\n([^\n]+)/.exec(output);assert.ok(match,output);
 const result=JSON.parse(match[1]);
-assert.deepEqual(result.errors,[]);
+assert.deepEqual(result.errors,[]);assert.equal(result.titleSafety,true);
 assert.equal(result.cancelled.responses,1);assert.equal(result.cancelled.comments,1);
 assert.equal(result.cancelled.join,false);assert.equal(result.cancelled.composer,false);assert.equal(result.cancelled.deleteComment,true);
 assert.equal(result.loggedOut.detail,'');assert.equal(result.loggedOut.schedules,0);assert.equal(result.loggedOut.gate,true);

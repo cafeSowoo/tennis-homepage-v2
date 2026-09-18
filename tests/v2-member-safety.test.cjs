@@ -144,3 +144,13 @@ test('cancelled and started schedules reject RSVP before network calls',async()=
     const c=memberContext();mutation(c.schedules[0]);await assert.rejects(c.joinCurrentSchedule());assert.equal(c.calls.length,0);
   }
 });
+test('schedule list encodes member titles in both text and accessible attributes',()=>{
+ const c={weekendDayClass:()=> 'weekend',isBookClubSchedule:()=>false,isYonseiSchedule:()=>false,isMySchedule:()=>false,isMyHostSchedule:()=>false,isDeclinedSchedule:()=>false,scheduleAttendeesHTML:()=>'',scheduleRsvpButtonHTML:()=>'',icon:()=>'',scheduleTimeRangeLabel:()=>'',schedulePlaceLabel:()=>''};
+ vm.createContext(c);vm.runInContext(['escapeHTML','weekendDayTextHTML','scheduleRow'].map(source).join('\n'),c);
+ const title=`<b data-title-probe="yes">제목</b> " ' & (토)`;
+ const result=c.scheduleRow({id:'fixture',title,attendees:[]});
+ assert.ok(result.includes('aria-label="'+c.escapeHTML(title)+' 상세 보기"'));
+ assert.ok(result.includes('&lt;b data-title-probe=&quot;yes&quot;&gt;제목&lt;/b&gt;'));
+ assert.ok(!result.includes('<b data-title-probe='));
+ assert.ok(result.includes('<span class="weekend">(토)</span>'));
+});

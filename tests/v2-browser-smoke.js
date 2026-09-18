@@ -14,12 +14,22 @@ async page => {
  if (page.viewportSize().width < 600) await page.locator('#calendarAddBtn').click();
  await page.locator('[data-add-schedule]:visible').first().click();
  await page.locator('#addScheduleDate').fill('2099-01-20');
- await page.locator('#addScheduleTitle').fill('V2 브라우저 시험');
+ const title = `<b data-title-probe="yes">제목</b> " ' & (토)`;
+ await page.locator('#addScheduleTitle').fill(title);
  await page.locator('#addScheduleCapacity').fill('5');
  await page.locator('#addScheduleSubmit').click();
  await page.waitForFunction(()=>window.__v2Mock.tables.v2_schedules.length===1);
  await page.waitForTimeout(250);
  const afterCreate=await page.evaluate(()=>({calls:__v2Mock.calls.length,detail:document.querySelector('#detailContent').innerText,formHidden:document.querySelector('#addScheduleSheet').classList.contains('hidden')}));
+ const titleSafety=await page.evaluate(expected=>{
+   const h=document.querySelector('#detailContent h2');
+   const container=document.createElement('div');container.innerHTML=scheduleRow(schedules[0]);
+   return h.textContent===expected && !h.querySelector('[data-title-probe]') &&
+     container.querySelector('h4').textContent===expected &&
+     container.querySelector('[data-detail-id]').getAttribute('aria-label')===expected+' 상세 보기' &&
+     !container.querySelector('[data-title-probe]');
+ },title);
+ if(!titleSafety)throw Error('Schedule title was interpreted as HTML');
  await page.locator('[data-edit-current]').first().click();
  await page.locator('#addScheduleTitle').fill('수정한 V2 일정');
  await page.locator('#addScheduleSubmit').click();
@@ -39,5 +49,5 @@ async page => {
  await page.locator('#authButton').click();
  await page.waitForFunction(()=>!document.querySelector('#memberGate').hidden);
  const loggedOut=await page.evaluate(()=>({detail:document.querySelector('#detailContent').innerText,schedules:typeof schedules==='undefined'?null:schedules.length,gate:!document.querySelector('#memberGate').hidden,calls:__v2Mock.calls.map(c=>c.name)}));
- return {errors,dialogs,cancelled,loggedOut};
+ return {errors,dialogs,cancelled,loggedOut,titleSafety};
 }
