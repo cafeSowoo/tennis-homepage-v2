@@ -2299,6 +2299,9 @@
     body:not(.approved-club-member) :is([data-add-schedule], [data-ai-capture], [data-edit-current], [data-delete-current], #calendarAddBtn, #sideScheduleAddBtn) { display:none !important; }
     [data-edit-current][hidden], [data-delete-current][hidden] { display:none !important; }
     body:not(.approved-club-member) :is([data-join-current], [data-leave-current], [data-decline-current], [data-clear-decline-current], [data-rsvp-actions]) { display: none !important; }
+    .club-admin-nav, .member-profile-nav { display: none !important; }
+    body.club-admin .club-admin-nav { display: flex !important; }
+    body.approved-club-member:not(.club-admin) .member-profile-nav { display: flex !important; }
     .ai-test-nav { display: none !important; }
     body.club-admin .ai-test-nav { display: flex !important; }
   </style>
@@ -2326,11 +2329,14 @@
       <button class="nav-item mx-2.5 flex items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="schedule">
         <span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>Schedule
       </button>
-      <button class="nav-item mx-2.5 flex items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="courts">
+      <button class="nav-item club-admin-nav mx-2.5 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="courts">
         <span class="material-symbols-outlined" data-icon="sports_tennis">sports_tennis</span>Courts
       </button>
-      <button class="nav-item mx-2.5 flex items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="members">
+      <button class="nav-item club-admin-nav mx-2.5 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="members">
         <span class="material-symbols-outlined" data-icon="group">group</span>Members
+      </button>
+      <button class="nav-item member-profile-nav mx-2.5 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="profile">
+        <span class="material-symbols-outlined" data-icon="person">person</span>Profile
       </button>
       <button class="nav-item ai-test-nav mx-2.5 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="ai-test">
         <span class="material-symbols-outlined" data-icon="science">science</span>AI Test
@@ -2511,7 +2517,7 @@
     </section>
 
     <section id="member-detail" class="view">
-      <div class="mb-5">
+      <div id="memberDetailBreadcrumb" class="mb-5">
         <div class="app-crumb">
           <button type="button" data-member-detail-back aria-label="Members로 돌아가기">Members</button>
           <span class="material-symbols-outlined text-sm">chevron_right</span>
@@ -2560,13 +2566,17 @@
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="calendar_today">calendar_today</span>
       <span class="text-[10px] font-bold">Schedule</span>
     </button>
-    <button class="nav-item flex flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="courts">
+    <button class="nav-item club-admin-nav flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="courts">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="sports_tennis">sports_tennis</span>
       <span class="text-[10px] font-bold">Courts</span>
     </button>
-    <button class="nav-item flex flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="members">
+    <button class="nav-item club-admin-nav flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="members">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="group">group</span>
       <span class="text-[10px] font-bold">Members</span>
+    </button>
+    <button class="nav-item member-profile-nav flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="profile">
+      <span class="material-symbols-outlined transition-transform duration-200" data-icon="person">person</span>
+      <span class="text-[10px] font-bold">Profile</span>
     </button>
     <button class="nav-item ai-test-nav flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="ai-test">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="science">science</span>
@@ -3893,6 +3903,7 @@
       const dashboardActive = document.querySelector("#dashboard.active");
       if (state.selectedDate && dashboardActive) return "dashboard-date";
       if (dashboardActive) return "dashboard";
+      if (document.querySelector('.nav-item[data-view="profile"].active')) return "profile";
       return "schedule";
     }
 
@@ -3913,6 +3924,13 @@
         backLabel.textContent = "Home";
         backLink.dataset.detailBack = "dashboard";
         backLink.setAttribute("aria-label", "Home으로 돌아가기");
+        return;
+      }
+
+      if (returnTo === "profile") {
+        backLabel.textContent = "Profile";
+        backLink.dataset.detailBack = "profile";
+        backLink.setAttribute("aria-label", "Profile로 돌아가기");
         return;
       }
 
@@ -3940,6 +3958,11 @@
 
       if (returnTo === "dashboard-date" || returnTo === "dashboard") {
         switchView("dashboard");
+        return;
+      }
+
+      if (returnTo === "profile") {
+        switchView("profile");
         return;
       }
 
@@ -7347,7 +7370,7 @@
       if (crumb) {
         crumb.textContent = `${name} Profile`;
         crumb.setAttribute("tabindex", "-1");
-        crumb.focus();
+        if (!document.querySelector("#memberDetailBreadcrumb")?.classList.contains("hidden")) crumb.focus();
       }
 
       document.querySelector("#memberDetailContent").innerHTML = `
@@ -8762,20 +8785,31 @@
         if (isApprovedMember()) openAiCaptureSheet();
         return;
       }
+      if (view === "profile") {
+        const memberId = myMemberId();
+        if (!memberId) return;
+        state.selectedMemberId = String(memberId);
+      }
       const renderRequest = ++viewRenderRequest;
-      const targetView = (view === "detail" || view === "member-detail")
-        ? (view === "detail" ? "schedule" : "members")
-        : view;
+      const contentView = view === "profile" ? "member-detail" : view;
+      const targetView = view === "profile"
+        ? "profile"
+        : (view === "detail" || view === "member-detail")
+          ? (view === "detail" ? "schedule" : "members")
+          : view;
 
       const updateDOM = () => {
         if (view !== "dashboard" && view !== "detail" && (state.selectedDate || document.body.classList.contains("selected-date-active"))) {
           closeDatePanel({ immediate: true });
         }
 
-        if (view !== "member-detail" && document.querySelector("#member-detail.active")) {
+        if (contentView !== "member-detail" && document.querySelector("#member-detail.active")) {
           dismissMemberDetailHistory();
           state.selectedMemberId = "";
         }
+
+        const memberDetailBreadcrumb = document.querySelector("#memberDetailBreadcrumb");
+        if (memberDetailBreadcrumb) memberDetailBreadcrumb.classList.toggle("hidden", view === "profile");
 
         if (view !== "detail") {
           state.detailReturnTo = "schedule";
@@ -8840,13 +8874,13 @@
         } else if (view === "detail") {
           document.body.classList.remove("selected-date-active");
           renderCurrentDetail();
-        } else if (view === "member-detail") {
+        } else if (view === "member-detail" || view === "profile") {
           renderMemberDetail();
         }
 
         // 4. Elastic Tab Fade-Slide Transition
         document.querySelectorAll(".view").forEach(el => {
-          if (el.id === view) {
+          if (el.id === contentView) {
             el.style.display = "block";
             el.offsetHeight;
             el.classList.add("active");
