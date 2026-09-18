@@ -20,7 +20,7 @@ test('changing image ignores old success and failure without unlocking the new r
  for(const fail of [false,true]){
  const h=setup();h.choose('A');const a=h.c.analyzeAiTestImage();h.choose('B');const b=h.c.analyzeAiTestImage();
  if(fail)h.calls[0].reject(new Error('old'));else h.calls[0].resolve(result('A'));
- await a;assert.equal(h.c.aiTestDrafts.length,0);assert.equal(h.button().disabled,true);assert(h.button().innerHTML.includes('분석 중'));
+ await a;assert.equal(h.c.aiTestDrafts.length,0);assert.equal(h.button().disabled,true);assert(h.button().innerHTML.includes('불러오는 중'));
  h.calls[1].resolve(result('B'));await b;assert.equal(h.c.aiTestDrafts[0].facility_name,'B');assert.equal(h.button().disabled,false);assert.equal(h.button().innerHTML,'분석하기');
  }
 });
@@ -40,5 +40,5 @@ test('duplicate starts are suppressed and delayed error decoding cannot overwrit
  const a=h.c.analyzeAiTestImage();await h.c.analyzeAiTestImage();assert.equal(h.calls.length,1);
  h.calls[0].resolve({error:{}});await new Promise(setImmediate);
  h.choose('B');const b=h.c.analyzeAiTestImage();h.calls[1].resolve(result('B'));await b;
- decode('old error');await a;assert.equal(h.c.aiTestDrafts[0].facility_name,'B');assert(h.status().includes('분석 완료'));assert.equal(h.button().innerHTML,'분석하기');
+ decode('old error');await a;assert.equal(h.c.aiTestDrafts[0].facility_name,'B');assert(h.status().includes('건을 찾았습니다.'));assert.equal(h.button().innerHTML,'분석하기');
 });
