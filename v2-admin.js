@@ -37,6 +37,11 @@ window.V2MemberAdmin = {
         if(a.role==='admin' || a.user_id===userId()){
           card.append(node('p','관리자 보호 계정','text-sm'));list.append(card);continue;
         }
+        if(a.request_submitted_at){
+          const requested=members().find(m=>String(m.id)===a.requested_member_id);
+          card.append(node('p',a.request_kind==='existing'?`연결 요청: ${requested?.name || a.requested_name} (${a.requested_member_id || '삭제된 회원'})`:`신규 가입 요청: ${a.requested_name}`,'my-3 text-sm font-bold'));
+          if(a.request_kind==='new')card.append(node('p','기존 명단의 중복 여부를 확인해 주세요. 신규 회원은 회원 등록 후 선택하여 승인합니다.','text-sm'));
+        }
         let select;
         if(a.status!=='approved'){
           select=node('select');select.className='w-full rounded-lg border p-2 mb-3';select.setAttribute('aria-label',`${a.requested_name||'닉네임 없음'} 연결 회원`);

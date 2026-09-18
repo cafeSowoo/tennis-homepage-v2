@@ -25,6 +25,7 @@
   <script src="env.js?v=20260526-auth-redirect"></script>
   <script src="v2-data.js"></script>
   <script src="v2-admin.js"></script>
+  <script src="v2-member-request.js"></script>
   <script src="build-info.js"></script>
   <script src="v2-feedback.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
@@ -2387,9 +2388,10 @@
     </div>
   </header>
 
-  <section id="memberGate" class="fixed inset-0 z-[65] bg-white px-8 pt-32 text-center" hidden>
-    <h1 class="text-xl font-bold">성장중 회원 일정</h1>
+  <section id="memberGate" class="fixed inset-0 z-[65] bg-white px-8 pt-32 pb-12 overflow-y-auto text-center" hidden>
+    <h1 class="text-xl font-bold">회원 연결 및 가입</h1>
     <p id="memberGateText" class="mt-4">카카오 로그인 후 승인된 회원만 이용할 수 있습니다.</p>
+    <div id="memberRequest" class="mx-auto max-w-md" hidden></div>
   </section>
   <main class="min-h-screen px-margin-mobile pb-16 pt-20 md:pt-24 md:ml-64 md:px-margin-desktop">
     <section id="dashboard" class="view active active-animate">
@@ -3063,6 +3065,7 @@
     const dataStore = { members: [], courts: [], courtUnits: [], schedules: [], events: [], discussions: [], scheduleDeclines: [] };
     let members = [];
     const memberAdmin = window.V2MemberAdmin.create({client: () => supabaseClient, isAdmin: () => isClubAdmin(), members: () => members, userId: () => authState.user?.id});
+    const memberRequest = window.V2MemberRequest.create({client: () => supabaseClient, account: () => authState.memberAccount, userId: () => authState.user?.id, refresh: async () => { await loadCurrentMemberAccount(); renderAuthStatus(); await loadSupabaseData(); refreshViews(); }});
     const feedback = window.V2Feedback.create({scheduleTitle: id => schedules.find(s => String(s.id) === id)?.title, client: () => supabaseClient, isApproved: () => isApprovedMember(), isAdmin: () => isClubAdmin(), userId: () => authState.user?.id, context: () => ({view: document.querySelector('.view.active')?.id || 'other', scheduleId: document.querySelector('#detail.active') && state.detailType === 'schedule' ? String(state.selectedId) : null})});
     let courts = [];
     let courtUnits = [];
@@ -4368,7 +4371,7 @@
         return;
       }
 
-      const selectColumns = "user_id,member_id,requested_name,provider,role,status,approved_at";
+      const selectColumns = "user_id,member_id,requested_name,provider,role,status,approved_at,request_kind,requested_member_id,request_submitted_at";
       let { data, error } = await supabaseClient
         .from("club_member_accounts")
         .select(selectColumns)
@@ -4630,12 +4633,13 @@
     function renderAuthStatus() {
       syncAdminViewToggle();
       memberAdmin.sync();
+      memberRequest.sync();
       feedback.sync();
       document.body.classList.toggle("can-manage-official-data", canManageOfficialData());
       document.body.classList.toggle("approved-club-member", isApprovedMember());
       document.body.classList.toggle("club-admin", isClubAdmin());
       const gate = document.querySelector('#memberGate');
-      if (gate) { gate.hidden = isApprovedMember(); document.querySelector('#memberGateText').textContent = !authState.user ? '상단의 카카오 로그인 버튼으로 로그인해 주세요.' : authState.memberAccount?.status === 'disabled' ? '사용 중지된 계정입니다. 관리자에게 문의해 주세요.' : '회원 승인과 연결을 기다리고 있습니다. 승인 후 새로고침해 주세요.'; }
+      if (gate) { gate.hidden = isApprovedMember(); document.querySelector('#memberGateText').textContent = !authState.user ? '상단의 카카오 로그인 버튼으로 로그인해 주세요.' : authState.memberAccount?.status === 'disabled' ? '사용 중지된 계정입니다. 관리자에게 문의해 주세요.' : authState.memberAccount?.status === 'pending' ? (authState.memberAccount.request_submitted_at ? '요청이 접수되었습니다. 승인 후 이용할 수 있습니다.' : '회원 정보를 확인하고 연결 또는 가입을 요청해 주세요.') : '회원 정보를 확인하고 있습니다. 잠시 후 새로고침해 주세요.'; }
       const button = document.querySelector("#authButton");
       if (!button) return;
 
