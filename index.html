@@ -9,8 +9,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   <title>테니스 봄 - 테니스 일정</title>
-  <link rel="icon" href="assets/tennis-bom-emblem.png" type="image/png">
-  <link rel="apple-touch-icon" href="assets/tennis-bom-emblem.png">
+  <link rel="icon" href="assets/icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <script>
     (function () {
@@ -884,6 +884,9 @@
         border: 1.5px solid #111;
       }
     }
+    /* Display the supplied wordmark's lettering without its transparent canvas margins. */
+    .brand-wordmark { display:block; flex-shrink:0; width:142px; height:auto; aspect-ratio:1600 / 350; background-image:url("assets/brand-wordmark.png"); background-repeat:no-repeat; background-size:135.75% auto; background-position:15.7343% 52.139%; }
+    header .brand-wordmark { width:168px; }
     @media (max-width: 374px) {
       header .font-headline-md {
         font-size: 18px;
@@ -894,8 +897,9 @@
         width: 24px !important;
       }
       header .brand-wordmark {
-        height: 26px !important;
-        max-width: 150px;
+        height: auto !important;
+        width: 140px;
+        max-width: 140px;
       }
       .dashboard-title {
         font-size: 25px;
@@ -2304,10 +2308,10 @@
   <nav id="sideNav" class="fixed left-0 top-0 z-50 hidden h-screen w-64 flex-col gap-base backdrop-blur-xl py-md md:flex">
     <div class="mb-lg px-margin-mobile">
       <button type="button" class="brand-home flex w-full items-center gap-3" aria-label="Home으로 이동">
-        <img class="h-12 w-12 shrink-0 object-contain" src="assets/tennis-bom-emblem.png" alt="">
+        <img class="h-12 w-12 shrink-0 object-contain" src="assets/logo.png" alt="">
         <div>
           <h1 class="sr-only">테니스 봄</h1>
-          <img class="brand-wordmark h-7 w-auto max-w-[142px] object-contain" src="assets/brand-wordmark.png" alt="테니스 봄">
+          <span class="brand-wordmark" role="img" aria-label="테니스 봄"></span>
           <p class="font-body-md text-sm text-on-surface-variant">Tennis Club Management</p>
         </div>
       </button>
@@ -2356,8 +2360,8 @@
         <input id="globalSearch" class="w-64 rounded-full py-2 pl-10 pr-4 outline-none transition-colors" placeholder="Search..." type="search">
       </label>
       <button type="button" class="brand-home flex items-center gap-2 sm:hidden" aria-label="Home으로 이동">
-        <img class="h-7 w-7 shrink-0 object-contain" src="assets/tennis-bom-emblem.png" alt="" aria-hidden="true">
-        <img class="brand-wordmark h-8 w-auto max-w-[168px] object-contain" src="assets/brand-wordmark.png" alt="테니스 봄">
+        <img class="h-7 w-7 shrink-0 object-contain" src="assets/logo.png" alt="" aria-hidden="true">
+        <span class="brand-wordmark" role="img" aria-label="테니스 봄"></span>
       </button>
     </div>
     <div class="relative flex items-center gap-sm">
@@ -2572,7 +2576,7 @@
   <div id="pwaInstallBanner" class="fixed inset-x-0 bottom-16 z-[60] hidden px-margin-mobile md:hidden" role="region" aria-label="홈 화면 추가 안내">
     <div class="pwa-banner-inner rounded-2xl bg-white p-4">
       <div class="flex items-start gap-3">
-        <img class="h-11 w-11 shrink-0 object-contain" src="assets/tennis-bom-emblem.png" alt="" aria-hidden="true">
+        <img class="h-11 w-11 shrink-0 object-contain" src="assets/logo.png" alt="" aria-hidden="true">
         <div class="min-w-0 flex-1">
           <p class="text-sm font-semibold text-[#1d1d1f]">홈 화면에 추가</p>
           <p id="pwaInstallMessage" class="mt-1 text-xs leading-relaxed text-[#86868b]"></p>
@@ -5095,8 +5099,8 @@
             : "내일 테니스 일정이 있어요";
           const options = {
             body: formatReminderBody(kind, rows),
-            icon: "assets/tennis-bom-emblem.png",
-            badge: "assets/tennis-bom-emblem.png",
+            icon: "assets/icons/icon-192.png",
+            badge: "assets/icons/icon-192.png",
             tag: `tennis-reminder-${kind}-${targetDate}`,
             renotify: false,
             data: { url: "./" }

@@ -13,10 +13,10 @@ async function matchAppCache(request) {
 const SHELL_ASSETS = [
   "./manifest.webmanifest",
   "./assets/logo.png",
+  "./assets/icons/apple-touch-icon.png",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
-  "./assets/icons/apple-touch-icon.png",
-  "./assets/brand-wordmark.svg"
+  "./assets/brand-wordmark.png"
 ];
 
 self.addEventListener("install", event => {
