@@ -5145,6 +5145,73 @@
           }[status] || "미확인";
         }
 
+        function normalizeAiTestFacilityName(value) {
+          return String(value || "")
+            .normalize("NFKC")
+            .toLowerCase()
+            .replace(/\([^)]*\)/g, " ")
+            .replace(/테니스장|테니스코트|테니스|체육시설|체육공원|공원|코트/g, " ")
+            .replace(/[^0-9a-z가-힣]+/g, "");
+        }
+
+        function matchAiTestCourt(facilityName) {
+          const source = normalizeAiTestFacilityName(facilityName);
+          if (source.length < 2) return null;
+
+          const matches = courts.map(court => {
+            const aliases = [court.name, court.canonicalName]
+              .map(normalizeAiTestFacilityName)
+              .filter(Boolean);
+            const score = aliases.reduce((best, alias) => {
+              if (source === alias) return Math.max(best, 1000 + alias.length);
+              if (source.includes(alias) || alias.includes(source)) {
+                return Math.max(best, 500 + Math.min(source.length, alias.length));
+              }
+              return best;
+            }, 0);
+            return { court, score };
+          }).filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score || String(b.court.name).length - String(a.court.name).length);
+
+          if (!matches.length) return null;
+          if (matches.length > 1 && matches[0].score === matches[1].score) return null;
+          return matches[0].court;
+        }
+
+        function normalizeAiTestCourtNumber(value) {
+          return String(value || "")
+            .normalize("NFKC")
+            .toUpperCase()
+            .replace(/코트|번|호/g, "")
+            .replace(/[^0-9A-Z가-힣]+/g, "");
+        }
+
+        function matchAiTestCourtUnit(courtId, courtNumber) {
+          const source = normalizeAiTestCourtNumber(courtNumber);
+          if (!courtId || !source) return null;
+          return courtUnitsForCourt(courtId).find(unit => normalizeAiTestCourtNumber(unit.label) === source) || null;
+        }
+
+        function makeAiTestDraft(draft) {
+          const matchedCourt = matchAiTestCourt(draft.facility_name);
+          const matchedUnit = matchedCourt ? matchAiTestCourtUnit(matchedCourt.id, draft.court_number) : null;
+          return {
+            use_date: draft.use_date ?? null,
+            start_time: draft.start_time ?? null,
+            end_time: draft.end_time ?? null,
+            facility_name: draft.facility_name ?? null,
+            court_number: draft.court_number ?? null,
+            status: draft.status ?? null,
+            application_date: draft.application_date ?? null,
+            notification_date: draft.notification_date ?? null,
+            _court_id: matchedCourt?.id || "__other__",
+            _court_unit_id: matchedUnit?.id || "",
+            _facility_other: matchedCourt ? "" : (draft.facility_name || ""),
+            _other_court_number: matchedCourt ? "" : (draft.court_number || ""),
+            _selected: true
+          };
+        }
+
         function aiTestFormatBytes(bytes) {
           if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
           if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -5241,32 +5308,30 @@
             return;
           }
 
-          const statusOptions = [
-            ["", "미확인"],
-            ["lottery_waiting", "추첨 대기"],
-            ["won", "당첨"],
-            ["paid", "결제 완료"],
-            ["confirmed", "예약 확정"],
-            ["cancelled", "취소"]
-          ];
+          container.innerHTML = aiTestDrafts.map((draft, index) => {
+            const hasExistingCourt = draft._court_id !== "__other__" && courts.some(court => court.id === draft._court_id);
+            const units = hasExistingCourt ? courtUnitsForCourt(draft._court_id) : [];
+            const selectedUnitExists = units.some(unit => unit.id === draft._court_unit_id);
+            const courtOptions = [
+              ...courts.map(court => `<option value="${escapeHTML(court.id)}" ${draft._court_id === court.id ? "selected" : ""}>${escapeHTML(court.name)}</option>`),
+              `<option value="__other__" ${!hasExistingCourt ? "selected" : ""}>기타 (직접 입력)</option>`
+            ].join("");
+            const unitOptions = [
+              `<option value="">선택 안 함</option>`,
+              ...units.map(unit => `<option value="${escapeHTML(unit.id)}" ${selectedUnitExists && draft._court_unit_id === unit.id ? "selected" : ""}>${escapeHTML(courtUnitLabel(unit))}</option>`)
+            ].join("");
 
-          container.innerHTML = aiTestDrafts.map((draft, index) => `
+            return `
             <article class="rounded-2xl border ${draft._selected ? "border-primary/25 bg-primary/[0.025]" : "border-[var(--app-border)] bg-white"} p-3.5 md:p-4" data-ai-draft-index="${index}">
               <div class="mb-3 flex items-center justify-between gap-3">
                 <label class="inline-flex items-center gap-2 text-sm font-semibold text-[#1d1d1f]">
                   <input class="rounded border-[#c7c7cc] text-primary focus:ring-primary" type="checkbox" data-ai-field="_selected" ${draft._selected ? "checked" : ""}>
                   일정 ${index + 1}
                 </label>
-                <span class="rounded-full bg-[#f5f5f7] px-2 py-1 text-[10px] font-semibold text-[#6e6e73]">${escapeHTML(aiTestStatusLabel(draft.status))}</span>
               </div>
               <div class="grid grid-cols-2 gap-2.5">
-                <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">이용일
+                <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">이용일
                   <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="date" data-ai-field="use_date" value="${escapeHTML(draft.use_date || "")}">
-                </label>
-                <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">상태
-                  <select class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" data-ai-field="status">
-                    ${statusOptions.map(([value, label]) => `<option value="${value}" ${(draft.status || "") === value ? "selected" : ""}>${label}</option>`).join("")}
-                  </select>
                 </label>
                 <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">시작
                   <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="time" data-ai-field="start_time" value="${escapeHTML(draft.start_time || "")}">
@@ -5274,20 +5339,36 @@
                 <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">종료
                   <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="time" data-ai-field="end_time" value="${escapeHTML(draft.end_time || "")}">
                 </label>
-                <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">시설명
-                  <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="text" data-ai-field="facility_name" value="${escapeHTML(draft.facility_name || "")}" placeholder="이미지에 없으면 비워 둠">
+                <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">시설
+                  <select class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" data-ai-field="_court_id">
+                    ${courtOptions}
+                  </select>
                 </label>
-                <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">코트 번호
-                  <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="text" data-ai-field="court_number" value="${escapeHTML(draft.court_number || "")}" placeholder="없으면 비움">
-                </label>
-                <label class="space-y-1 text-[11px] font-semibold text-[#6e6e73]">신청일
-                  <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="date" data-ai-field="application_date" value="${escapeHTML(draft.application_date || "")}">
-                </label>
-                <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">알림 수신일
-                  <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="date" data-ai-field="notification_date" value="${escapeHTML(draft.notification_date || "")}">
-                </label>
+                ${hasExistingCourt ? `
+                  <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">코트
+                    <select class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f] disabled:bg-[#f5f5f7] disabled:text-[#86868b]" data-ai-field="_court_unit_id" ${units.length ? "" : "disabled"}>
+                      ${unitOptions}
+                    </select>
+                  </label>` : `
+                  <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">기타 시설명
+                    <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="text" data-ai-field="_facility_other" value="${escapeHTML(draft._facility_other || "")}" placeholder="시설명을 직접 입력">
+                  </label>
+                  <label class="col-span-2 space-y-1 text-[11px] font-semibold text-[#6e6e73]">코트 번호
+                    <input class="w-full rounded-lg border border-[var(--app-border)] bg-white px-2.5 py-2 text-sm font-medium text-[#1d1d1f]" type="text" data-ai-field="_other_court_number" value="${escapeHTML(draft._other_court_number || "")}" placeholder="없으면 비워 둠">
+                  </label>`}
               </div>
-            </article>`).join("");
+              <details class="mt-3 rounded-xl bg-[#f5f5f7] px-3 py-2.5">
+                <summary class="cursor-pointer text-[11px] font-semibold text-[#6e6e73]">AI 참고 정보</summary>
+                <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+                  <div><dt class="text-[#86868b]">예약 상태</dt><dd class="mt-0.5 font-semibold text-[#424245]">${escapeHTML(aiTestStatusLabel(draft.status))}</dd></div>
+                  <div><dt class="text-[#86868b]">신청일</dt><dd class="mt-0.5 font-semibold text-[#424245]">${escapeHTML(draft.application_date || "-")}</dd></div>
+                  <div><dt class="text-[#86868b]">알림 수신일</dt><dd class="mt-0.5 font-semibold text-[#424245]">${escapeHTML(draft.notification_date || "-")}</dd></div>
+                  <div><dt class="text-[#86868b]">AI 원본 코트</dt><dd class="mt-0.5 font-semibold text-[#424245]">${escapeHTML(draft.court_number || "-")}</dd></div>
+                  <div class="col-span-2"><dt class="text-[#86868b]">AI 원본 시설명</dt><dd class="mt-0.5 break-words font-semibold text-[#424245]">${escapeHTML(draft.facility_name || "-")}</dd></div>
+                </dl>
+              </details>
+            </article>`;
+          }).join("");
         }
 
         function updateAiTestDraftFromControl(control) {
@@ -5297,7 +5378,19 @@
           const draft = aiTestDrafts[Number(card.dataset.aiDraftIndex)];
           if (!draft) return;
           draft[field] = control.type === "checkbox" ? control.checked : (control.value || null);
-          if (field === "_selected" || field === "status") renderAiTestDrafts();
+          if (field === "_court_id") {
+            if (draft._court_id === "__other__") {
+              if (!draft._facility_other) draft._facility_other = draft.facility_name || "";
+              if (!draft._other_court_number) draft._other_court_number = draft.court_number || "";
+              draft._court_unit_id = "";
+            } else {
+              const matchedUnit = matchAiTestCourtUnit(draft._court_id, draft.court_number);
+              draft._court_unit_id = matchedUnit?.id || "";
+            }
+            renderAiTestDrafts();
+            return;
+          }
+          if (field === "_selected") renderAiTestDrafts();
         }
 
         async function aiTestErrorMessage(error) {
@@ -5331,17 +5424,7 @@
             if (!data || !Array.isArray(data.schedules)) throw new Error("AI 응답 형식을 확인할 수 없습니다.");
 
             aiTestRawResponse = data;
-            aiTestDrafts = data.schedules.map(draft => ({
-              use_date: draft.use_date ?? null,
-              start_time: draft.start_time ?? null,
-              end_time: draft.end_time ?? null,
-              facility_name: draft.facility_name ?? null,
-              court_number: draft.court_number ?? null,
-              status: draft.status ?? null,
-              application_date: draft.application_date ?? null,
-              notification_date: draft.notification_date ?? null,
-              _selected: true
-            }));
+            aiTestDrafts = data.schedules.map(makeAiTestDraft);
             const rawDetails = document.querySelector("#aiTestRawDetails");
             const rawJson = document.querySelector("#aiTestRawJson");
             if (rawJson) rawJson.textContent = JSON.stringify(data, null, 2);

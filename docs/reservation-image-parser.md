@@ -33,7 +33,10 @@ The parser is not connected to the normal schedule-creation flow yet. For now it
 The V2 homepage now includes an admin-only `AI Test` view for validating the parser before it is connected to normal schedule creation.
 
 - The test menu is visible only when the signed-in account is a club admin.
-- A tester can choose one supported image, call `parse-reservation-image`, edit every returned draft field, and toggle which drafts would be kept.
+- A tester can choose one supported image, call `parse-reservation-image`, edit the schedule fields that would matter for registration, and toggle which drafts would be kept.
+- `status`, `application_date`, and `notification_date` remain parser/reference data and are shown only under each draft's `AI 참고 정보`; they are not schedule form fields.
+- Parsed facility names are matched against the existing `courts` list. A successful match preselects the same facility dropdown used by normal schedules, and a parsed court number preselects a matching `court_units` option when available.
+- If no existing facility can be matched, the draft selects `기타 (직접 입력)` and keeps the parsed facility/court text in free-text test fields instead of inventing a database court ID.
 - The raw AI JSON can be inspected from the same screen.
 - The test screen has no save/register action and does not write to `v2_schedules` or any other table.
 - Once the behavior is stable, the same draft UI can be connected to the existing schedule creation flow in a separate change.
