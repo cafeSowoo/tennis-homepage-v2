@@ -1650,6 +1650,40 @@
       display: none;
     }
 
+    #dashboard .review-version-note {
+      display: none;
+      width: min(100%, 430px);
+      margin-left: auto;
+      padding: 14px 16px;
+      border: 1px solid rgba(0, 104, 93, 0.10);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #68716b;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .review-mode #dashboard .review-version-note {
+      display: block;
+    }
+
+    #dashboard .review-version-note strong {
+      display: block;
+      margin-bottom: 7px;
+      color: #36483c;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    #dashboard .review-version-note ul {
+      margin: 0;
+      padding-left: 17px;
+    }
+
+    #dashboard .review-version-note li + li {
+      margin-top: 2px;
+    }
+
     #dashboard .overview-mode-toggle {
       display: grid;
       grid-template-rows: repeat(2, minmax(0, 1fr));
@@ -2175,6 +2209,13 @@
         font-size: 1rem;
       }
 
+      #dashboard .review-version-note {
+        width: 100%;
+        padding: 13px 15px;
+        border-radius: 14px;
+        font-size: 11px;
+      }
+
       #dashboard .calendar-card {
         padding-bottom: 0.75rem;
       }
@@ -2638,6 +2679,15 @@
               </div>
             </section>
           </div>
+
+          <aside class="review-version-note" aria-label="테스트 버전 안내">
+            <strong>테스트 버전 안내</strong>
+            <ul>
+              <li>일정·댓글은 카카오톡에서 불러옵니다.</li>
+              <li>하루 2회 내외로 동기화됩니다.</li>
+              <li>홈페이지에서는 아직 일정 등록/댓글 작성이 지원되지 않습니다.</li>
+            </ul>
+          </aside>
       </div>
     </section>
 
