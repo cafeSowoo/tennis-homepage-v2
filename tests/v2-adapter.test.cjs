@@ -22,9 +22,10 @@ test('all inline scripts parse and legacy tables stay write-isolated except read
  for(const m of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))acorn.parse(m[1],{ecmaVersion:'latest'});
  assert.doesNotMatch(html,/\.from\(["'](?:discussions|schedule_declines|schedule_rsvp_overrides|events|courts|court_units)["']\)/);
  const legacyScheduleReads=html.match(/\.from\(["']schedules["']\)/g)||[];assert.equal(legacyScheduleReads.length,1);
- const mirror=html.match(/async function loadKakaoMirrorSchedules\(\) \{[\s\S]*?\n    \}/)?.[0]||'';
+ const mirror=html.slice(html.indexOf('async function loadKakaoMirrorSchedules()'),html.indexOf('async function loadReviewData()'));
  assert.match(mirror,/\.from\("schedules"\)/);assert.match(mirror,/\.eq\("source", "kakao"\)/);
- assert.match(mirror,/\.gte\("date", KAKAO_MIRROR_START_DATE\)/);assert.match(mirror,/\.lt\("date", KAKAO_MIRROR_END_DATE\)/);
+ assert.match(mirror,/REVIEW_MODE_ENABLED \? todayIsoLocal\(\) : KAKAO_MIRROR_START_DATE/);assert.match(mirror,/\.gte\("date", startDate\)/);assert.match(mirror,/!REVIEW_MODE_ENABLED.*\.lt\("date", KAKAO_MIRROR_END_DATE\)/);
+ assert.match(html,/const REVIEW_KAKAO_REFRESH_MS = 60_000/);assert.match(html,/window\.setInterval\([\s\S]*REVIEW_KAKAO_REFRESH_MS/);
  assert.doesNotMatch(mirror,/\.(?:insert|update|delete|upsert)\(/);
  const loader=html.slice(html.indexOf('async function loadData()'),html.indexOf('function fromSupabaseSchedule('));
  assert.doesNotMatch(loader,/fetchJSON/);
