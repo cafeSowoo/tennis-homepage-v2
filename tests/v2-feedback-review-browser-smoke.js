@@ -12,7 +12,7 @@ async page => {
   await page.getByRole('button',{name:'입장하기',exact:true}).click();
   await page.getByRole('combobox',{name:'내 이름 선택'}).selectOption('member-a');
   await page.getByRole('button',{name:'이 이름으로 보기',exact:true}).click();
-  const button=page.locator('#feedbackButton');
+  const button=page.locator('[data-feedback-button]:visible');
   await button.waitFor({state:'visible'});
   await button.click();
   const dialog=page.getByRole('dialog',{name:'의견 보내기'});

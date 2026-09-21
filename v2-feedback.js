@@ -1,9 +1,14 @@
 /* Private pilot feedback. All member-provided strings use textContent. */
 window.V2Feedback = {
   create({client, isApproved, isAdmin, userId, context, scheduleTitle, isReviewMode = () => false, reviewToken = () => '', memberId = () => '', memberName = () => ''}) {
-    const button = document.createElement('button');
-    button.id = 'feedbackButton'; button.type = 'button'; button.textContent = '의견 보내기'; button.hidden = true;
-    document.body.append(button);
+    let buttons = [...document.querySelectorAll('[data-feedback-button]')];
+    if (!buttons.length) {
+      const button = document.createElement('button');
+      button.id = 'feedbackButton'; button.type = 'button'; button.textContent = '의견 보내기'; button.hidden = true;
+      button.dataset.feedbackButton = '';
+      document.body.append(button);
+      buttons = [button];
+    }
     const dialog = document.createElement('dialog');
     dialog.id = 'feedbackDialog'; dialog.setAttribute('aria-labelledby', 'feedbackHeading');
     dialog.innerHTML = `<div class="feedback-header"><h2 id="feedbackHeading">의견 보내기</h2><button type="button" data-close>닫기</button></div>
@@ -30,7 +35,7 @@ window.V2Feedback = {
       if (dialog.open) dialog.close();
     }
     function sync() {
-      button.hidden = !isApproved();
+      buttons.forEach(button => { button.hidden = !isApproved(); });
       if (!isApproved() || (identity && identity !== key())) invalidate();
     }
     function render() {
@@ -121,7 +126,7 @@ window.V2Feedback = {
       } catch(error) { if(valid(n)) notice.textContent=errorText(error); }
       finally { if(valid(n)) lock(false); }
     });
-    button.onclick=()=>{
+    const openFeedback=()=>{
       if(!isApproved()) return; identity=key(); epoch++;
       const c=context(); captured={view:views[c.view]?c.view:'other',scheduleId:c.scheduleId || null,version:/^([a-f0-9]{7,40}|development)$/.test(window.TENNIS_BUILD)?window.TENNIS_BUILD:'development'};
       const review = reviewing();
@@ -136,6 +141,7 @@ window.V2Feedback = {
       dialog.showModal();
       if(!review) load();
     };
+    buttons.forEach(button => { button.onclick=openFeedback; });
     $('[data-close]').onclick=()=>invalidate();
     dialog.addEventListener('cancel',event=>{event.preventDefault();invalidate();});
     $('[data-refresh]').onclick=()=>{if(!busy) load();};

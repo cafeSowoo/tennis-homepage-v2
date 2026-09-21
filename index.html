@@ -131,8 +131,8 @@
     };
   </script>
   <style>
-    #feedbackButton { position:fixed; right:12px; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:55; border:1px solid #d1d5db; border-radius:24px; background:white; color:#374151; padding:9px 14px; font-size:13px; box-shadow:0 2px 8px #0001; }
-    #feedbackButton[hidden] { display:none !important; }
+    #feedbackButton[hidden], #feedbackButtonMobile[hidden] { display:none !important; }
+    .feedback-nav-icon { color:#ff3b30 !important; }
     #feedbackDialog { width:min(640px,calc(100% - 24px)); max-height:85dvh; padding:20px; border:0; border-radius:20px; overflow:auto; color:#1f2937; }
     #feedbackDialog::backdrop { background:#0006; }
     #feedbackDialog .feedback-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
@@ -2416,6 +2416,9 @@
       <button class="nav-item ai-test-nav mx-2.5 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="ai-test">
         <span class="material-symbols-outlined" data-icon="science">science</span>AI Test
       </button>
+      <button id="feedbackButton" class="nav-item mx-2.5 flex items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" type="button" data-feedback-button hidden>
+        <span class="material-symbols-outlined feedback-nav-icon">campaign</span>의견 보내기
+      </button>
     </div>
 
     <div class="relative mt-auto px-margin-mobile">
@@ -2696,6 +2699,10 @@
     <button class="nav-item ai-test-nav flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="ai-test">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="science">science</span>
       <span class="text-[10px] font-bold">AI</span>
+    </button>
+    <button id="feedbackButtonMobile" class="nav-item flex flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" type="button" data-feedback-button hidden>
+      <span class="material-symbols-outlined feedback-nav-icon transition-transform duration-200">campaign</span>
+      <span class="text-[10px] font-bold">의견</span>
     </button>
   </nav>
 

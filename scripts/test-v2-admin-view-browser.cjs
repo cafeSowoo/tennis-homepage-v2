@@ -6,9 +6,9 @@ const code=`async page=>{
  await page.route('**/env.js*',r=>r.fulfill({contentType:'text/javascript',body:'window.TENNIS_CONFIG={supabaseUrl:"https://test.invalid",supabaseAnonKey:"test",allowRemoteWrites:true};'}));
  await page.route('**/@supabase/supabase-js@*/dist/umd/supabase.js',r=>r.fulfill({contentType:'text/javascript',body:${JSON.stringify(sdk)}}));
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:8766');
- await page.locator('#adminViewToggle').waitFor({state:'visible'});await page.locator('#feedbackButton').click();await page.getByText('타인 의견 테스트',{exact:true}).waitFor();
+ await page.locator('#adminViewToggle').waitFor({state:'visible'});await page.locator('[data-feedback-button]:visible').click();await page.getByText('타인 의견 테스트',{exact:true}).waitFor();
  await page.locator('#feedbackDialog [data-close]').click();await page.locator('#adminViewToggle').click();
- const hidden=await page.locator('#memberAdminButton').isHidden();await page.locator('#feedbackButton').click();await page.getByText('내 의견 테스트',{exact:true}).waitFor();
+ const hidden=await page.locator('#memberAdminButton').isHidden();await page.locator('[data-feedback-button]:visible').click();await page.getByText('내 의견 테스트',{exact:true}).waitFor();
  const privateCount=await page.getByText('타인 의견 테스트',{exact:true}).count();const controls=await page.locator('#feedbackDialog article button').count();
  await page.locator('#feedbackDialog [data-close]').click();await page.screenshot({path:'output/playwright/member-view-mobile.png'});
  await page.locator('#adminViewToggle').click();const restored=await page.locator('#memberAdminButton').isVisible();
