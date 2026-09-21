@@ -24,6 +24,24 @@ async page => {
    shareButton:!!document.querySelector('[data-share-current]'),
    shareLabel:document.querySelector('[data-share-current]')?.innerText.trim() || ''
  }));
+ let qrInteraction={desktop:page.viewportSize().width>=768};
+ if(qrInteraction.desktop){
+   const help=page.locator('[data-kakao-qr-help]');
+   const button=help.getByRole('button',{name:'PC 카카오톡 일정 열기 안내'});
+   const popover=help.locator('.kakao-qr-help-popover');
+   await button.hover();
+   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.kakao-qr-help-popover')).visibility==='visible');
+   await page.waitForTimeout(220);
+   qrInteraction.hoverVisible=await popover.evaluate(el=>getComputedStyle(el).visibility==='visible' && Number(getComputedStyle(el).opacity)>.9);
+   await button.click();
+   await page.waitForTimeout(180);
+   qrInteraction.clickVisible=await popover.evaluate(el=>getComputedStyle(el).visibility==='visible' && Number(getComputedStyle(el).opacity)>.9);
+   await page.locator('#detailContent h2').click();
+   await page.waitForTimeout(220);
+   qrInteraction.outsideHidden=await popover.evaluate(el=>getComputedStyle(el).visibility==='hidden' && Number(getComputedStyle(el).opacity)<.1);
+ }else{
+   qrInteraction.helpCount=await page.locator('[data-kakao-qr-help]').count();
+ }
  await page.evaluate(()=>switchView('dashboard'));
  const clearedDeepLink=await page.evaluate(()=>new URLSearchParams(location.search).has('schedule'));
  const mirror=await page.evaluate(()=>{
@@ -45,7 +63,10 @@ async page => {
      kakaoHref:document.querySelector('#detailContent a[href^="kakao"]')?.getAttribute('href') || '',
      kakaoLinkYellow:document.querySelector('#detailContent a[href^="kakao"]')?.className.includes('bg-[#fee500]') || false,
      dateTimeRendered:!!document.querySelector('#detailContent [data-detail-datetime]'),
-     macDesktop:/Macintosh/i.test(navigator.userAgent || '') && !/Mobile/i.test(navigator.userAgent || ''),
+     desktop:window.innerWidth >= 768,
+     qrHelp:!!document.querySelector('#detailContent [data-kakao-qr-help]'),
+     qrReady:document.querySelector('#detailContent [data-kakao-qr-canvas]')?.dataset.qrReady === '1',
+     qrValue:document.querySelector('#detailContent [data-kakao-qr-canvas]')?.dataset.qrValue || '',
      discussionGuide:document.querySelector('#detailContent').innerText.includes('Test 댓글 필드는 2차 테스트에서 구현 예정입니다.')
    };
  });
@@ -89,5 +110,5 @@ async page => {
  await page.locator('#authButton').click();
  await page.waitForFunction(()=>!document.querySelector('#memberGate').hidden);
  const loggedOut=await page.evaluate(()=>({detail:document.querySelector('#detailContent').innerText,schedules:typeof schedules==='undefined'?null:schedules.length,gate:!document.querySelector('#memberGate').hidden,calls:__v2Mock.calls.map(c=>c.name)}));
- return {errors,dialogs,deepLink,clearedDeepLink,mirror,cancelled,loggedOut,titleSafety};
+ return {errors,dialogs,deepLink,qrInteraction,clearedDeepLink,mirror,cancelled,loggedOut,titleSafety};
 }
