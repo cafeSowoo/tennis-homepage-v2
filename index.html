@@ -1610,6 +1610,26 @@
       min-width: 0;
     }
 
+    #dashboard .dashboard-overview-row {
+      display: flex;
+      align-items: stretch;
+      gap: 1rem;
+      min-width: 0;
+    }
+
+    #dashboard .dashboard-overview-row .overview-strip {
+      flex: 1 1 auto;
+    }
+
+    #dashboard .desktop-weather-card {
+      align-self: center;
+      flex: 0 0 auto;
+    }
+
+    #dashboard .calendar-mobile-weather {
+      display: none;
+    }
+
     #dashboard .overview-mode-toggle {
       display: grid;
       grid-template-rows: repeat(2, minmax(0, 1fr));
@@ -2109,24 +2129,30 @@
         font-size: 1.75rem;
       }
 
-      #dashboard .weather-card {
-        padding: 0;
-        border-radius: 0.625rem;
+      #dashboard .dashboard-overview-row {
+        display: block;
       }
 
-      #dashboard .weather-card .weather-body {
-        flex-direction: row;
+      #dashboard .desktop-weather-card {
+        display: none;
+      }
+
+      #dashboard .calendar-mobile-weather {
+        display: inline-flex;
+        height: 2rem;
         align-items: center;
-        gap: 0.25rem;
-      }
-
-      #dashboard .weather-card [data-weather-temp] {
-        font-size: 0.875rem;
+        justify-content: center;
+        gap: 0.2rem;
+        padding: 0 0.2rem;
+        color: var(--app-text);
+        font-size: 0.75rem;
+        font-weight: 650;
         line-height: 1;
       }
 
-      #dashboard .weather-card .weather-detail {
-        font-size: 0.6875rem;
+      #dashboard .calendar-mobile-weather .material-symbols-outlined {
+        color: var(--app-green);
+        font-size: 1rem;
       }
 
       #dashboard .calendar-card {
@@ -2544,10 +2570,16 @@
   </section>
   <main class="min-h-screen px-margin-mobile pb-16 pt-20 md:pt-24 md:ml-64 md:px-margin-desktop">
     <section id="dashboard" class="view active active-animate">
-      <div class="dashboard-summary flex items-start justify-between gap-3">
-        <div class="min-w-0 flex-1">
-          <div class="dashboard-heading-row flex justify-between">
-            <a class="weather-card group ml-auto shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" href="https://www.accuweather.com/ko/kr/songdo-4-sa-dong/3558154/current-weather/3558154" target="_blank" rel="noopener" aria-label="AccuWeather 송도4동 현재 날씨 보기">
+      <div class="space-y-5 md:-mt-4 md:space-y-6">
+          <div class="dashboard-overview-row">
+            <div class="overview-strip">
+            <div class="overview-mode-toggle" role="group" aria-label="상단 일정 보기 전환">
+              <button class="overview-mode-button is-active" type="button" data-overview-mode="mine" aria-pressed="true">내 일정</button>
+              <button class="overview-mode-button" type="button" data-overview-mode="open" aria-pressed="false">모집 중</button>
+            </div>
+            <section id="quickOverview" class="dashboard-overview group relative flex snap-x snap-mandatory gap-2.5 scrollbar-none"></section>
+            </div>
+            <a class="weather-card desktop-weather-card group shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" href="https://www.accuweather.com/ko/kr/songdo-4-sa-dong/3558154/current-weather/3558154" target="_blank" rel="noopener" aria-label="AccuWeather 송도4동 현재 날씨 보기">
               <div class="flex items-center gap-1.5">
                 <div class="weather-icon inline-flex shrink-0 items-center justify-center">
                   <span class="material-symbols-outlined icon-fill text-[17px]" data-weather-icon>partly_cloudy_day</span>
@@ -2563,23 +2595,16 @@
               </div>
             </a>
           </div>
-        </div>
-      </div>
-
-      <div class="mt-5 space-y-5 md:space-y-6">
-          <div class="overview-strip">
-            <div class="overview-mode-toggle" role="group" aria-label="상단 일정 보기 전환">
-              <button class="overview-mode-button is-active" type="button" data-overview-mode="mine" aria-pressed="true">내 일정</button>
-              <button class="overview-mode-button" type="button" data-overview-mode="open" aria-pressed="false">모집 중</button>
-            </div>
-            <section id="quickOverview" class="dashboard-overview group relative flex snap-x snap-mandatory gap-2.5 scrollbar-none"></section>
-          </div>
 
           <div class="calendar-section-wrapper relative">
             <section class="calendar-card dash-card">
               <div class="mb-3 flex items-center justify-between gap-3 md:mb-4">
                 <h3 id="calendarMonthTitle">May. 2026</h3>
                 <div class="flex items-center gap-1.5">
+                  <a class="calendar-mobile-weather" href="https://www.accuweather.com/ko/kr/songdo-4-sa-dong/3558154/current-weather/3558154" target="_blank" rel="noopener" aria-label="AccuWeather 송도4동 현재 날씨 보기">
+                    <span class="material-symbols-outlined icon-fill" data-weather-icon>partly_cloudy_day</span>
+                    <span class="tabular-nums" data-weather-temp>22°C</span>
+                  </a>
                   <div class="relative inline-block">
                     <button id="calendarAddBtn" class="dash-icon-btn is-primary h-8 w-8" type="button" aria-label="일정 추가 및 생성" aria-controls="calendarAddMenu" aria-expanded="false" onclick="event.preventDefault(); event.stopImmediatePropagation(); window.toggleCalendarAddMenu();">
                       <span id="calendarAddIcon" class="material-symbols-outlined text-[18px] transition-transform duration-200">add</span>
@@ -2630,7 +2655,7 @@
       </div>
     </section>
 
-    <section id="schedule" class="view">
+    <section id="schedule" class="view md:-mt-4">
       <div class="mb-5 flex flex-col gap-4 md:mb-6 md:flex-row md:items-end md:justify-between">
         <p id="kakaoSyncStatus" class="mt-2 hidden text-xs text-on-surface-variant"></p>
         <div class="grid grid-cols-2 gap-2 md:ml-auto md:flex md:flex-row md:flex-wrap">
@@ -3482,13 +3507,13 @@
         const current = weather.current || {};
         const temperature = Number(current.temperature_2m);
         const details = weatherDetailsForCode(Number(current.weather_code), current.is_day !== 0);
-        const tempEl = document.querySelector("[data-weather-temp]");
+        const tempEls = document.querySelectorAll("[data-weather-temp]");
         const labelEl = document.querySelector("[data-weather-label]");
-        const iconEl = document.querySelector("[data-weather-icon]");
+        const iconEls = document.querySelectorAll("[data-weather-icon]");
 
-        if (tempEl && Number.isFinite(temperature)) tempEl.textContent = `${Math.round(temperature)}°C`;
+        if (Number.isFinite(temperature)) tempEls.forEach(tempEl => { tempEl.textContent = `${Math.round(temperature)}°C`; });
         if (labelEl) labelEl.textContent = details.label;
-        if (iconEl) iconEl.textContent = details.icon;
+        iconEls.forEach(iconEl => { iconEl.textContent = details.icon; });
         if (document.querySelector("#detail.active") && state.detailType === "schedule") {
           renderCurrentDetail();
         }
