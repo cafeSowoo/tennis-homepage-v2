@@ -10,6 +10,23 @@ async page => {
  await page.setViewportSize(VIEWPORT);
  await page.goto('http://127.0.0.1:8766');
  await page.waitForFunction(()=>document.body.classList.contains('approved-club-member'));
+ const mirror=await page.evaluate(()=>{
+   const item=schedules.find(schedule=>schedule.source==='kakao');
+   if(!item)return null;
+   const card=document.createElement('div');card.innerHTML=scheduleRow(item);
+   renderDetail(item);
+   return {
+     attendeeIds:item.attendeeIds,
+     absenteeIds:item.absenteeIds,
+     capacity:item.capacity,
+     badge:card.innerText.includes('Kakao'),
+     cardRsvp:!!card.querySelector('[data-set-rsvp]'),
+     detailReadOnly:document.querySelector('#detailContent').innerText.includes('카카오 일정 · 읽기 전용'),
+     join:!!document.querySelector('#detailContent [data-join-current]'),
+     composer:!!document.querySelector('#detailContent [data-discussion-input]'),
+     commentCount:document.querySelector('#detailContent').innerText.includes('카카오 댓글 2개')
+   };
+ });
  if (await page.locator('#pwaInstallDismiss').isVisible()) await page.locator('#pwaInstallDismiss').click();
  if (page.viewportSize().width < 600) await page.locator('#calendarAddBtn').click();
  else await page.locator('#sideScheduleAddBtn').click();
@@ -24,7 +41,7 @@ async page => {
  const afterCreate=await page.evaluate(()=>({calls:__v2Mock.calls.length,detail:document.querySelector('#detailContent').innerText,formHidden:document.querySelector('#addScheduleSheet').classList.contains('hidden')}));
  const titleSafety=await page.evaluate(expected=>{
    const h=document.querySelector('#detailContent h2');
-   const container=document.createElement('div');container.innerHTML=scheduleRow(schedules[0]);
+   const container=document.createElement('div');container.innerHTML=scheduleRow(schedules.find(schedule=>schedule.source==='v2'));
    return h.textContent===expected && !h.querySelector('[data-title-probe]') &&
      container.querySelector('h4').textContent===expected &&
      container.querySelector('[data-detail-id]').getAttribute('aria-label')===expected+' 상세 보기' &&
@@ -50,5 +67,5 @@ async page => {
  await page.locator('#authButton').click();
  await page.waitForFunction(()=>!document.querySelector('#memberGate').hidden);
  const loggedOut=await page.evaluate(()=>({detail:document.querySelector('#detailContent').innerText,schedules:typeof schedules==='undefined'?null:schedules.length,gate:!document.querySelector('#memberGate').hidden,calls:__v2Mock.calls.map(c=>c.name)}));
- return {errors,dialogs,cancelled,loggedOut,titleSafety};
+ return {errors,dialogs,mirror,cancelled,loggedOut,titleSafety};
 }
