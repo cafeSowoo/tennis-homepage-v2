@@ -2322,8 +2322,22 @@
     .member-gate-brand { display:flex; align-items:center; gap:12px; margin-bottom:36px; }
     .member-gate-brand img { width:46px; height:46px; object-fit:contain; }
     .member-gate-eyebrow { color:#337858; font-size:12px; font-weight:800; letter-spacing:.14em; margin-bottom:12px; }
+    .review-roadmap-title { margin-bottom:8px; color:#657168; font-size:11px; font-weight:800; letter-spacing:.04em; }
+    .review-roadmap { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:4px 0 28px; }
+    .review-roadmap-step { position:relative; min-height:78px; padding:12px 11px; border:1px solid #e0e6e0; border-radius:14px; background:#f8faf8; }
+    .review-roadmap-step-number { display:block; color:#879188; font-size:10px; font-weight:800; letter-spacing:.08em; }
+    .review-roadmap-step strong { display:block; margin-top:5px; color:#526057; font-size:12px; line-height:1.35; word-break:keep-all; }
+    .review-roadmap-step.is-complete { background:#f4f8f4; border-color:#d4e2d7; }
+    .review-roadmap-step.is-complete .review-roadmap-step-number,
+    .review-roadmap-step.is-complete strong { color:#4f755d; }
+    .review-roadmap-step.is-current { border-color:#337858; background:#edf6ef; box-shadow:0 0 0 2px #33785812; }
+    .review-roadmap-step.is-current .review-roadmap-step-number,
+    .review-roadmap-step.is-current strong { color:#245f43; }
+    .review-roadmap-badge { display:inline-flex; margin-top:8px; padding:3px 7px; border-radius:999px; background:#245f43; color:#fff; font-size:9px; font-weight:800; line-height:1.2; }
+    .review-roadmap-step.is-next .review-roadmap-badge { background:#e8ece8; color:#778078; }
     #memberGateTitle { font-size:30px; line-height:1.35; font-weight:800; letter-spacing:-.04em; }
     #memberGateText { word-break:keep-all; color:#68716b; font-size:15px; line-height:1.8; margin-top:14px; }
+    #reviewGateText { word-break:keep-all; color:#36483c; font-size:15px; line-height:1.7; margin-top:14px; font-weight:800; }
     .member-gate-login { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; min-height:54px; margin-top:28px; border-radius:14px; background:#fee500; color:#191919; font-size:15px; font-weight:750; transition:background .15s; }
     .member-gate-login:hover { background:#f4dc00; }
     .member-gate-login:focus-visible { outline:3px solid #21734b; outline-offset:4px; }
@@ -2360,7 +2374,15 @@
     .review-gate-button:hover { background:#1d5038; }
     .review-gate-button:disabled { opacity:.55; cursor:wait; }
     #reviewMemberButton { min-height:40px; border:1px solid #dfe5df; border-radius:999px; padding:0 12px; background:#fff; color:#33433a; font-size:12px; font-weight:750; }
-    @media(max-width:600px) { #memberGate, #reviewGate { padding:88px 18px 32px; } .member-gate-card { padding:28px 24px; border-radius:22px; } #memberGateTitle, #reviewGateTitle { font-size:27px; } .member-gate-brand { margin-bottom:28px; } }
+    @media(max-width:600px) {
+      #memberGate, #reviewGate { padding:88px 18px 32px; }
+      .member-gate-card { padding:28px 24px; border-radius:22px; }
+      #memberGateTitle, #reviewGateTitle { font-size:27px; }
+      .member-gate-brand { margin-bottom:28px; }
+      .review-roadmap { gap:6px; margin-bottom:24px; }
+      .review-roadmap-step { min-height:72px; padding:10px 8px; }
+      .review-roadmap-step strong { font-size:11px; }
+    }
     #aiCaptureSheet [data-sheet-panel] { max-width:600px; }
     #aiTestAnalyzeButton.hidden, #aiTestResultCard.hidden { display:none !important; }
     #aiTestImagePreview { max-height:160px; }
@@ -2467,8 +2489,25 @@
     <div class="member-gate-card">
       <div class="member-gate-brand"><img src="assets/logo.png" alt=""><span class="brand-wordmark" role="img" aria-label="테니스 봄"></span></div>
       <p class="member-gate-eyebrow">REVIEW MODE</p>
-      <h1 id="reviewGateTitle" class="text-[30px] font-extrabold leading-[1.35] tracking-[-.04em]">우리 클럽 일정<br>한눈에 보기</h1>
-      <p id="reviewGateText" class="mt-3 text-[15px] leading-7 text-[#68716b]">처음 한 번만 클럽 비밀번호를 입력해 주세요.</p>
+      <p class="review-roadmap-title">구현 단계</p>
+      <div class="review-roadmap" aria-label="테니스 봄 구현 단계">
+        <div class="review-roadmap-step is-complete">
+          <span class="review-roadmap-step-number">STEP 1</span>
+          <strong>클럽 비밀번호</strong>
+        </div>
+        <div class="review-roadmap-step is-current">
+          <span class="review-roadmap-step-number">STEP 2</span>
+          <strong>이름 선택</strong>
+          <span class="review-roadmap-badge">현재 구현</span>
+        </div>
+        <div class="review-roadmap-step is-next">
+          <span class="review-roadmap-step-number">STEP 3</span>
+          <strong>카카오 인증</strong>
+          <span class="review-roadmap-badge">다음 단계</span>
+        </div>
+      </div>
+      <h1 id="reviewGateTitle" class="text-[30px] font-extrabold leading-[1.35] tracking-[-.04em]">클럽 비밀번호 입력</h1>
+      <p id="reviewGateText">처음 한 번만 클럽 비밀번호를 입력해 주세요.</p>
 
       <form id="reviewPasswordForm">
         <input id="reviewPasswordInput" class="review-gate-field" type="password" autocomplete="current-password" placeholder="클럽 비밀번호" aria-label="클럽 비밀번호">
@@ -2480,7 +2519,7 @@
         <label for="reviewMemberSelect" class="mt-6 block text-sm font-bold text-[#36483c]">내 이름 선택</label>
         <select id="reviewMemberSelect" class="review-gate-field review-gate-select" aria-label="내 이름 선택"></select>
         <button id="reviewMemberConfirm" class="review-gate-button" type="button">이 이름으로 보기</button>
-        <p class="mt-3 text-xs leading-5 text-[#7b847d]">이름 선택은 ‘내 일정’을 보여주기 위한 개인화 설정입니다. 참석·불참이나 회원 권한은 변경되지 않습니다.</p>
+        <p class="mt-3 text-xs leading-5 text-[#7b847d]">카카오 인증을 통한 본인 계정 등록은 다음 단계에서 진행합니다.</p>
       </div>
     </div>
     <p class="member-gate-footer">카카오 일정은 읽기 전용으로 표시됩니다.</p>
@@ -5083,7 +5122,7 @@
         document.querySelector("#reviewGateText").textContent = "선택한 이름을 기준으로 ‘내 일정’을 보여드립니다.";
         populateReviewMemberSelect();
       } else {
-        document.querySelector("#reviewGateTitle").innerHTML = "우리 클럽 일정<br>한눈에 보기";
+        document.querySelector("#reviewGateTitle").textContent = "클럽 비밀번호 입력";
         document.querySelector("#reviewGateText").textContent = "처음 한 번만 클럽 비밀번호를 입력해 주세요.";
       }
 
