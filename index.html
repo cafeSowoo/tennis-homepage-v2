@@ -3275,6 +3275,7 @@
     const reviewState = { initialized: false, unlocked: false, accessToken: "", memberId: "" };
     let reviewKakaoRefreshTimer = 0;
     let reviewKakaoRefreshInFlight = false;
+    let reviewKakaoSyncState = null;
     let memberViewUserId = "";
     const dataStore = { members: [], courts: [], courtUnits: [], schedules: [], events: [], discussions: [], scheduleDeclines: [] };
     let members = [];
@@ -3647,12 +3648,30 @@
       return (data || []).map(fromKakaoMirrorSchedule);
     }
 
+    async function loadKakaoSyncState() {
+      const { data, error } = await supabaseClient
+        .from("kakao_sync_state")
+        .select("id,last_collected_at,completed_at,schedule_count")
+        .eq("id", "kakao")
+        .maybeSingle();
+      if (error) {
+        console.warn("Kakao sync state could not be loaded.", error);
+        return null;
+      }
+      return data || null;
+    }
+
     async function refreshReviewKakaoSchedules() {
       if (!REVIEW_MODE_ENABLED || !reviewState.unlocked || !authState.initialized) return false;
       if (document.visibilityState !== "visible" || reviewKakaoRefreshInFlight) return false;
       reviewKakaoRefreshInFlight = true;
       try {
-        dataStore.schedules = await loadKakaoMirrorSchedules();
+        const [kakaoMirrorRows, syncState] = await Promise.all([
+          loadKakaoMirrorSchedules(),
+          loadKakaoSyncState()
+        ]);
+        dataStore.schedules = kakaoMirrorRows;
+        reviewKakaoSyncState = syncState;
         refreshViews();
         return true;
       } catch (error) {
@@ -3671,16 +3690,18 @@
     }
 
     async function loadReviewData() {
-      const [memberRows, courtRows, unitRows, kakaoMirrorRows] = await Promise.all([
+      const [memberRows, courtRows, unitRows, kakaoMirrorRows, syncState] = await Promise.all([
         TennisV2.rows(supabaseClient, 'members'),
         TennisV2.rows(supabaseClient, 'courts'),
         TennisV2.rows(supabaseClient, 'court_units'),
-        loadKakaoMirrorSchedules()
+        loadKakaoMirrorSchedules(),
+        loadKakaoSyncState()
       ]);
       dataStore.members = memberRows;
       dataStore.courts = courtRows.map(fromSupabaseCourt);
       dataStore.courtUnits = unitRows.map(fromSupabaseCourtUnit);
       dataStore.schedules = kakaoMirrorRows;
+      reviewKakaoSyncState = syncState;
       dataStore.events = [];
       dataStore.discussions = [];
       dataStore.scheduleDeclines = [];
@@ -4513,13 +4534,17 @@
     function renderReviewLastSync() {
       const target = document.querySelector("#reviewLastSync");
       if (!target) return;
-      const latest = schedules
+
+      const scheduleSyncDates = schedules
         .filter(schedule => schedule.source === "kakao" && schedule.kakaoSyncedAt)
         .map(schedule => new Date(schedule.kakaoSyncedAt))
-        .filter(date => !Number.isNaN(date.getTime()))
-        .sort((a, b) => b - a)[0];
-      if (!latest) {
-        target.textContent = "마지막 동기화 · 확인 중";
+        .filter(date => !Number.isNaN(date.getTime()));
+      const latestScheduleSync = scheduleSyncDates.sort((a, b) => b - a)[0] || null;
+      const checkedAt = reviewKakaoSyncState?.last_collected_at
+        ? new Date(reviewKakaoSyncState.last_collected_at)
+        : latestScheduleSync;
+      if (!checkedAt || Number.isNaN(checkedAt.getTime())) {
+        target.textContent = "마지막 확인 · 확인 중";
         return;
       }
 
@@ -4535,16 +4560,24 @@
         if (part.type !== "literal") acc[part.type] = part.value;
         return acc;
       }, {});
-      const latestParts = kstParts(latest);
+      const checkedParts = kstParts(checkedAt);
       const nowParts = kstParts(new Date());
-      const sameDay = latestParts.year === nowParts.year
-        && latestParts.month === nowParts.month
-        && latestParts.day === nowParts.day;
-      const hourMinute = `${latestParts.hour}:${latestParts.minute}`;
+      const sameDay = checkedParts.year === nowParts.year
+        && checkedParts.month === nowParts.month
+        && checkedParts.day === nowParts.day;
+      const hourMinute = `${checkedParts.hour}:${checkedParts.minute}`;
       const when = sameDay
         ? `오늘 ${hourMinute}`
-        : `${Number(latestParts.month)}월 ${Number(latestParts.day)}일 ${hourMinute}`;
-      target.textContent = `마지막 동기화 · ${when}`;
+        : `${Number(checkedParts.month)}월 ${Number(checkedParts.day)}일 ${hourMinute}`;
+
+      if (!reviewKakaoSyncState?.last_collected_at) {
+        target.textContent = `마지막 확인 · ${when}`;
+        return;
+      }
+
+      const changedAtLastCheck = latestScheduleSync
+        && Math.abs(latestScheduleSync.getTime() - checkedAt.getTime()) < 5000;
+      target.textContent = `마지막 확인 · ${when} · ${changedAtLastCheck ? "변경 반영됨" : "변경 없음"}`;
     }
 
     function showDashboardShell() {
