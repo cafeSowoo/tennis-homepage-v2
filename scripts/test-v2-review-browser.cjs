@@ -21,6 +21,7 @@ assert.equal(result.entered.selected,'kakao-fixture');assert.equal(result.entere
  assert.equal(result.entered.profileVisible,true);assert.equal(result.profile.active,true);assert.equal(result.profile.selectedMemberId,'member-a');assert.match(result.profile.text,/테스트 회원/);
 assert.equal(result.entered.localToken,'review-token');assert.equal(result.entered.localMember,'member-a');
 assert.equal(result.entered.detailDateTimeVisible,true);assert.equal(result.entered.kakaoMetadataRemoved,true);assert.equal(result.entered.kakaoLinkYellow,true);
+assert.deepEqual(result.photoViewerOpened,{open:true,fullSurfaceClose:true});assert.equal(result.photoViewerClosedByImage,true);
 assert.equal(result.absenteeDirection,'row');
 assert.deepEqual(result.persisted,{member:'테스트 회원',gate:true,schedules:1});
 assert.equal(result.switched.member,'다른 회원');assert.equal(result.switched.declined,true);

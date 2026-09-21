@@ -58,6 +58,17 @@ async page => {
     kakaoLinkYellow:document.querySelector('#detailContent a[href^="kakao"]')?.className.includes('bg-[#fee500]') || false
   }));
 
+  await page.locator('#detailContent [data-avatar-view]').first().click();
+  await page.waitForFunction(()=>!document.querySelector('#memberPhotoViewer').classList.contains('hidden'));
+  const photoViewerOpened=await page.evaluate(()=>({
+    open:!document.querySelector('#memberPhotoViewer').classList.contains('hidden'),
+    fullSurfaceClose:document.querySelector('#memberPhotoViewer').hasAttribute('data-close-photo-viewer')
+  }));
+  await page.waitForFunction(()=>photoViewerAnimating===false);
+  await page.locator('#memberPhotoViewerImage').click();
+  await page.waitForFunction(()=>document.querySelector('#memberPhotoViewer').classList.contains('hidden'));
+  const photoViewerClosedByImage=await page.evaluate(()=>document.querySelector('#memberPhotoViewer').classList.contains('hidden'));
+
   await page.locator('[data-absentee-list] summary').click();
   const absenteeNames=await page.locator('[data-absentee-list]').innerText();
   const absenteeDirection=await page.locator('[data-absentee-items]').evaluate(el=>getComputedStyle(el).flexDirection);
@@ -93,5 +104,5 @@ async page => {
   const switched=await page.evaluate(()=>({member:myMemberName(),declined:isDeclinedSchedule(schedules[0])}));
 
   const calls=await page.evaluate(()=>__v2Mock.calls.map(c=>c.name));
-  return {errors,locked,wrongRejected,entered,absenteeNames,absenteeDirection,profile,refreshed,persisted,switched,calls};
+  return {errors,locked,wrongRejected,entered,photoViewerOpened,photoViewerClosedByImage,absenteeNames,absenteeDirection,profile,refreshed,persisted,switched,calls};
 }
