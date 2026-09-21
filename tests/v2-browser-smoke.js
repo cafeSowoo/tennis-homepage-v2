@@ -24,7 +24,9 @@ async page => {
      detailReadOnly:document.querySelector('#detailContent').innerText.includes('카카오 일정 · 읽기 전용'),
      join:!!document.querySelector('#detailContent [data-join-current]'),
      composer:!!document.querySelector('#detailContent [data-discussion-input]'),
-     commentCount:document.querySelector('#detailContent').innerText.includes('카카오 댓글 2개')
+     commentCount:document.querySelector('#detailContent').innerText.includes('카카오 댓글 2개'),
+     kakaoLinks:document.querySelectorAll('#detailContent a[href^="kakaomoim:"]').length,
+     discussionGuide:document.querySelector('#detailContent').innerText.includes('댓글 확인과 작성은 카카오톡에서 해주세요.')
    };
  });
  if (await page.locator('#pwaInstallDismiss').isVisible()) await page.locator('#pwaInstallDismiss').click();
