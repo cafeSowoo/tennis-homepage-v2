@@ -1,0 +1,25 @@
+// Requires a local server on 127.0.0.1:8766 and the playwright skill CLI.
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict'),{spawnSync}=require('node:child_process');
+const cli=process.env.PLAYWRIGHT_CLI || path.join(os.homedir(),'.codex/skills/playwright/scripts/playwright_cli.sh');
+const viewport=process.argv.includes('--mobile')?{width:390,height:844}:{width:1280,height:900};
+const session=process.argv.includes('--mobile')?'v2-review-mobile':'v2-review-desktop';
+let code=fs.readFileSync('tests/v2-review-browser-smoke.js','utf8').replace('MOCK_SDK_SOURCE',JSON.stringify(fs.readFileSync('tests/fixtures/v2-mock-sdk.js','utf8'))).replace('VIEWPORT',JSON.stringify(viewport));
+spawnSync(cli,['-s='+session,'close'],{encoding:'utf8',timeout:30000});
+const opened=spawnSync(cli,['-s='+session,'open','about:blank'],{encoding:'utf8',timeout:30000});
+assert.equal(opened.status,0,opened.stdout||opened.stderr);
+const r=spawnSync(cli,['-s='+session,'run-code',code],{encoding:'utf8',timeout:120000});
+const output=r.stdout?.split('### Ran Playwright code')[0]||'';
+assert.equal(r.status,0,output||r.stderr);
+const match=/### Result\s*\n([^\n]+)/.exec(output);assert.ok(match,output);
+const result=JSON.parse(match[1]);
+assert.deepEqual(result.errors,[]);
+assert.equal(result.locked.gate,true);assert.equal(result.locked.password,true);assert.equal(result.locked.memberStep,false);assert.equal(result.locked.kakaoAuthVisible,false);assert.equal(result.locked.scheduleCount,0);
+assert.match(result.wrongRejected,/맞지 않습니다/);
+assert.equal(result.entered.member,'테스트 회원');assert.equal(result.entered.schedules,1);assert.deepEqual(result.entered.sources,['kakao']);
+assert.equal(result.entered.selected,'kakao-fixture');assert.equal(result.entered.detailReadOnly,true);assert.equal(result.entered.rsvp,false);assert.equal(result.entered.composer,false);
+assert.equal(result.entered.addSchedule,false);assert.equal(result.entered.authVisible,false);assert.match(result.entered.memberButton,/테스트 회원/);assert.equal(result.entered.remoteWrites,false);
+assert.equal(result.entered.localToken,'review-token');assert.equal(result.entered.localMember,'member-a');
+assert.deepEqual(result.persisted,{member:'테스트 회원',gate:true,schedules:1});
+assert.equal(result.switched.member,'다른 회원');assert.equal(result.switched.declined,true);
+assert.equal(result.calls.includes('v2_create_schedule'),false);assert.equal(result.calls.includes('v2_set_my_rsvp'),false);assert.equal(result.calls.includes('v2_add_discussion'),false);
+console.log(JSON.stringify({viewport,...result},null,2));

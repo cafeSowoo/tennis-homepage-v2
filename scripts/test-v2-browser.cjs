@@ -1,9 +1,12 @@
 // Requires a local server on 127.0.0.1:8766 and the playwright skill CLI.
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict'),{spawnSync}=require('node:child_process');
 const cli=process.env.PLAYWRIGHT_CLI || path.join(os.homedir(),'.codex/skills/playwright/scripts/playwright_cli.sh');
-const session='v2-independent';
 const viewport=process.argv.includes('--mobile')?{width:390,height:844}:{width:1280,height:900};
+const session=process.argv.includes('--mobile')?'v2-independent-mobile':'v2-independent-desktop';
 let code=fs.readFileSync('tests/v2-browser-smoke.js','utf8').replace('MOCK_SDK_SOURCE',JSON.stringify(fs.readFileSync('tests/fixtures/v2-mock-sdk.js','utf8'))).replace('VIEWPORT',JSON.stringify(viewport));
+spawnSync(cli,['-s='+session,'close'],{encoding:'utf8',timeout:30000});
+const opened=spawnSync(cli,['-s='+session,'open','about:blank'],{encoding:'utf8',timeout:30000});
+assert.equal(opened.status,0,opened.stdout||opened.stderr);
 const r=spawnSync(cli,['-s='+session,'run-code',code],{encoding:'utf8',timeout:120000});
 const output=r.stdout?.split('### Ran Playwright code')[0]||'';
 assert.equal(r.status,0,output||r.stderr);

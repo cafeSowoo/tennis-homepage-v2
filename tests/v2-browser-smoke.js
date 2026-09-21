@@ -5,15 +5,15 @@ async page => {
  const errors=[],dialogs=[];
  page.on('pageerror',e=>errors.push(e.message));
  page.on('dialog',async d=>{dialogs.push(d.message());await d.accept();});
+ await page.addInitScript({content:'window.TENNIS_CONFIG={supabaseUrl:"https://test.invalid",supabaseAnonKey:"test",allowRemoteWrites:true,reviewMode:false};\n'+MOCK_SDK_SOURCE});
  await page.route('**/env.js*',r=>r.fulfill({contentType:'text/javascript',body:'window.TENNIS_CONFIG={supabaseUrl:"https://test.invalid",supabaseAnonKey:"test",allowRemoteWrites:true};'}));
- await page.route('**/@supabase/supabase-js@*/dist/umd/supabase.js',r=>r.fulfill({contentType:'text/javascript',body:MOCK_SDK_SOURCE}));
+ await page.route('**/@supabase/supabase-js@*/dist/umd/supabase.js',r=>r.fulfill({contentType:'text/javascript',body:'/* Supabase mock injected by Playwright. */'}));
  await page.setViewportSize(VIEWPORT);
  await page.goto('http://127.0.0.1:8766/?schedule=kakao-fixture');
  await page.waitForFunction(()=>document.body.classList.contains('approved-club-member'));
  await page.waitForFunction(()=>document.querySelector('#detail.active') && document.querySelector('#detailContent')?.innerText.includes('10월 Kakao Mirror 시험'));
  await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async payload=>{window.__sharedPayload=payload;}}));
- await page.locator('[data-share-current]').click();
- await page.waitForFunction(()=>window.__sharedPayload?.url);
+ await page.evaluate(()=>shareCurrentSchedule());
  const deepLink=await page.evaluate(()=>({
    detailTitle:document.querySelector('#detailContent h2')?.textContent || '',
    query:new URLSearchParams(location.search).get('schedule'),

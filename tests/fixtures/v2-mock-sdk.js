@@ -7,6 +7,8 @@ window.supabase={createClient(){const m=window.__v2Mock;return {
  auth:{getSession:async()=>({data:{session:m.user?{user:m.user}:null}}),onAuthStateChange:fn=>{m.onAuth=fn;return {data:{subscription:{unsubscribe(){}}}};},signOut:async()=>{m.user=null;m.onAuth('SIGNED_OUT',null);return{};}},
  from(table){let filters=[],gtes=[],lts=[];const q={select(){return q},order(){return q},eq(k,v){filters.push([k,v]);return q},gte(k,v){gtes.push([k,v]);return q},lt(k,v){lts.push([k,v]);return q},range(a,b){return Promise.resolve({data:read().slice(a,b+1),error:null})},maybeSingle(){return Promise.resolve({data:read()[0]||null,error:null})},then(resolve,reject){return Promise.resolve({data:read(),error:null}).then(resolve,reject)}};function read(){return (table==='club_member_accounts'?[m.account]:(m.tables[table]||[])).filter(r=>filters.every(([k,v])=>r[k]===v)&&gtes.every(([k,v])=>r[k]>=v)&&lts.every(([k,v])=>r[k]<v));}return q;},
  async rpc(name,p){m.calls.push({name,args:p});let s=m.tables.v2_schedules.find(x=>x.id===p.p_id);const now=new Date().toISOString();
+ if(name==='review_access_login')return{data:p.p_password==='review-pass'?'review-token':null,error:null};
+ if(name==='review_access_check')return{data:p.p_token==='review-token',error:null};
  if(name==='v2_create_schedule'){s={...p.p_input,id:p.p_id,host_member_id:p.p_input.host?'member-a':null,creator_member_id:'member-a',creator_name_snapshot:'테스트 회원',court_name_snapshot:'테스트 코트',version:1,status:'active',created_at:now,updated_at:now};m.tables.v2_schedules.push(s);}
  if(name==='v2_update_schedule'){Object.assign(s,p.p_input,{version:s.version+1,updated_at:now});}
  if(name==='v2_cancel_schedule'){s.status='cancelled';s.version++;}
