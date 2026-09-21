@@ -3181,7 +3181,18 @@
     let members = [];
     const memberAdmin = window.V2MemberAdmin.create({client: () => supabaseClient, isAdmin: () => isClubAdmin(), members: () => members, userId: () => authState.user?.id});
     const memberRequest = window.V2MemberRequest.create({client: () => supabaseClient, account: () => authState.memberAccount, userId: () => authState.user?.id, refresh: async () => { await loadCurrentMemberAccount(); renderAuthStatus(); await loadSupabaseData(); refreshViews(); }});
-    const feedback = window.V2Feedback.create({scheduleTitle: id => schedules.find(s => String(s.id) === id)?.title, client: () => supabaseClient, isApproved: () => isApprovedMember(), isAdmin: () => isClubAdmin(), userId: () => authState.user?.id, context: () => ({view: document.querySelector('.view.active')?.id || 'other', scheduleId: document.querySelector('#detail.active') && state.detailType === 'schedule' ? String(state.selectedId) : null})});
+    const feedback = window.V2Feedback.create({
+      scheduleTitle: id => schedules.find(s => String(s.id) === id)?.title,
+      client: () => supabaseClient,
+      isApproved: () => isApprovedMember(),
+      isAdmin: () => isClubAdmin(),
+      userId: () => authState.user?.id,
+      isReviewMode: () => REVIEW_MODE_ENABLED,
+      reviewToken: () => reviewState.accessToken,
+      memberId: () => myMemberId(),
+      memberName: () => myMemberName(),
+      context: () => ({view: document.querySelector('.view.active')?.id || 'other', scheduleId: document.querySelector('#detail.active') && state.detailType === 'schedule' ? String(state.selectedId) : null})
+    });
     let courts = [];
     let courtUnits = [];
     let schedules = [];
@@ -5048,6 +5059,7 @@
       document.body.classList.add("review-mode");
       document.body.classList.remove("club-admin", "can-manage-official-data");
       document.body.classList.toggle("approved-club-member", isApprovedMember());
+      feedback.sync();
       const memberGate = document.querySelector("#memberGate");
       if (memberGate) memberGate.hidden = true;
       const gate = document.querySelector("#reviewGate");

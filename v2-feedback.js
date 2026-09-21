@@ -1,26 +1,27 @@
 /* Private pilot feedback. All member-provided strings use textContent. */
 window.V2Feedback = {
-  create({client, isApproved, isAdmin, userId, context, scheduleTitle}) {
+  create({client, isApproved, isAdmin, userId, context, scheduleTitle, isReviewMode = () => false, reviewToken = () => '', memberId = () => '', memberName = () => ''}) {
     const button = document.createElement('button');
     button.id = 'feedbackButton'; button.type = 'button'; button.textContent = '의견 보내기'; button.hidden = true;
     document.body.append(button);
     const dialog = document.createElement('dialog');
     dialog.id = 'feedbackDialog'; dialog.setAttribute('aria-labelledby', 'feedbackHeading');
     dialog.innerHTML = `<div class="feedback-header"><h2 id="feedbackHeading">의견 보내기</h2><button type="button" data-close>닫기</button></div>
-      <p>작성자 본인과 관리자만 볼 수 있습니다. 비밀번호나 인증번호는 적지 마세요.</p>
+      <p data-intro>작성자 본인과 관리자만 볼 수 있습니다. 비밀번호나 인증번호는 적지 마세요.</p>
       <form><label>종류<select name="category"><option value="error">오류</option><option value="inconvenience">불편</option><option value="suggestion">제안</option></select></label>
       <label>내용<textarea name="body" required maxlength="4000" rows="4" placeholder="무엇을 하려 했고, 실제로 어떻게 되었나요?"></textarea></label>
       <p data-context></p><button type="submit">의견 등록</button></form>
       <p data-notice role="status" aria-live="polite"></p>
-      <div class="feedback-header"><h3 data-list-title>내 의견</h3><button type="button" data-refresh>새로고침</button></div>
-      <div data-list></div><button type="button" data-more hidden>더 보기</button>`;
+      <div data-history><div class="feedback-header"><h3 data-list-title>내 의견</h3><button type="button" data-refresh>새로고침</button></div>
+      <div data-list></div><button type="button" data-more hidden>더 보기</button></div>`;
     document.body.append(dialog);
-    const $ = s => dialog.querySelector(s), form = $('form'), list = $('[data-list]'), notice = $('[data-notice]');
+    const $ = s => dialog.querySelector(s), form = $('form'), list = $('[data-list]'), notice = $('[data-notice]'), history = $('[data-history]'), intro = $('[data-intro]');
     const statuses = {new:'접수',in_progress:'확인 중',resolved:'수정 완료'};
     const categories = {error:'오류',inconvenience:'불편',suggestion:'제안'};
     const views = {dashboard:'홈',schedule:'일정 목록',detail:'일정 상세',members:'회원 목록','member-detail':'회원 상세',other:'기타 화면'};
     let epoch = 0, identity = '', busy = false, rows = [], captured = {}, request = null;
-    const key = () => `${userId() || ''}:${isAdmin()}`;
+    const reviewing = () => Boolean(isReviewMode());
+    const key = () => reviewing() ? `review:${memberId() || ''}` : `${userId() || ''}:${isAdmin()}`;
     const valid = n => n === epoch && isApproved() && identity === key() && dialog.open;
     function node(tag, text) { const el = document.createElement(tag); el.textContent = text; return el; }
     function lock(value) { busy = value; dialog.querySelectorAll('button,input,select,textarea').forEach(el => { el.disabled = value && !el.matches('[data-close]'); }); }
@@ -59,6 +60,7 @@ window.V2Feedback = {
         error?.code === '42501' ? '이용 권한을 확인해 주세요. 다시 로그인해야 할 수 있습니다.' : '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
     }
     async function load(append = false, success = '') {
+      if (reviewing()) return;
       const n=epoch; lock(true); notice.textContent='불러오는 중…';
       if (!append) { rows=[]; list.replaceChildren(); }
       try {
@@ -101,18 +103,38 @@ window.V2Feedback = {
       if(!request || request.fingerprint!==fingerprint) request={fingerprint,id:crypto.randomUUID()};
       const n=epoch; lock(true); notice.textContent='등록 중…';
       try {
-        const {error}=await client().rpc('v2_submit_feedback',{p_id:request.id,...payload});
+        const {error}=reviewing()
+          ? await client().rpc('review_submit_feedback',{
+              p_token:reviewToken(),
+              p_member_id:memberId(),
+              p_id:request.id,
+              p_category:payload.p_category,
+              p_body:payload.p_body,
+              p_view:payload.p_view,
+              p_client_version:payload.p_client_version
+            })
+          : await client().rpc('v2_submit_feedback',{p_id:request.id,...payload});
         if(!valid(n)) return; if(error) throw error;
-        request=null; form.reset(); await load(false,'의견이 접수되었습니다. 감사합니다.');
+        request=null; form.reset();
+        if(reviewing()) notice.textContent='의견이 접수되었습니다. 감사합니다.';
+        else await load(false,'의견이 접수되었습니다. 감사합니다.');
       } catch(error) { if(valid(n)) notice.textContent=errorText(error); }
       finally { if(valid(n)) lock(false); }
     });
     button.onclick=()=>{
       if(!isApproved()) return; identity=key(); epoch++;
       const c=context(); captured={view:views[c.view]?c.view:'other',scheduleId:c.scheduleId || null,version:/^([a-f0-9]{7,40}|development)$/.test(window.TENNIS_BUILD)?window.TENNIS_BUILD:'development'};
-      $('[data-context]').textContent=`현재 화면(${views[captured.view]})${captured.scheduleId?'과 관련 일정':''}, 배포 버전이 함께 저장됩니다.`;
+      const review = reviewing();
+      intro.textContent=review
+        ? '선택한 이름과 함께 운영자에게 전달됩니다. 비밀번호나 인증번호는 적지 마세요.'
+        : '작성자 본인과 관리자만 볼 수 있습니다. 비밀번호나 인증번호는 적지 마세요.';
+      $('[data-context]').textContent=review
+        ? `${memberName() || '선택한 회원'} · 현재 화면(${views[captured.view]}), 배포 버전이 함께 저장됩니다.`
+        : `현재 화면(${views[captured.view]})${captured.scheduleId?'과 관련 일정':''}, 배포 버전이 함께 저장됩니다.`;
+      history.hidden=review;
       $('[data-list-title]').textContent=isAdmin()?'전체 의견':'내 의견';
-      dialog.showModal(); load();
+      dialog.showModal();
+      if(!review) load();
     };
     $('[data-close]').onclick=()=>invalidate();
     dialog.addEventListener('cancel',event=>{event.preventDefault();invalidate();});

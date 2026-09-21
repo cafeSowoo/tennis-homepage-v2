@@ -1,0 +1,18 @@
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict'),{spawnSync}=require('node:child_process');
+const cli=path.join(os.homedir(),'.codex/skills/playwright/scripts/playwright_cli.sh');
+const sdk=fs.readFileSync('tests/fixtures/v2-mock-sdk.js','utf8');
+const code=fs.readFileSync('tests/v2-feedback-review-browser-smoke.js','utf8').replace('MOCK_SDK_SOURCE',JSON.stringify(sdk));
+const r=spawnSync(cli,['-s=v2-feedback-review-test','run-code',code],{encoding:'utf8',timeout:120000});
+const output=r.stdout?.split('### Ran Playwright code')[0]||'';
+assert.equal(r.status,0,output||r.stderr);
+const match=/### Result\s*\n([^\n]+)/.exec(output);
+assert.ok(match,output);
+const result=JSON.parse(match[1]);
+assert.deepEqual(result.errors,[]);
+assert.equal(result.historyHidden,true);
+assert.equal(result.feedbacks.length,1);
+assert.deepEqual(result.feedbacks[0],{member_id:'member-a',author_name:'테스트 회원',body:'리뷰 모드 피드백 테스트',author_user_id:null});
+assert.equal(result.calls.length,1);
+assert.equal(result.calls[0].args.p_token,'review-token');
+assert.equal(result.calls[0].args.p_member_id,'member-a');
+console.log(JSON.stringify(result,null,2));
