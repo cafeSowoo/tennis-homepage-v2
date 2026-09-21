@@ -42,11 +42,23 @@ async page => {
     composer:!!document.querySelector('[data-discussion-input]'),
     addSchedule:!!document.querySelector('[data-add-schedule]:not([style*="display: none"])') && getComputedStyle(document.querySelector('[data-add-schedule]')).display!=='none',
     authVisible:getComputedStyle(document.querySelector('#authButton')).display!=='none',
+    profileVisible:[...document.querySelectorAll('.member-profile-nav')].some(el=>el.getClientRects().length>0 && getComputedStyle(el).display!=='none'),
     memberButton:document.querySelector('#reviewMemberButton')?.innerText || '',
     remoteWrites:remoteWritesEnabled(),
     localToken:localStorage.getItem('tennis.v2.reviewAccessToken'),
     localMember:localStorage.getItem('tennis.v2.reviewMemberId')
   }));
+
+  const visibleProfileNav=page.locator('.member-profile-nav:visible').first();
+  await visibleProfileNav.click();
+  await page.waitForFunction(()=>document.querySelector('#member-detail.active'));
+  const profile=await page.evaluate(()=>({
+    active:document.querySelector('#member-detail.active')!==null,
+    selectedMemberId:String(state.selectedMemberId||''),
+    text:document.querySelector('#member-detail')?.innerText||''
+  }));
+  await page.locator('.nav-item[data-view="dashboard"]:visible').first().click();
+  await page.waitForFunction(()=>document.querySelector('#dashboard.active'));
 
   await page.evaluate(async()=>{
     const source=__v2Mock.tables.schedules[0];
@@ -68,5 +80,5 @@ async page => {
   const switched=await page.evaluate(()=>({member:myMemberName(),declined:isDeclinedSchedule(schedules[0])}));
 
   const calls=await page.evaluate(()=>__v2Mock.calls.map(c=>c.name));
-  return {errors,locked,wrongRejected,entered,refreshed,persisted,switched,calls};
+  return {errors,locked,wrongRejected,entered,profile,refreshed,persisted,switched,calls};
 }

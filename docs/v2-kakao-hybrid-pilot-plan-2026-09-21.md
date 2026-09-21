@@ -277,6 +277,7 @@ public.v2_schedules / v2_schedule_rsvps / v2_discussions
 - [x] 이름 선택은 개인화 용도이며 `kakao_attendee_ids` / `kakao_absentee_ids` 기준으로 `내 일정`을 계산.
 - [x] 상단에서 본인 이름을 다시 선택할 수 있도록 구현.
 - [x] Review Mode에서는 `v2_schedules`, `v2_schedule_rsvps`, `v2_discussions`를 조회·수정하지 않고 Kakao Mirror + 회원/코트 정보만 사용.
+- [x] Review Mode에서도 이름 선택 후 `Home / Schedule / Profile`을 제공하고, Profile은 선택한 본인 회원 기준의 읽기 전용 화면으로 유지.
 - [x] Review Mode에서는 접속 시 오늘 이후 Kakao 일정을 즉시 조회하고, 화면이 열린 동안 60초 간격으로 Kakao 일정만 재조회. 다른 탭에서 돌아오면 즉시 한 번 더 갱신.
 - [x] Review Mode 데스크톱 1280×900 / 모바일 390×844 자동 브라우저 테스트 통과.
 - [x] 개별 일정 링크 공유 기능 구현 및 운영 화면에서 실제 공유창/복사 동작 검증.
