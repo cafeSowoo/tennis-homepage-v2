@@ -8,8 +8,21 @@ async page => {
  await page.route('**/env.js*',r=>r.fulfill({contentType:'text/javascript',body:'window.TENNIS_CONFIG={supabaseUrl:"https://test.invalid",supabaseAnonKey:"test",allowRemoteWrites:true};'}));
  await page.route('**/@supabase/supabase-js@*/dist/umd/supabase.js',r=>r.fulfill({contentType:'text/javascript',body:MOCK_SDK_SOURCE}));
  await page.setViewportSize(VIEWPORT);
- await page.goto('http://127.0.0.1:8766');
+ await page.goto('http://127.0.0.1:8766/?schedule=kakao-fixture');
  await page.waitForFunction(()=>document.body.classList.contains('approved-club-member'));
+ await page.waitForFunction(()=>document.querySelector('#detail.active') && document.querySelector('#detailContent')?.innerText.includes('10월 Kakao Mirror 시험'));
+ await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async payload=>{window.__sharedPayload=payload;}}));
+ await page.locator('[data-share-current]').click();
+ await page.waitForFunction(()=>window.__sharedPayload?.url);
+ const deepLink=await page.evaluate(()=>({
+   detailTitle:document.querySelector('#detailContent h2')?.textContent || '',
+   query:new URLSearchParams(location.search).get('schedule'),
+   authRedirect:authRedirectUrl(),
+   shared:window.__sharedPayload,
+   shareButton:!!document.querySelector('[data-share-current]')
+ }));
+ await page.evaluate(()=>switchView('dashboard'));
+ const clearedDeepLink=await page.evaluate(()=>new URLSearchParams(location.search).has('schedule'));
  const mirror=await page.evaluate(()=>{
    const item=schedules.find(schedule=>schedule.source==='kakao');
    if(!item)return null;
@@ -71,5 +84,5 @@ async page => {
  await page.locator('#authButton').click();
  await page.waitForFunction(()=>!document.querySelector('#memberGate').hidden);
  const loggedOut=await page.evaluate(()=>({detail:document.querySelector('#detailContent').innerText,schedules:typeof schedules==='undefined'?null:schedules.length,gate:!document.querySelector('#memberGate').hidden,calls:__v2Mock.calls.map(c=>c.name)}));
- return {errors,dialogs,mirror,cancelled,loggedOut,titleSafety};
+ return {errors,dialogs,deepLink,clearedDeepLink,mirror,cancelled,loggedOut,titleSafety};
 }
