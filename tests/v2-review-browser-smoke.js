@@ -52,11 +52,15 @@ async page => {
     kakaoBadgeClass:document.querySelector('#detailContent span.bg-\\[\\#fee500\\]')?.className || '',
     hostAvatar:document.querySelector('#detailContent img[src*="member-yoon-inseon"]')?.getAttribute('src') || '',
     hostNameClass:[...document.querySelectorAll('#detailContent span')].find(el=>el.textContent.trim()==='윤인선')?.className || '',
-    absenteeSummary:document.querySelector('[data-absentee-list] summary')?.innerText || ''
+    absenteeSummary:document.querySelector('[data-absentee-list] summary')?.innerText || '',
+    detailDateTimeVisible:!!document.querySelector('#detailContent [data-detail-datetime]')?.getClientRects().length,
+    kakaoMetadataRemoved:!document.querySelector('#detailContent').innerText.includes('마지막 확인'),
+    kakaoLinkYellow:document.querySelector('#detailContent a[href^="kakao"]')?.className.includes('bg-[#fee500]') || false
   }));
 
   await page.locator('[data-absentee-list] summary').click();
   const absenteeNames=await page.locator('[data-absentee-list]').innerText();
+  const absenteeDirection=await page.locator('[data-absentee-items]').evaluate(el=>getComputedStyle(el).flexDirection);
 
   const visibleProfileNav=page.locator('.member-profile-nav:visible').first();
   await visibleProfileNav.click();
@@ -89,5 +93,5 @@ async page => {
   const switched=await page.evaluate(()=>({member:myMemberName(),declined:isDeclinedSchedule(schedules[0])}));
 
   const calls=await page.evaluate(()=>__v2Mock.calls.map(c=>c.name));
-  return {errors,locked,wrongRejected,entered,absenteeNames,profile,refreshed,persisted,switched,calls};
+  return {errors,locked,wrongRejected,entered,absenteeNames,absenteeDirection,profile,refreshed,persisted,switched,calls};
 }

@@ -21,7 +21,8 @@ async page => {
    query:new URLSearchParams(location.search).get('schedule'),
    authRedirect:authRedirectUrl(),
    shared:window.__sharedPayload,
-   shareButton:!!document.querySelector('[data-share-current]')
+   shareButton:!!document.querySelector('[data-share-current]'),
+   shareLabel:document.querySelector('[data-share-current]')?.innerText.trim() || ''
  }));
  await page.evaluate(()=>switchView('dashboard'));
  const clearedDeepLink=await page.evaluate(()=>new URLSearchParams(location.search).has('schedule'));
@@ -39,9 +40,11 @@ async page => {
      detailReadOnly:document.querySelector('#detailContent').innerText.includes('카카오 일정 · 읽기 전용'),
      join:!!document.querySelector('#detailContent [data-join-current]'),
      composer:!!document.querySelector('#detailContent [data-discussion-input]'),
-     commentCount:document.querySelector('#detailContent').innerText.includes('카카오 댓글 2개'),
+     metadataRemoved:!document.querySelector('#detailContent').innerText.includes('카카오 댓글 2개') && !document.querySelector('#detailContent').innerText.includes('마지막 확인'),
      kakaoLinks:document.querySelectorAll('#detailContent a[href^="kakao"]').length,
      kakaoHref:document.querySelector('#detailContent a[href^="kakao"]')?.getAttribute('href') || '',
+     kakaoLinkYellow:document.querySelector('#detailContent a[href^="kakao"]')?.className.includes('bg-[#fee500]') || false,
+     dateTimeRendered:!!document.querySelector('#detailContent [data-detail-datetime]'),
      macDesktop:/Macintosh/i.test(navigator.userAgent || '') && !/Mobile/i.test(navigator.userAgent || ''),
      discussionGuide:document.querySelector('#detailContent').innerText.includes('Test 댓글 필드는 2차 테스트에서 구현 예정입니다.')
    };
