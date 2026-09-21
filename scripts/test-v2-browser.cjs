@@ -15,13 +15,13 @@ const result=JSON.parse(match[1]);
 assert.deepEqual(result.errors,[]);assert.equal(result.titleSafety,true);
 assert.equal(result.deepLink.detailTitle,'10월 Kakao Mirror 시험');assert.equal(result.deepLink.query,'kakao-fixture');assert.equal(result.deepLink.shareButton,true);assert.match(result.deepLink.shareLabel,/공유하기/);
 assert.equal(result.deepLink.shared.url.endsWith('/?schedule=kakao-fixture'),true);assert.equal(result.deepLink.shared.title,'10월 Kakao Mirror 시험');
-assert.equal(result.deepLink.authRedirect.includes('schedule=kakao-fixture'),true);assert.equal(result.clearedDeepLink,false);
+assert.equal(result.deepLink.authRedirect.includes('schedule=kakao-fixture'),true);if(result.qrInteraction.desktop){assert.equal(result.qrInteraction.hoverVisible,true);assert.equal(result.qrInteraction.clickVisible,true);assert.equal(result.qrInteraction.outsideHidden,true);}else{assert.equal(result.qrInteraction.helpCount,0);}assert.equal(result.clearedDeepLink,false);
 assert.deepEqual(result.mirror.attendeeIds,['member-a']);assert.deepEqual(result.mirror.absenteeIds,['member-b']);
 assert.equal(result.mirror.capacity,4);assert.equal(result.mirror.badge,true);assert.equal(result.mirror.cardRsvp,false);
 assert.equal(result.mirror.detailReadOnly,true);assert.equal(result.mirror.join,false);assert.equal(result.mirror.composer,false);assert.equal(result.mirror.metadataRemoved,true);
 assert.equal(result.mirror.kakaoLinkYellow,true);assert.equal(result.mirror.dateTimeRendered,true);
 assert.equal(result.mirror.kakaoLinks,1);assert.equal(result.mirror.discussionGuide,true);
-assert.equal(result.mirror.kakaoHref.startsWith(result.mirror.macDesktop?'kakaotalk://':'kakaomoim://'),true);
+assert.equal(result.mirror.kakaoHref.startsWith(result.mirror.desktop?'kakaotalk://':'kakaomoim://'),true);assert.equal(result.mirror.qrHelp,result.mirror.desktop);if(result.mirror.desktop){assert.equal(result.mirror.qrReady,true);assert.equal(result.mirror.qrValue.startsWith('kakaomoim://post?'),true);}else{assert.equal(result.mirror.qrReady,false);assert.equal(result.mirror.qrValue,'');}
 assert.equal(result.cancelled.responses,1);assert.equal(result.cancelled.comments,1);
 assert.equal(result.cancelled.join,false);assert.equal(result.cancelled.composer,false);assert.equal(result.cancelled.deleteComment,true);
 assert.equal(result.loggedOut.detail,'');assert.equal(result.loggedOut.schedules,0);assert.equal(result.loggedOut.gate,true);
