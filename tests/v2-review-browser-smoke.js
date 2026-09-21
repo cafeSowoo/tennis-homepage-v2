@@ -31,6 +31,7 @@ async page => {
   await page.locator('#reviewMemberConfirm').click();
   await page.waitForFunction(()=>document.querySelector('#reviewGate').hidden && document.body.classList.contains('approved-club-member'));
   await page.waitForFunction(()=>document.querySelector('#detail.active') && document.querySelector('#detailContent')?.innerText.includes('10월 Kakao Mirror 시험'));
+  await page.waitForFunction(()=>document.querySelector('#detailContent')?.innerText.includes('카카오 댓글 내용'));
 
   const entered=await page.evaluate(()=>({
     member:myMemberName(),
@@ -46,8 +47,16 @@ async page => {
     memberButton:document.querySelector('#reviewMemberButton')?.innerText || '',
     remoteWrites:remoteWritesEnabled(),
     localToken:localStorage.getItem('tennis.v2.reviewAccessToken'),
-    localMember:localStorage.getItem('tennis.v2.reviewMemberId')
+    localMember:localStorage.getItem('tennis.v2.reviewMemberId'),
+    detailText:document.querySelector('#detailContent')?.innerText || '',
+    kakaoBadgeClass:document.querySelector('#detailContent span.bg-\\[\\#fee500\\]')?.className || '',
+    hostAvatar:document.querySelector('#detailContent img[src*="member-yoon-inseon"]')?.getAttribute('src') || '',
+    hostNameClass:[...document.querySelectorAll('#detailContent span')].find(el=>el.textContent.trim()==='윤인선')?.className || '',
+    absenteeSummary:document.querySelector('[data-absentee-list] summary')?.innerText || ''
   }));
+
+  await page.locator('[data-absentee-list] summary').click();
+  const absenteeNames=await page.locator('[data-absentee-list]').innerText();
 
   const visibleProfileNav=page.locator('.member-profile-nav:visible').first();
   await visibleProfileNav.click();
@@ -80,5 +89,5 @@ async page => {
   const switched=await page.evaluate(()=>({member:myMemberName(),declined:isDeclinedSchedule(schedules[0])}));
 
   const calls=await page.evaluate(()=>__v2Mock.calls.map(c=>c.name));
-  return {errors,locked,wrongRejected,entered,profile,refreshed,persisted,switched,calls};
+  return {errors,locked,wrongRejected,entered,absenteeNames,profile,refreshed,persisted,switched,calls};
 }

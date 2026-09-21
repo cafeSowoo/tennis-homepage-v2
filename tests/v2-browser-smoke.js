@@ -8,8 +8,10 @@ async page => {
  await page.addInitScript({content:'window.TENNIS_CONFIG={supabaseUrl:"https://test.invalid",supabaseAnonKey:"test",allowRemoteWrites:true,reviewMode:false};\n'+MOCK_SDK_SOURCE});
  await page.route('**/env.js*',r=>r.fulfill({contentType:'text/javascript',body:'window.TENNIS_CONFIG={supabaseUrl:"https://test.invalid",supabaseAnonKey:"test",allowRemoteWrites:true};'}));
  await page.route('**/@supabase/supabase-js@*/dist/umd/supabase.js',r=>r.fulfill({contentType:'text/javascript',body:'/* Supabase mock injected by Playwright. */'}));
+ await page.route('**/sw.js*',r=>r.fulfill({contentType:'text/javascript',body:''}));
  await page.setViewportSize(VIEWPORT);
  await page.goto('http://127.0.0.1:8766/?schedule=kakao-fixture');
+ await page.waitForTimeout(1500);
  await page.waitForFunction(()=>document.body.classList.contains('approved-club-member'));
  await page.waitForFunction(()=>document.querySelector('#detail.active') && document.querySelector('#detailContent')?.innerText.includes('10월 Kakao Mirror 시험'));
  await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async payload=>{window.__sharedPayload=payload;}}));
@@ -41,7 +43,7 @@ async page => {
      kakaoLinks:document.querySelectorAll('#detailContent a[href^="kakao"]').length,
      kakaoHref:document.querySelector('#detailContent a[href^="kakao"]')?.getAttribute('href') || '',
      macDesktop:/Macintosh/i.test(navigator.userAgent || '') && !/Mobile/i.test(navigator.userAgent || ''),
-     discussionGuide:document.querySelector('#detailContent').innerText.includes('댓글 확인과 작성은 카카오톡에서 해주세요.')
+     discussionGuide:document.querySelector('#detailContent').innerText.includes('Test 댓글 필드는 2차 테스트에서 구현 예정입니다.')
    };
  });
  if (await page.locator('#pwaInstallDismiss').isVisible()) await page.locator('#pwaInstallDismiss').click();
@@ -70,7 +72,7 @@ async page => {
  await page.locator('#addScheduleSubmit').click();
  await page.waitForFunction(()=>__v2Mock.tables.v2_schedules[0].version===2);
  await page.locator('[data-join-current]').click();
- await page.waitForFunction(()=>document.querySelector('#detailContent').innerText.includes('Players (1/5)'));
+ await page.waitForFunction(()=>document.querySelector('#detailContent').innerText.includes('참석자 (1/5)'));
  if (await page.locator('#pwaInstallDismiss').isVisible()) await page.locator('#pwaInstallDismiss').click();
  await page.locator('[data-discussion-input]').fill('브라우저 시험 댓글');
  await page.locator('[data-send-discussion]').evaluate(el=>el.scrollIntoView({block:'center'}));
