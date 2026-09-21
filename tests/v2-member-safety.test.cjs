@@ -17,7 +17,7 @@ function memberContext() {
   const ctx = {
     authState: { initialized: true, user: { id: 'user-a' }, member, memberAccount: { user_id: 'user-a', member_id: member.id, status: 'approved', role: 'member' } },
     remoteWritesEnabled: () => true,
-    schedules: [{ id: 'schedule-a', attendeeIds: [], closed: false, source: 'kakao' }],
+    schedules: [{ id: 'schedule-a', attendeeIds: [], closed: false, source: 'v2' }],
     state: { selectedId: 'schedule-a' },
     MATCH_CAPACITY: 16, TennisV2, clearV2Data: () => {},
     isMySchedule: schedule => schedule.attendeeIds.includes(member.id),
@@ -37,6 +37,11 @@ test('self RSVP uses V2 RPC without caller-supplied identity', async () => {
       assert.deepEqual(JSON.parse(JSON.stringify(ctx.calls.at(-1))), { name: 'v2_set_my_rsvp', args: { p_id: 'schedule-a', p_state: state } });
     }
   }
+});
+test('Kakao mirror schedules reject RSVP before network calls', async () => {
+  const c=memberContext(); c.schedules[0].source='kakao';
+  await assert.rejects(c.joinCurrentSchedule(),/카카오 일정/);
+  assert.equal(c.calls.length,0);
 });
 test('unapproved, disabled, inactive, missing and stale members cannot write', async () => {
   const mutations = [c => c.authState.user = null, c => c.authState.memberAccount.status = 'pending', c => c.authState.memberAccount.status = 'disabled', c => c.authState.member.status = 'inactive', c => c.authState.member = null, c => c.authState.memberAccount.user_id = 'other-user', c => c.authState.initialized = false, c => c.remoteWritesEnabled = () => false];
@@ -131,6 +136,11 @@ test('comment RPC omits author identity and rejects oversized input', async () =
   await assert.rejects(c.addDiscussionMessage('x'.repeat(2001)),/2,000/);
   c.authState.memberAccount.status='pending';await assert.rejects(c.addDiscussionMessage('blocked'));
 });
+test('Kakao mirror schedules reject homepage comments before network calls', async () => {
+  const c=discussionContext(); c.schedules[0].source='kakao';
+  await assert.rejects(c.addDiscussionMessage('카카오에서 작성해야 함'),/카카오 일정/);
+  assert.equal(c.calls.length,0);
+});
 test('comment delete keeps visible rows when server rejects deletion', async () => {
   const c=discussionContext();c.dataStore.discussions=[{id:'own',memberId:'member-a',scheduleId:'schedule-a'}];c.rebuildDataIndexes();
   c.supabaseClient.rpc=async()=>({data:false,error:null});
@@ -153,6 +163,23 @@ test('schedule list encodes member titles in both text and accessible attributes
  assert.ok(result.includes('&lt;b data-title-probe=&quot;yes&quot;&gt;제목&lt;/b&gt;'));
  assert.ok(!result.includes('<b data-title-probe='));
  assert.ok(result.includes('<span class="weekend">(토)</span>'));
+});
+
+test('Kakao mirror cards do not render homepage RSVP controls',()=>{
+ const c={myMemberId:()=> 'member-a',getScheduleRsvpState:()=> 'pending'};
+ vm.createContext(c);vm.runInContext(source('scheduleRsvpButtonHTML'),c);
+ assert.equal(c.scheduleRsvpButtonHTML({id:'kakao-a',source:'kakao'}),'');
+ assert.match(c.scheduleRsvpButtonHTML({id:'v2-a',source:'v2'}),/data-set-rsvp="v2-a"/);
+});
+
+test('Kakao mirror adapter uses Kakao source RSVP and KST times',()=>{
+ const c={};vm.createContext(c);
+ vm.runInContext(['toTwentyFourHourLabel','fromSupabaseSchedule','kakaoMirrorIsoRange','fromKakaoMirrorSchedule'].map(source).join('\n'),c);
+ const row={id:'kakao-a',date:'2026-10-04',day:'일요일',time:'오후 8:00 ~ 오후 10:00',title:'테스트',source:'kakao',attendee_ids:['legacy'],absentee_ids:['legacy-decline'],kakao_attendee_ids:['member-a'],kakao_absentee_ids:['member-b'],kakao_creator_name:'개설자',kakao_comment_count:2,kakao_synced_at:'2026-09-21T02:00:00Z'};
+ const item=JSON.parse(JSON.stringify(c.fromKakaoMirrorSchedule(row)));
+ assert.deepEqual(item.attendeeIds,['member-a']);assert.deepEqual(item.absenteeIds,['member-b']);
+ assert.equal(item.capacity,4);assert.equal(item.source,'kakao');assert.equal(item.readOnlyMirror,true);
+ assert.equal(item.startsAt,'2026-10-04T11:00:00.000Z');assert.equal(item.endsAt,'2026-10-04T13:00:00.000Z');
 });
 
 test('schedule ordering uses start time and Korean title regardless of RSVP', () => {
