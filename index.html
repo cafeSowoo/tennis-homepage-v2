@@ -2568,7 +2568,7 @@
           <span id="detailCrumbTitle" class="is-current">Match Details</span>
         </div>
         <div class="flex gap-1">
-          <button class="app-icon-btn" type="button" aria-label="공유"><span class="material-symbols-outlined text-[18px]">share</span></button>
+          <button class="app-icon-btn" type="button" data-share-current aria-label="일정 공유"><span class="material-symbols-outlined text-[18px]">share</span></button>
           <button class="app-icon-btn" type="button" data-edit-current aria-label="일정 수정"><span class="material-symbols-outlined text-[18px]">edit</span></button>
           <button class="app-icon-btn" type="button" data-delete-current aria-label="일정 취소" title="일정 취소"><span class="material-symbols-outlined text-[18px]">event_busy</span></button>
         </div>
@@ -3089,6 +3089,7 @@
     const LOCAL_DISCUSSIONS_KEY = "tennis.v2.localDiscussions";
     const REMINDER_ENABLED_KEY = "tennis.v2.scheduleRemindersEnabled";
     const REMINDER_LOG_KEY = "tennis.v2.scheduleReminderLog";
+    const PENDING_SHARED_SCHEDULE_KEY = "tennis.v2.pendingSharedScheduleId";
         const SCHEDULE_OVERRIDES_KEY = "tennis.v2.scheduleOverrides";
         const EVENT_OVERRIDES_KEY = "tennis.v2.eventOverrides";
         const SUPABASE_CONFIG = window.TENNIS_CONFIG || {};
@@ -3133,6 +3134,7 @@
     let byDate = {};
     let eventsByDate = {};
     let upcoming = [];
+    let sharedScheduleNavigationActive = false;
     let declinedScheduleIds = new Set();
     let viewRenderRequest = 0;
     let calendarAddMenuCloseTimer = 0;
@@ -4539,16 +4541,135 @@
 
     function requireOfficialWriteAccess() { throw new Error('V2에서는 기존 공유 데이터를 수정하지 않습니다.'); }
 
-    function authRedirectUrl() {
-      const currentOrigin = window.location.origin;
-      if (window.location.hostname === "cafesowoo.github.io" && SUPABASE_CONFIG.siteUrl) {
-        return SUPABASE_CONFIG.siteUrl;
+    function normalizeSharedScheduleId(value) {
+      const id = String(value || "").trim();
+      return /^[A-Za-z0-9_-]{1,128}$/.test(id) ? id : "";
+    }
+
+    function sharedScheduleIdFromLocation() {
+      try {
+        return normalizeSharedScheduleId(new URLSearchParams(window.location.search).get("schedule"));
+      } catch {
+        return "";
       }
-      if (currentOrigin && currentOrigin !== "null" && /^https?:$/.test(window.location.protocol)) {
-        return `${currentOrigin}${window.location.pathname}`;
+    }
+
+    function rememberedSharedScheduleId() {
+      try {
+        return normalizeSharedScheduleId(sessionStorage.getItem(PENDING_SHARED_SCHEDULE_KEY));
+      } catch {
+        return "";
+      }
+    }
+
+    function rememberSharedScheduleIntent() {
+      const id = sharedScheduleIdFromLocation() || rememberedSharedScheduleId();
+      if (!id) return "";
+      try { sessionStorage.setItem(PENDING_SHARED_SCHEDULE_KEY, id); } catch {}
+      return id;
+    }
+
+    function forgetSharedScheduleIntent() {
+      try { sessionStorage.removeItem(PENDING_SHARED_SCHEDULE_KEY); } catch {}
+    }
+
+    function scheduleShareUrl(scheduleId) {
+      const id = normalizeSharedScheduleId(scheduleId);
+      if (!id) return "";
+      const url = new URL(window.location.pathname, window.location.origin);
+      url.searchParams.set("schedule", id);
+      return url.href;
+    }
+
+    function clearSharedScheduleQuery() {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("schedule")) return;
+      url.searchParams.delete("schedule");
+      history.replaceState(history.state || {}, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+
+    function openSharedScheduleIfReady() {
+      const scheduleId = sharedScheduleIdFromLocation() || rememberedSharedScheduleId();
+      if (!scheduleId || !isApprovedMember()) return false;
+      const item = schedules.find(schedule => String(schedule.id) === scheduleId);
+      if (!item) return false;
+
+      state.selectedId = item.id;
+      state.detailType = "schedule";
+      state.detailReturnTo = "schedule";
+      sharedScheduleNavigationActive = true;
+      forgetSharedScheduleIntent();
+      const shareUrl = scheduleShareUrl(item.id);
+      history.replaceState(
+        { tennisHomeView: "detail", returnTo: "schedule", sharedScheduleId: String(item.id) },
+        "",
+        shareUrl ? new URL(shareUrl).pathname + new URL(shareUrl).search : currentHistoryBaseUrl()
+      );
+      switchView("detail");
+      return true;
+    }
+
+    async function shareCurrentSchedule() {
+      if (state.detailType !== "schedule") return;
+      const item = schedules.find(schedule => String(schedule.id) === String(state.selectedId));
+      if (!item) throw new Error("공유할 일정을 찾지 못했습니다.");
+      const url = scheduleShareUrl(item.id);
+      if (!url) throw new Error("공유 링크를 만들지 못했습니다.");
+      const payload = {
+        title: item.title,
+        text: `${item.title}\n테니스 봄에서 일정 보기`,
+        url
+      };
+
+      if (typeof navigator.share === "function") {
+        try {
+          await navigator.share(payload);
+          return;
+        } catch (error) {
+          if (error?.name === "AbortError") return;
+        }
       }
 
-      return SUPABASE_CONFIG.siteUrl || "https://cafesowoo.github.io/tennis-homepage-v2/";
+      const copyText = `${payload.text}\n${url}`;
+      try {
+        await navigator.clipboard.writeText(copyText);
+        alert("일정 링크를 복사했습니다. 카카오톡에 붙여넣어 공유해 주세요.");
+      } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = copyText;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        if (copied) alert("일정 링크를 복사했습니다. 카카오톡에 붙여넣어 공유해 주세요.");
+        else window.prompt("아래 링크를 복사해 카카오톡에 공유해 주세요.", copyText);
+      }
+    }
+
+    function authRedirectUrl() {
+      const currentOrigin = window.location.origin;
+      const sharedScheduleId = rememberSharedScheduleIntent();
+      const withSharedSchedule = baseUrl => {
+        if (!sharedScheduleId) return baseUrl;
+        try {
+          const url = new URL(baseUrl, window.location.origin);
+          url.searchParams.set("schedule", sharedScheduleId);
+          return url.href;
+        } catch {
+          return baseUrl;
+        }
+      };
+      if (window.location.hostname === "cafesowoo.github.io" && SUPABASE_CONFIG.siteUrl) {
+        return withSharedSchedule(SUPABASE_CONFIG.siteUrl);
+      }
+      if (currentOrigin && currentOrigin !== "null" && /^https?:$/.test(window.location.protocol)) {
+        return withSharedSchedule(`${currentOrigin}${window.location.pathname}`);
+      }
+
+      return withSharedSchedule(SUPABASE_CONFIG.siteUrl || "https://cafesowoo.github.io/tennis-homepage-v2/");
     }
 
     function slugifyCourtName(name) {
@@ -4850,7 +4971,7 @@
             renderAuthStatus();
             initHeaderAvatar();
             refreshViews();
-            try { await loadSupabaseData(); refreshViews(); }
+            try { await loadSupabaseData(); refreshViews(); openSharedScheduleIfReady(); }
             catch { clearV2Data(); refreshViews(); }
           })();
         }, 0);
@@ -4882,6 +5003,7 @@
         return;
       }
 
+      rememberSharedScheduleIntent();
       const { error } = await supabaseClient.auth.signInWithOAuth({
         provider: "kakao",
         options: {
@@ -8989,6 +9111,10 @@
         if (isApprovedMember()) openAiCaptureSheet();
         return;
       }
+      if (view !== "detail" && sharedScheduleNavigationActive) {
+        sharedScheduleNavigationActive = false;
+        clearSharedScheduleQuery();
+      }
       if (view === "profile") {
         const memberId = myMemberId();
         if (!memberId) return;
@@ -9275,6 +9401,12 @@
       const editButton = event.target.closest("[data-edit-current]");
       if (editButton) {
         editCurrentDetail();
+        return;
+      }
+
+      const shareButton = event.target.closest("[data-share-current]");
+      if (shareButton) {
+        shareCurrentSchedule().catch(error => alert(error.message));
         return;
       }
 
@@ -9745,6 +9877,7 @@
     async function initApp() {
       try {
         document.body.classList.add("app-first-paint");
+        rememberSharedScheduleIntent();
         // Let Supabase consume OAuth callback parameters before history cleanup.
         await initAuth();
         if (!history.state?.tennisHomeView) {
@@ -9762,6 +9895,7 @@
         renderDashboard();
         initHeaderAvatar();
         deferSecondaryRenders();
+        openSharedScheduleIfReady();
         updateScheduleReminderButton();
         checkScheduleReminders().catch(error => console.warn("Schedule reminder check failed", error));
 
