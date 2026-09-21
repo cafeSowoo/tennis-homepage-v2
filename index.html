@@ -2696,8 +2696,9 @@
           <button id="scheduleWindowToggle" class="btn-outline min-w-0 justify-center px-3 py-2 text-sm md:px-4" type="button">
             지난 일정 보기
           </button>
-          <select id="placeFilter" class="app-segment min-w-0"></select>
-          <select id="personFilter" class="app-segment min-w-0"></select>
+          <button id="scheduleScopeToggle" class="btn-outline min-w-0 justify-center px-3 py-2 text-sm md:px-4" type="button">
+            내 일정만 보기
+          </button>
         </div>
       </div>
       <div id="scheduleGroups" class="space-y-4 md:space-y-5"></div>
@@ -3267,7 +3268,7 @@
       : null;
     const todayIso = todayIsoLocal();
     const today = new Date(`${todayIso}T00:00:00`);
-        const state = { query: "", place: "all", person: "all", scheduleWindow: "upcoming", overviewMode: "mine", memberSort: "count", memberMonth: "all", selectedId: 0, selectedEventId: "", selectedMemberId: "", detailType: "schedule", detailReturnTo: "schedule", selectedDate: "", currentMonth: todayIso.slice(0, 7) };
+        const state = { query: "", scheduleScope: "all", scheduleWindow: "upcoming", overviewMode: "mine", memberSort: "count", memberMonth: "all", selectedId: 0, selectedEventId: "", selectedMemberId: "", detailType: "schedule", detailReturnTo: "schedule", selectedDate: "", currentMonth: todayIso.slice(0, 7) };
     const authState = { session: null, user: null, memberAccount: null, member: null, initialized: false };
     const REVIEW_ACCESS_TOKEN_KEY = "tennis.v2.reviewAccessToken";
     const REVIEW_MEMBER_ID_KEY = "tennis.v2.reviewMemberId";
@@ -7988,23 +7989,22 @@
     function matches(item) {
       const q = state.query.toLowerCase();
       const text = [item.title, item.place, item.placeDetail, item.time, dateLabel(item), ...item.attendees].join(" ").toLowerCase();
-      return (!q || text.includes(q)) &&
-        (state.place === "all" || item.place === state.place) &&
-        (state.person === "all" || item.attendees.includes(state.person));
+      return !q || text.includes(q);
     }
 
     function matchesEvent(item) {
       const q = state.query.toLowerCase();
       const category = calendarEventCategory(item);
       const text = [item.title, item.location, item.note, eventTimeLabel(item), dateLabel(item), category.label].filter(Boolean).join(" ").toLowerCase();
-      return (!q || text.includes(q)) && state.place === "all" && state.person === "all";
+      return !q || text.includes(q);
     }
 
     function renderFilters() {
-      document.querySelector("#placeFilter").innerHTML = `<option value="all">전체 코트</option>` + places.map(p => `<option value="${p}">${p}</option>`).join("");
-      document.querySelector("#personFilter").innerHTML = `<option value="all">전체 참석자</option>` + people.map(p => `<option value="${p}">${p}</option>`).join("");
-      document.querySelector("#placeFilter").value = places.includes(state.place) ? state.place : "all";
-      document.querySelector("#personFilter").value = people.includes(state.person) ? state.person : "all";
+      const scopeButton = document.querySelector("#scheduleScopeToggle");
+      if (!scopeButton) return;
+      const mineOnly = state.scheduleScope === "mine";
+      scopeButton.textContent = mineOnly ? "전체 일정 보기" : "내 일정만 보기";
+      scopeButton.setAttribute("aria-pressed", String(mineOnly));
     }
 
         function renderSchedule() {
@@ -8014,14 +8014,15 @@
             windowButton.setAttribute("aria-pressed", String(state.scheduleWindow !== "upcoming"));
           }
           const inScheduleWindow = item => state.scheduleWindow !== "upcoming" || item.date >= todayIso;
-          const filteredSchedules = schedules.filter(item => isVisibleSchedule(item) && inScheduleWindow(item) && matches(item)).map(item => ({ type: "schedule", item }));
+          const inScheduleScope = item => state.scheduleScope !== "mine" || isMySchedule(item) || isMyHostSchedule(item);
+          const filteredSchedules = schedules.filter(item => isVisibleSchedule(item) && inScheduleWindow(item) && inScheduleScope(item) && matches(item)).map(item => ({ type: "schedule", item }));
           const filteredEvents = calendarEvents.filter(item => inScheduleWindow(item) && matchesEvent(item)).map(item => ({ type: "event", item }));
           const filtered = [...filteredSchedules, ...filteredEvents].sort((a, b) => compareCalendarItemsByTime(a.item, b.item));
           const groups = filtered.reduce((acc, row) => ((acc[row.item.date] ||= []).push(row), acc), {});
           const emptyTitle = state.scheduleWindow === "upcoming" ? "오늘 이후 일정이 없습니다" : "조건에 맞는 경기가 없습니다";
           const emptyMessage = state.scheduleWindow === "upcoming"
-            ? "지난 일정이 필요하면 필터를 전환하거나 새 일정을 추가하세요."
-            : "다른 검색어를 입력하시거나, 구장/참석자 필터를 조절해 보세요.";
+            ? (state.scheduleScope === "mine" ? "예정된 내 일정이 없습니다." : "지난 일정이 필요하면 필터를 전환하거나 새 일정을 추가하세요.")
+            : (state.scheduleScope === "mine" ? "조건에 맞는 내 일정이 없습니다." : "다른 검색어를 입력해 보세요.");
           // Stitch bridge: Schedule grouped-list HTML markup starts here.
           document.querySelector("#scheduleGroups").innerHTML = Object.entries(groups).map(([date, rows]) => `
         <section>
@@ -10156,8 +10157,11 @@
       event.stopPropagation();
       toggleSideScheduleAddMenu();
     });
-    document.querySelector("#placeFilter").addEventListener("change", event => { state.place = event.target.value; renderSchedule(); });
-        document.querySelector("#personFilter").addEventListener("change", event => { state.person = event.target.value; renderSchedule(); });
+        document.querySelector("#scheduleScopeToggle")?.addEventListener("click", () => {
+          state.scheduleScope = state.scheduleScope === "mine" ? "all" : "mine";
+          renderFilters();
+          renderSchedule();
+        });
         document.querySelector("#scheduleWindowToggle").addEventListener("click", () => {
           state.scheduleWindow = state.scheduleWindow === "upcoming" ? "all" : "upcoming";
           renderSchedule();
