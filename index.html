@@ -2462,10 +2462,6 @@
 
   <header class="fixed left-0 right-0 top-0 z-[70] flex h-[54px] items-center justify-between backdrop-blur-xl px-margin-mobile md:left-64 md:h-16 md:px-margin-desktop">
     <div class="flex items-center gap-sm">
-      <label class="relative hidden sm:block">
-        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#86868b]" data-icon="search">search</span>
-        <input id="globalSearch" class="w-64 rounded-full py-2 pl-10 pr-4 outline-none transition-colors" placeholder="Search..." type="search">
-      </label>
       <button type="button" class="brand-home flex items-center gap-2 sm:hidden" aria-label="Home으로 이동">
         <img class="h-7 w-7 shrink-0 object-contain" src="assets/logo.png" alt="" aria-hidden="true">
         <span class="brand-wordmark" role="img" aria-label="테니스 봄"></span>
@@ -2550,8 +2546,7 @@
       <div class="dashboard-summary flex items-start justify-between gap-3">
         <div class="min-w-0 flex-1">
           <div class="dashboard-heading-row flex justify-between">
-            <h2 class="dashboard-title app-page-title">Home</h2>
-            <a class="weather-card group shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" href="https://www.accuweather.com/ko/kr/songdo-4-sa-dong/3558154/current-weather/3558154" target="_blank" rel="noopener" aria-label="AccuWeather 송도4동 현재 날씨 보기">
+            <a class="weather-card group ml-auto shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" href="https://www.accuweather.com/ko/kr/songdo-4-sa-dong/3558154/current-weather/3558154" target="_blank" rel="noopener" aria-label="AccuWeather 송도4동 현재 날씨 보기">
               <div class="flex items-center gap-1.5">
                 <div class="weather-icon inline-flex shrink-0 items-center justify-center">
                   <span class="material-symbols-outlined icon-fill text-[17px]" data-weather-icon>partly_cloudy_day</span>
@@ -2636,11 +2631,8 @@
 
     <section id="schedule" class="view">
       <div class="mb-5 flex flex-col gap-4 md:mb-6 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 class="app-page-title">Schedule</h2>
-          <p id="kakaoSyncStatus" class="mt-2 hidden text-xs text-on-surface-variant"></p>
-        </div>
-        <div class="grid grid-cols-2 gap-2 md:flex md:flex-row md:flex-wrap">
+        <p id="kakaoSyncStatus" class="mt-2 hidden text-xs text-on-surface-variant"></p>
+        <div class="grid grid-cols-2 gap-2 md:ml-auto md:flex md:flex-row md:flex-wrap">
           <button class="btn-primary min-w-0 justify-center px-3 py-2 text-sm md:px-4" type="button" data-add-schedule>
             <span class="material-symbols-outlined text-[18px]">add</span> 일정 추가
           </button>
@@ -10054,7 +10046,7 @@
       if (nav) switchView(nav.dataset.view || nav.dataset.viewLink);
     });
 
-    document.querySelector("#globalSearch").addEventListener("input", event => {
+    document.querySelector("#globalSearch")?.addEventListener("input", event => {
       state.query = event.target.value.trim();
       renderSchedule();
       switchView("schedule");
