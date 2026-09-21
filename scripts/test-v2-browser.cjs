@@ -14,6 +14,7 @@ assert.deepEqual(result.mirror.attendeeIds,['member-a']);assert.deepEqual(result
 assert.equal(result.mirror.capacity,4);assert.equal(result.mirror.badge,true);assert.equal(result.mirror.cardRsvp,false);
 assert.equal(result.mirror.detailReadOnly,true);assert.equal(result.mirror.join,false);assert.equal(result.mirror.composer,false);assert.equal(result.mirror.commentCount,true);
 assert.equal(result.mirror.kakaoLinks,1);assert.equal(result.mirror.discussionGuide,true);
+assert.equal(result.mirror.kakaoHref.startsWith(result.mirror.macDesktop?'kakaotalk://':'kakaomoim://'),true);
 assert.equal(result.cancelled.responses,1);assert.equal(result.cancelled.comments,1);
 assert.equal(result.cancelled.join,false);assert.equal(result.cancelled.composer,false);assert.equal(result.cancelled.deleteComment,true);
 assert.equal(result.loggedOut.detail,'');assert.equal(result.loggedOut.schedules,0);assert.equal(result.loggedOut.gate,true);

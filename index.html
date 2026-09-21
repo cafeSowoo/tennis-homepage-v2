@@ -6765,10 +6765,19 @@
 
     async function loadKakaoComments() { kakaoCommentSnapshots.clear(); }
 
+    function isMacDesktopBrowser() {
+      const ua = navigator.userAgent || "";
+      return /Macintosh/i.test(ua) && !/Mobile/i.test(ua);
+    }
+
     function kakaoSourceLink(item) {
       try {
         const url = new URL(item.kakaoDeeplink);
         if (url.protocol !== "kakaomoim:" || url.hostname !== "post" || !/^\d+$/.test(url.searchParams.get("chat_id") || "") || !/^[a-zA-Z0-9_-]+$/.test(url.searchParams.get("post_id") || "")) return "";
+        if (isMacDesktopBrowser()) {
+          return `<a class="font-semibold text-primary underline underline-offset-2" href="kakaotalk://">카카오톡 열기</a>
+            <p class="mt-1 text-[11px] text-on-surface-variant">Mac에서는 해당 일정으로 바로 이동할 수 없어 카카오톡 앱만 엽니다.</p>`;
+        }
         return `<a class="font-semibold text-primary underline underline-offset-2" href="${escapeHTML(url.href)}">카카오톡에서 보기</a>`;
       } catch { return ""; }
     }
