@@ -277,6 +277,7 @@ public.v2_schedules / v2_schedule_rsvps / v2_discussions
 - [x] 이름 선택은 개인화 용도이며 `kakao_attendee_ids` / `kakao_absentee_ids` 기준으로 `내 일정`을 계산.
 - [x] 상단에서 본인 이름을 다시 선택할 수 있도록 구현.
 - [x] Review Mode에서는 `v2_schedules`, `v2_schedule_rsvps`, `v2_discussions`를 조회·수정하지 않고 Kakao Mirror + 회원/코트 정보만 사용.
+- [x] Review Mode에서는 접속 시 오늘 이후 Kakao 일정을 즉시 조회하고, 화면이 열린 동안 60초 간격으로 Kakao 일정만 재조회. 다른 탭에서 돌아오면 즉시 한 번 더 갱신.
 - [x] Review Mode 데스크톱 1280×900 / 모바일 390×844 자동 브라우저 테스트 통과.
 - [x] 개별 일정 링크 공유 기능 구현 및 운영 화면에서 실제 공유창/복사 동작 검증.
 - [ ] 카톡방에 V2 전체 일정/개별 일정 링크를 실제 회원 대상으로 공유.
@@ -367,3 +368,4 @@ Phase 1과 Phase 2의 핵심 구현은 완료되었고, Phase 3은 **Review Mode
 - 2026-09-21: 일정 상세 공유 기능을 구현함. `?schedule=<id>` 전용 URL로 직접 해당 일정 상세 진입이 가능하며, 비로그인 사용자는 Kakao 로그인 후 원래 공유 일정으로 복귀하도록 구성함. Mac Chrome 실제 공유 시트에서 KakaoTalk/복사하기 노출 및 복사된 제목·안내·URL 일치 확인. 최신 파일럿 기준 커밋은 `47cc88b`.
 - 2026-09-21: 파일럿 목표를 `Review Mode`로 좁힘. 기존 Kakao 인증/승인/RLS 코드는 삭제하지 않고 `reviewMode:false`로 되돌리면 다시 활성화할 수 있게 보존함.
 - 2026-09-21: Review Mode에서 공용 비밀번호를 Supabase 서버 해시로 검증하고, 통과 후 본인 이름을 선택해 Kakao 참석 원본 기준 `내 일정`을 보여주는 흐름을 구현함. Review Mode에서는 원격 쓰기 기능과 V2 전용 일정/댓글/RSVP 조회를 비활성화함.
+- 2026-09-21: Review Mode의 Kakao 조회 범위를 고정 10월에서 `오늘 이후`로 확장. 최초 접속/비밀번호 통과 시 즉시 로드하고, 열린 화면에서는 60초마다 Kakao 일정만 재조회하며 탭 복귀 시에도 즉시 갱신하도록 구성함. 기존 Kakao sync의 `public.schedules`를 계속 단일 원본으로 사용함.

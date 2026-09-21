@@ -3152,6 +3152,7 @@
     const MATCH_CAPACITY = 16;
     const KAKAO_MIRROR_START_DATE = "2026-10-01";
     const KAKAO_MIRROR_END_DATE = "2026-11-01";
+    const REVIEW_KAKAO_REFRESH_MS = 60_000;
     const SCHEDULE_TIME_START_HOUR = 6;
     const SCHEDULE_TIME_END_HOUR = 24;
     const supabaseClient = SUPABASE_CONFIG.supabaseUrl && SUPABASE_CONFIG.supabaseAnonKey && window.supabase
@@ -3168,6 +3169,8 @@
     const REVIEW_ACCESS_TOKEN_KEY = "tennis.v2.reviewAccessToken";
     const REVIEW_MEMBER_ID_KEY = "tennis.v2.reviewMemberId";
     const reviewState = { initialized: false, unlocked: false, accessToken: "", memberId: "" };
+    let reviewKakaoRefreshTimer = 0;
+    let reviewKakaoRefreshInFlight = false;
     let memberViewUserId = "";
     const dataStore = { members: [], courts: [], courtUnits: [], schedules: [], events: [], discussions: [], scheduleDeclines: [] };
     let members = [];
@@ -3515,16 +3518,41 @@
     }
 
     async function loadKakaoMirrorSchedules() {
-      const { data, error } = await supabaseClient
+      const startDate = REVIEW_MODE_ENABLED ? todayIsoLocal() : KAKAO_MIRROR_START_DATE;
+      let query = supabaseClient
         .from("schedules")
         .select("*")
         .eq("source", "kakao")
-        .gte("date", KAKAO_MIRROR_START_DATE)
-        .lt("date", KAKAO_MIRROR_END_DATE)
+        .gte("date", startDate);
+      if (!REVIEW_MODE_ENABLED) query = query.lt("date", KAKAO_MIRROR_END_DATE);
+      const { data, error } = await query
         .order("date")
         .order("time");
       if (error) throw error;
       return (data || []).map(fromKakaoMirrorSchedule);
+    }
+
+    async function refreshReviewKakaoSchedules() {
+      if (!REVIEW_MODE_ENABLED || !reviewState.unlocked || !authState.initialized) return false;
+      if (document.visibilityState !== "visible" || reviewKakaoRefreshInFlight) return false;
+      reviewKakaoRefreshInFlight = true;
+      try {
+        dataStore.schedules = await loadKakaoMirrorSchedules();
+        refreshViews();
+        return true;
+      } catch (error) {
+        console.warn("Review Kakao schedules could not be refreshed.", error);
+        return false;
+      } finally {
+        reviewKakaoRefreshInFlight = false;
+      }
+    }
+
+    function startReviewKakaoAutoRefresh() {
+      if (!REVIEW_MODE_ENABLED || reviewKakaoRefreshTimer) return;
+      reviewKakaoRefreshTimer = window.setInterval(() => {
+        refreshReviewKakaoSchedules();
+      }, REVIEW_KAKAO_REFRESH_MS);
     }
 
     async function loadReviewData() {
@@ -3943,7 +3971,11 @@
         source: event.source || "event"
       })).sort(compareCalendarItemsByTime);
 
-      people = unique(members.map(member => member.name));
+      people = unique(
+        members
+          .filter(member => (member.status || "active") === "active")
+          .map(member => member.name)
+      );
       places = unique([
         ...courts.map(court => court.name),
         ...schedules.map(schedule => schedule.place)
@@ -8062,7 +8094,9 @@
         <option value="${court.id}">${court.name}</option>
       `).join("");
       renderAddScheduleCourtUnitOptions();
-      document.querySelector("#addScheduleMembers").innerHTML = members.map(member => {
+      document.querySelector("#addScheduleMembers").innerHTML = members
+        .filter(member => (member.status || "active") === "active")
+        .map(member => {
         const toneClass = myMemberName() && member.name === myMemberName() ? "is-me" : MALE_MEMBER_NAMES.has(member.name) ? "is-male" : "is-female";
         return `
         <label class="attendee-option min-w-0">
@@ -8072,7 +8106,7 @@
           </span>
         </label>
       `;
-      }).join("");
+        }).join("");
     }
 
     function renderAddScheduleCourtUnitOptions(selectedUnitId = "") {
@@ -9174,7 +9208,9 @@
     function renderAttendeeOptions() {
       const schedule = findScheduleById(state.selectedId);
       const selectedIds = new Set(attendeeIdsForSchedule(schedule));
-      const options = members.filter(member => !selectedIds.has(member.id));
+      const options = members.filter(member =>
+        (member.status || "active") === "active" && !selectedIds.has(member.id)
+      );
       const select = document.querySelector("#attendeeSelect");
 
       select.innerHTML = options.length
@@ -10172,9 +10208,14 @@
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && authState.initialized) {
+        if (REVIEW_MODE_ENABLED) {
+          refreshReviewKakaoSchedules();
+          return;
+        }
         loadSupabaseData().then(refreshViews).catch(() => { clearV2Data(); renderAuthStatus(); refreshViews(); });
       }
     });
+    startReviewKakaoAutoRefresh();
     initApp();
 
     const PWA_DISMISS_KEY = "tennis.v2.pwaInstallDismissed";
