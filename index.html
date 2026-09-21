@@ -613,6 +613,7 @@
       width: min(88vw, 440px);
     }
     #memberPhotoViewer {
+      cursor: zoom-out;
       transition: background-color 380ms ease, backdrop-filter 380ms ease;
     }
     #memberPhotoViewer.is-opening:not(.is-scrim-visible),
@@ -3121,7 +3122,7 @@
     </div>
   </section>
 
-  <section id="memberPhotoViewer" class="fixed inset-0 z-[95] hidden items-center justify-center bg-black/72 backdrop-blur-sm" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="memberPhotoViewerTitle">
+  <section id="memberPhotoViewer" class="fixed inset-0 z-[95] hidden items-center justify-center bg-black/72 backdrop-blur-sm" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="memberPhotoViewerTitle" data-close-photo-viewer>
     <button class="photo-viewer-scrim absolute inset-0 z-0 border-0 bg-transparent p-0" type="button" data-close-photo-viewer aria-label="사진 확대 닫기"></button>
     <div class="photo-viewer-stage relative z-[1] flex flex-col items-center justify-center px-5">
       <figure class="photo-viewer-figure">
