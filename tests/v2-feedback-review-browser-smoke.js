@@ -12,6 +12,7 @@ async page => {
   await page.getByRole('button',{name:'입장하기',exact:true}).click();
   await page.getByRole('combobox',{name:'내 이름 선택'}).selectOption('member-a');
   await page.getByRole('button',{name:'이 이름으로 보기',exact:true}).click();
+  await page.evaluate(()=>Object.defineProperty(window.crypto,'randomUUID',{value:undefined,configurable:true}));
   const button=page.locator('[data-feedback-button]:visible');
   await button.waitFor({state:'visible'});
   await button.click();
@@ -19,10 +20,16 @@ async page => {
   const historyHidden=await dialog.locator('[data-history]').isHidden();
   await dialog.getByRole('textbox',{name:'내용'}).fill('리뷰 모드 피드백 테스트');
   await dialog.getByRole('button',{name:'의견 등록',exact:true}).click();
-  await dialog.getByText('의견이 접수되었습니다. 감사합니다.',{exact:true}).waitFor();
+  await page.getByText('전송 완료!',{exact:true}).waitFor();
+  const successUi=await page.evaluate(()=>({
+    dialogClosed:!document.querySelector('#feedbackDialog').open,
+    toastVisible:!document.querySelector('#feedbackToast').hidden
+  }));
+  await page.waitForTimeout(2200);
+  const toastDismissed=await page.evaluate(()=>document.querySelector('#feedbackToast').hidden);
   const result=await page.evaluate(()=>({
     feedbacks:__v2Mock.tables.v2_feedback.map(x=>({member_id:x.member_id,author_name:x.author_name,body:x.body,author_user_id:x.author_user_id})),
     calls:__v2Mock.calls.filter(x=>x.name==='review_submit_feedback')
   }));
-  return {historyHidden,errors,...result};
+  return {historyHidden,successUi,toastDismissed,errors,...result};
 }

@@ -10,6 +10,8 @@ assert.ok(match,output);
 const result=JSON.parse(match[1]);
 assert.deepEqual(result.errors,[]);
 assert.equal(result.historyHidden,true);
+assert.deepEqual(result.successUi,{dialogClosed:true,toastVisible:true});
+assert.equal(result.toastDismissed,true);
 assert.equal(result.feedbacks.length,1);
 assert.deepEqual(result.feedbacks[0],{member_id:'member-a',author_name:'테스트 회원',body:'리뷰 모드 피드백 테스트',author_user_id:null});
 assert.equal(result.calls.length,1);

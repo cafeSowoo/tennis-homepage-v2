@@ -20,15 +20,43 @@ window.V2Feedback = {
       <div data-history><div class="feedback-header"><h3 data-list-title>내 의견</h3><button type="button" data-refresh>새로고침</button></div>
       <div data-list></div><button type="button" data-more hidden>더 보기</button></div>`;
     document.body.append(dialog);
+    const toast = document.createElement('div');
+    toast.id = 'feedbackToast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.hidden = true;
+    document.body.append(toast);
     const $ = s => dialog.querySelector(s), form = $('form'), list = $('[data-list]'), notice = $('[data-notice]'), history = $('[data-history]'), intro = $('[data-intro]');
     const statuses = {new:'접수',in_progress:'확인 중',resolved:'수정 완료'};
     const categories = {error:'오류',inconvenience:'불편',suggestion:'제안'};
     const views = {dashboard:'홈',schedule:'일정 목록',detail:'일정 상세',members:'회원 목록','member-detail':'회원 상세',other:'기타 화면'};
     let epoch = 0, identity = '', busy = false, rows = [], captured = {}, request = null;
+    let toastTimer = null;
     const reviewing = () => Boolean(isReviewMode());
     const key = () => reviewing() ? `review:${memberId() || ''}` : `${userId() || ''}:${isAdmin()}`;
     const valid = n => n === epoch && isApproved() && identity === key() && dialog.open;
     function node(tag, text) { const el = document.createElement(tag); el.textContent = text; return el; }
+    function newRequestId() {
+      if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+      const bytes = new Uint8Array(16);
+      if (typeof globalThis.crypto?.getRandomValues === 'function') globalThis.crypto.getRandomValues(bytes);
+      else for (let i=0;i<bytes.length;i++) bytes[i]=Math.floor(Math.random()*256);
+      bytes[6]=(bytes[6]&0x0f)|0x40;
+      bytes[8]=(bytes[8]&0x3f)|0x80;
+      const hex=[...bytes].map(value=>value.toString(16).padStart(2,'0')).join('');
+      return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+    }
+    function showToast(message) {
+      if (toastTimer) window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.hidden = false;
+      requestAnimationFrame(() => toast.classList.add('is-visible'));
+      toastTimer = window.setTimeout(() => {
+        toast.classList.remove('is-visible');
+        window.setTimeout(() => { toast.hidden = true; toast.textContent = ''; }, 180);
+        toastTimer = null;
+      }, 1800);
+    }
     function lock(value) { busy = value; dialog.querySelectorAll('button,input,select,textarea').forEach(el => { el.disabled = value && !el.matches('[data-close]'); }); }
     function invalidate() {
       epoch++; rows = []; request = null; captured = {}; identity = ''; list.replaceChildren(); notice.textContent = ''; form.reset(); lock(false);
@@ -105,7 +133,7 @@ window.V2Feedback = {
       const body=form.elements.body.value.trim(); if(!body) { notice.textContent='내용을 입력해 주세요.'; return; }
       const payload={p_category:form.elements.category.value,p_body:body,p_view:captured.view,p_schedule_id:captured.scheduleId,p_client_version:captured.version};
       const fingerprint=JSON.stringify(payload);
-      if(!request || request.fingerprint!==fingerprint) request={fingerprint,id:crypto.randomUUID()};
+      if(!request || request.fingerprint!==fingerprint) request={fingerprint,id:newRequestId()};
       const n=epoch; lock(true); notice.textContent='등록 중…';
       try {
         const {error}=reviewing()
@@ -121,8 +149,12 @@ window.V2Feedback = {
           : await client().rpc('v2_submit_feedback',{p_id:request.id,...payload});
         if(!valid(n)) return; if(error) throw error;
         request=null; form.reset();
-        if(reviewing()) notice.textContent='의견이 접수되었습니다. 감사합니다.';
-        else await load(false,'의견이 접수되었습니다. 감사합니다.');
+        if(reviewing()) {
+          invalidate();
+          showToast('전송 완료!');
+        } else {
+          await load(false,'의견이 접수되었습니다. 감사합니다.');
+        }
       } catch(error) { if(valid(n)) notice.textContent=errorText(error); }
       finally { if(valid(n)) lock(false); }
     });
