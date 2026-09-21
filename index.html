@@ -1669,19 +1669,17 @@
 
     #dashboard .review-version-note strong {
       display: block;
-      margin-bottom: 7px;
       color: #36483c;
       font-size: 13px;
       font-weight: 800;
     }
 
-    #dashboard .review-version-note ul {
+    #dashboard .review-version-note p {
       margin: 0;
-      padding-left: 17px;
     }
 
-    #dashboard .review-version-note li + li {
-      margin-top: 2px;
+    #dashboard .review-version-note p + p {
+      margin-top: 4px;
     }
 
     #dashboard .overview-mode-toggle {
@@ -2681,12 +2679,9 @@
           </div>
 
           <aside class="review-version-note" aria-label="테스트 버전 안내">
-            <strong>테스트 버전 안내</strong>
-            <ul>
-              <li>일정·댓글은 카카오톡에서 불러옵니다.</li>
-              <li>하루 2회 내외로 동기화됩니다.</li>
-              <li>홈페이지에서는 아직 일정 등록/댓글 작성이 지원되지 않습니다.</li>
-            </ul>
+            <p>일정·댓글은 카카오톡과 자동 동기화됩니다.</p>
+            <p><strong id="reviewLastSync">마지막 동기화 · 확인 중</strong></p>
+            <p>홈페이지에서는 아직 일정 등록/댓글 작성이 지원되지 않습니다.</p>
           </aside>
       </div>
     </section>
@@ -4511,6 +4506,44 @@
       renderCalendar();
       renderSelectedDate();
       renderUpcoming();
+      renderReviewLastSync();
+    }
+
+    function renderReviewLastSync() {
+      const target = document.querySelector("#reviewLastSync");
+      if (!target) return;
+      const latest = schedules
+        .filter(schedule => schedule.source === "kakao" && schedule.kakaoSyncedAt)
+        .map(schedule => new Date(schedule.kakaoSyncedAt))
+        .filter(date => !Number.isNaN(date.getTime()))
+        .sort((a, b) => b - a)[0];
+      if (!latest) {
+        target.textContent = "마지막 동기화 · 확인 중";
+        return;
+      }
+
+      const kstParts = date => new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).formatToParts(date).reduce((acc, part) => {
+        if (part.type !== "literal") acc[part.type] = part.value;
+        return acc;
+      }, {});
+      const latestParts = kstParts(latest);
+      const nowParts = kstParts(new Date());
+      const sameDay = latestParts.year === nowParts.year
+        && latestParts.month === nowParts.month
+        && latestParts.day === nowParts.day;
+      const hourMinute = `${latestParts.hour}:${latestParts.minute}`;
+      const when = sameDay
+        ? `오늘 ${hourMinute}`
+        : `${Number(latestParts.month)}월 ${Number(latestParts.day)}일 ${hourMinute}`;
+      target.textContent = `마지막 동기화 · ${when}`;
     }
 
     function showDashboardShell() {

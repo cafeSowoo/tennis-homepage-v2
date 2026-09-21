@@ -55,7 +55,8 @@ async page => {
     absenteeSummary:document.querySelector('[data-absentee-list] summary')?.innerText || '',
     detailDateTimeVisible:!!document.querySelector('#detailContent [data-detail-datetime]')?.getClientRects().length,
     kakaoMetadataRemoved:!document.querySelector('#detailContent').innerText.includes('마지막 확인'),
-    kakaoLinkYellow:document.querySelector('#detailContent a[href^="kakao"]')?.className.includes('bg-[#fee500]') || false
+    kakaoLinkYellow:document.querySelector('#detailContent a[href^="kakao"]')?.className.includes('bg-[#fee500]') || false,
+    reviewLastSync:document.querySelector('#reviewLastSync')?.textContent || ''
   }));
 
   await page.locator('#detailContent [data-avatar-view]').first().click();
