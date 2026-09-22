@@ -2201,6 +2201,24 @@
       }
     }
 
+    /* Wide desktop: keep the whole app shell grouped around the 900px dashboard. */
+    @media (min-width: 1244px) {
+      .apple-ui #sideNav {
+        left: calc((100vw - 1244px) / 2);
+      }
+
+      body.apple-ui > header {
+        left: calc((100vw - 1244px) / 2 + 248px);
+        right: calc((100vw - 1244px) / 2);
+      }
+
+      body.apple-ui > main {
+        width: 996px;
+        margin-left: calc((100vw - 1244px) / 2 + 248px);
+        margin-right: 0;
+      }
+    }
+
     @media (max-width: 767px) {
       #dashboard .dashboard-title {
         font-size: 1.75rem;
