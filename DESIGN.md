@@ -138,6 +138,15 @@ The design system is built to evoke the physical energy of a premium tennis club
 
 The aesthetic is **clean and calm first**, sporty second. High-energy secondary colors (tennis-ball yellow, clay orange) remain in the token set for calendar chips, status badges, and legacy Tailwind classes, but they are no longer the default look for page chrome or primary buttons.
 
+**Design refresh (2026-09):** A single override layer at the end of the `<style>` block in `index.html` ("Design refresh 2026-09") calms the shell:
+
+*   **No card-in-card on the schedule page.** Schedule dates are plain headers above the match cards. Match row cards (`.app-list-card`) and overview cards (`.dash-overview-card`) keep their original style: my matches use the green border + soft green gradient; overview cards never show the Kakao badge.
+*   **Calendar status colors.** 미정 (no response) and 참석 share the same green (tint chip on PC, green dot on mobile); 참석 adds a marker (1px green border on the PC chip; a white ✓ inside the same-size 8px green dot on mobile); 불참 is grey. Closed uses a soft red tint; book club / Yonsei keep their own category colors. No neon yellow-green chips. A legend (`.calendar-legend`) under the grid explains the three states: mini chips on PC, dot + label on mobile.
+*   **Open calendar grid.** Desktop month view has no boxed cells—only row hairlines; today is a green number circle, past days are muted numbers.
+*   **Quiet Kakao marker.** `.kakao-badge` is a grey pill with a small yellow dot; it is always hidden on overview cards and hidden on list rows in review mode (every row there is Kakao). The yellow "카카오톡에서 보기" link stays yellow.
+*   **Korean UI labels.** Navigation, breadcrumbs, month/weekday labels, profile stats and the comment section are Korean (홈 / 일정 / 내 정보, 2026년 9월, 일–토, 댓글). Overview cards lead with a D-day (오늘, D-4).
+*   Refined tokens: `--app-green #0b6a5c`, `--app-fill #f3f4f1`, `--app-text #17201c`, `--app-muted #6b7470`, `--app-line rgba(23,32,28,.06)`, `--app-clay #9a4a31`.
+
 ## Implementation map
 
 When editing UI, treat these as the source of truth:

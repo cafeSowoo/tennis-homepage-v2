@@ -2515,6 +2515,228 @@
     #aiCaptureSheet.has-capture-results #aiTestImagePreviewWrap { flex:1; min-width:0; margin:0; border:0; }
     #aiCaptureSheet.has-capture-results #aiTestImagePreview { width:32px; height:32px; margin:0; }
     #aiTestResultCard > div:first-child > span { white-space:nowrap; flex-shrink:0; }
+
+    /* ── Design refresh 2026-09 ──────────────────────────────────────────
+       Calmer club look: one level of cards (no card-in-card), hairline
+       separators, green reserved for "mine / today / action", soft tints
+       instead of neon chips. Kept as a single layer so it is easy to audit. */
+    :root {
+      --app-green: #0b6a5c;
+      --app-green-hover: #0e7a6a;
+      --app-green-soft: rgba(11, 106, 92, 0.08);
+      --app-green-tint: #e6f1ee;
+      --app-fill: #f3f4f1;
+      --app-text: #17201c;
+      --app-muted: #6b7470;
+      --app-border: rgba(23, 32, 28, 0.08);
+      --app-line: rgba(23, 32, 28, 0.06);
+      --app-clay: #9a4a31;
+      --app-clay-tint: #f6ebe6;
+      --app-shadow: 0 1px 2px rgba(23, 32, 28, 0.04), 0 4px 16px rgba(23, 32, 28, 0.04);
+    }
+
+    body.apple-ui { background: var(--app-fill) !important; color: var(--app-text); }
+    .apple-ui .app-card,
+    #dashboard .dash-card,
+    .apple-ui #detailContent article.app-card { border-color: var(--app-border); box-shadow: var(--app-shadow); }
+
+    /* Brand: smaller wordmark so content leads */
+    header .brand-wordmark { width: 104px; }
+    .apple-ui header .brand-home img { width: 26px !important; height: 26px !important; }
+    .apple-ui #sideNav .brand-wordmark { width: 120px; }
+    .apple-ui #sideNav .brand-home img { width: 40px; height: 40px; }
+    .apple-ui #sideNav > div:first-child p { margin-top: 2px; font-size: 0.6875rem; letter-spacing: 0.01em; }
+    .apple-ui header { background: rgba(243, 244, 241, 0.82); border-bottom-color: var(--app-line); }
+    .apple-ui #sideNav { background: transparent; border-right-color: var(--app-line); }
+    .apple-ui .nav-item { color: var(--app-muted); }
+    .apple-ui #navIndicator { background: #fff; box-shadow: var(--app-shadow); }
+    .apple-ui #bottomNav { background: rgba(250, 250, 248, 0.9); border-top-color: var(--app-line); }
+    .apple-ui #bottomNav .nav-item span:last-child { font-weight: 600; }
+    #reviewMemberButton { border-color: var(--app-border); color: var(--app-text); font-weight: 650; }
+
+    /* Kakao source marker: quiet by default (every review-mode row is Kakao) */
+    .kakao-badge {
+      height: 18px;
+      padding: 0 6px;
+      border-radius: 6px;
+      background: rgba(23, 32, 28, 0.05);
+      color: var(--app-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+    .kakao-badge::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      margin-right: 4px;
+      border-radius: 50%;
+      background: #f2d500;
+    }
+    #dashboard .dash-overview-card .kakao-badge,
+    body.review-mode .app-list-card .kakao-badge { display: none; }
+
+    /* Overview strip */
+    #dashboard .overview-mode-toggle { background: rgba(23, 32, 28, 0.05); }
+
+    /* Calendar: open grid, no boxed cells */
+    #dashboard .calendar-card #calendarMonthTitle { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.03em; }
+    #dashboard .weekday-grid { font-size: 0.75rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
+    #dashboard .weekday-grid > div:first-child { color: #c2413a; }
+    #dashboard .weekday-grid > div:last-child { color: #2f6db5; }
+    #dashboard .weekday-grid > div.highlight-sun,
+    #dashboard .weekday-grid > div.highlight-sat,
+    #dashboard .weekday-grid > div.highlight-weekday { transform: none; }
+    #dashboard #calendarGrid > div:not(.calendar-day) { visibility: hidden; }
+
+    #dashboard .calendar-day,
+    #dashboard .calendar-day.has-my-schedule:not(.is-past):not(.is-today):not(.selected-date),
+    #dashboard .calendar-day.is-past:not(.is-today):not(.selected-date) {
+      background: transparent !important;
+      border: 1px solid transparent !important;
+      box-shadow: none !important;
+    }
+    #dashboard .calendar-day:hover { background: var(--app-fill) !important; }
+    #dashboard .calendar-day > span:first-child { color: var(--app-text); font-weight: 600; }
+    #dashboard .calendar-day.is-past:not(.is-today):not(.selected-date) > span:first-child { color: rgba(23, 32, 28, 0.32); font-weight: 500; }
+    #dashboard .calendar-day.is-past:not(.is-today):not(.selected-date) .pulse-dot,
+    #dashboard .calendar-day.is-past:not(.is-today):not(.selected-date) [title] { opacity: 0.45; }
+    #dashboard .calendar-day.is-today { background: transparent !important; border-color: transparent !important; }
+    #dashboard .calendar-day.is-today > span:first-child { background: var(--app-green) !important; color: #fff !important; }
+    #dashboard .calendar-day.selected-date { background: var(--app-green-soft) !important; box-shadow: none !important; border-color: rgba(11, 106, 92, 0.28) !important; }
+
+    /* Calendar status colors (PC chips / mobile dots)
+       미정·참석 = same green; 참석 adds an outline; 불참 = grey. */
+    #dashboard .calendar-day span[class*="bg-secondary-container"],
+    #dashboard .calendar-day span[class*="bg-tertiary-container"] {
+      border: 1px solid transparent !important;
+      background: var(--app-green-tint) !important;
+      color: #0a5449 !important;
+    }
+    #dashboard .calendar-day span[class*="border-primary"] {
+      border: 1px solid var(--app-green) !important;
+      font-weight: 700 !important;
+    }
+    #dashboard .calendar-day span[class*="bg-zinc-100"] {
+      border: 1px solid transparent !important;
+      background: #f1f1f2 !important;
+      color: #a1a1aa !important;
+    }
+    #dashboard .calendar-day span[class*="bg-error-container"] { background: #fbeceb !important; color: #a3261f !important; }
+    #dashboard .calendar-day span[class*="bg-surface-container-high"] { background: transparent !important; color: var(--app-muted) !important; padding-left: 0.375rem; }
+    #dashboard .calendar-day .rounded-full.bg-primary { width: 16px; height: 16px; box-shadow: none; --tw-ring-shadow: 0 0 #0000; }
+    #dashboard .calendar-day .rounded-full.bg-primary > span { font-size: 9px; }
+
+    #dashboard .pulse-dot { box-shadow: none !important; border: 0 !important; }
+    #dashboard .pulse-dot.dot-primary,
+    #dashboard .pulse-dot.dot-tertiary { background: var(--app-green); }
+    #dashboard .pulse-dot.my-schedule-dot {
+      width: 8px !important;
+      height: 8px !important;
+      border: 0 !important;
+      background: var(--app-green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M2 4.1l1.35 1.3L6 2.7' fill='none' stroke='%23fff' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important;
+    }
+    #dashboard .pulse-dot.dot-declined { background: #d4d4d8; }
+
+    /* Calendar legend: chips on PC, dots on mobile (mirrors the status styles above) */
+    #dashboard .calendar-legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.375rem 0.875rem;
+      margin: 0.75rem 0 0;
+      padding: 0 0.25rem;
+      list-style: none;
+    }
+    #dashboard .calendar-legend li { display: inline-flex; align-items: center; gap: 0.3125rem; }
+    #dashboard .calendar-legend .legend-chip {
+      display: none;
+      padding: 0.125rem 0.625rem;
+      border: 1px solid transparent;
+      border-radius: 0.375rem;
+      background: var(--app-green-tint);
+      color: #0a5449;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    #dashboard .calendar-legend .is-attending .legend-chip { border-color: var(--app-green); font-weight: 700; }
+    #dashboard .calendar-legend .is-declined .legend-chip { background: #f1f1f2; color: #a1a1aa; }
+    #dashboard .calendar-legend .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--app-green);
+    }
+    #dashboard .calendar-legend .is-attending .legend-dot {
+      background: var(--app-green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M2 4.1l1.35 1.3L6 2.7' fill='none' stroke='%23fff' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    }
+    #dashboard .calendar-legend .is-declined .legend-dot { background: #d4d4d8; }
+    #dashboard .calendar-legend .legend-label { color: var(--app-muted); font-size: 0.75rem; font-weight: 500; }
+
+    @media (min-width: 768px) {
+      #dashboard .calendar-legend { gap: 0.5rem; margin-top: 1rem; padding: 0; }
+      #dashboard .calendar-legend .legend-chip { display: inline-block; }
+      #dashboard .calendar-legend .legend-dot,
+      #dashboard .calendar-legend .legend-label { display: none; }
+    }
+
+    @media (min-width: 768px) {
+      #dashboard #calendarGrid,
+      #dashboard .weekday-grid { gap: 0; }
+      #dashboard .weekday-grid { padding-bottom: 0.5rem; border-bottom: 1px solid var(--app-line); }
+      #dashboard .weekday-grid > div { text-align: left; padding-left: 0.625rem; }
+      #dashboard .calendar-day,
+      #dashboard .calendar-day.has-my-schedule:not(.is-past):not(.is-today):not(.selected-date),
+      #dashboard .calendar-day.is-past:not(.is-today):not(.selected-date) {
+        height: 7.25rem;
+        border-radius: 0 !important;
+        border-width: 0 0 1px 0 !important;
+        border-bottom-color: var(--app-line) !important;
+      }
+      #dashboard .calendar-day.is-today,
+      #dashboard .calendar-day.selected-date { border-radius: 0.625rem !important; border-width: 1px !important; }
+      #dashboard .calendar-day.is-today { border-bottom-color: var(--app-line) !important; }
+      #dashboard #calendarGrid > div:not(.calendar-day) { height: 7.25rem; border-bottom: 1px solid var(--app-line); visibility: visible; background: transparent; opacity: 1; border-radius: 0; border-width: 0 0 1px; }
+    }
+
+    @media (max-width: 767px) {
+      #dashboard .calendar-day { border-radius: 0.75rem !important; }
+      #dashboard .calendar-day.has-my-schedule:not(.is-past):not(.is-today):not(.selected-date) > span:first-child { color: var(--app-green); font-weight: 700; }
+    }
+
+    /* Review / sync note */
+    #dashboard .review-version-note { background: transparent; border: 0; padding-left: 0; padding-right: 0; color: var(--app-muted); }
+    #dashboard .review-version-note strong { color: var(--app-text); font-weight: 700; }
+
+    /* Schedule list: date as a plain header, original row cards below it */
+    .apple-ui #scheduleGroups > section {
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .apple-ui #scheduleGroups > section > div:first-child { margin-bottom: 0.5rem; padding: 0 0.25rem; }
+    .apple-ui #scheduleGroups > section h3 { font-size: 0.9375rem; font-weight: 700; color: var(--app-text); }
+
+    /* Selected-date panel: row titles must not inherit the section-label style */
+    #dashboard #selectedDateList article h4,
+    #dashboard #selectedDateList article h4:first-of-type {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      text-transform: none;
+      color: var(--app-text);
+    }
+    #dashboard #selectedDateList article.is-declined h4 { color: #71717a; }
+
+    /* Detail */
+    .apple-ui #detailContent h2 { letter-spacing: -0.03em; }
+    .apple-ui #detailContent .grid.grid-cols-2 > * { border-color: var(--app-border) !important; box-shadow: none !important; }
+    .apple-ui #detailContent article .rounded-xl.bg-\[\#f5f5f7\],
+    .apple-ui #detailContent [class*="weather"] { background: var(--app-fill); }
   </style>
 </head>
 <body class="apple-ui min-h-screen bg-[#f5f5f7] font-body-md text-body-md text-[#1d1d1f] antialiased">
@@ -2535,19 +2757,19 @@
     <div class="nav-container flex flex-1 flex-col gap-sm text-label-md font-label-md relative">
       <div id="navIndicator" class="absolute left-2.5 w-[calc(100%-20px)] h-12 rounded-lg bg-primary-container/20 transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"></div>
       <button class="nav-item active mx-2.5 flex items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="dashboard">
-        <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>Home
+        <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>홈
       </button>
       <button class="nav-item mx-2.5 flex items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="schedule">
-        <span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>Schedule
+        <span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>일정
       </button>
       <button class="nav-item club-admin-nav mx-2.5 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="courts">
-        <span class="material-symbols-outlined" data-icon="sports_tennis">sports_tennis</span>Courts
+        <span class="material-symbols-outlined" data-icon="sports_tennis">sports_tennis</span>코트
       </button>
       <button class="nav-item club-admin-nav mx-2.5 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="members">
-        <span class="material-symbols-outlined" data-icon="group">group</span>Members
+        <span class="material-symbols-outlined" data-icon="group">group</span>회원
       </button>
       <button class="nav-item member-profile-nav mx-2.5 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="profile">
-        <span class="material-symbols-outlined" data-icon="person">person</span>Profile
+        <span class="material-symbols-outlined" data-icon="person">person</span>내 정보
       </button>
       <button class="nav-item ai-test-nav mx-2.5 items-center gap-3 rounded-lg px-4 py-3.5 text-left text-on-surface-variant hover:text-on-surface" data-view="ai-test">
         <span class="material-symbols-outlined" data-icon="science">science</span>AI Test
@@ -2701,11 +2923,16 @@
                 </div>
               </div>
               <div class="weekday-grid mb-2 grid grid-cols-7 gap-2 text-center">
-                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
               </div>
               <div id="calendarGridWrapper" class="relative overflow-hidden">
                 <div id="calendarGrid" class="grid grid-cols-7 gap-2"></div>
               </div>
+              <ul class="calendar-legend" aria-label="달력 표시 안내">
+                <li class="is-attending"><span class="legend-chip">참석</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">참석</span></li>
+                <li class="is-undecided"><span class="legend-chip">미정</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">미정</span></li>
+                <li class="is-declined"><span class="legend-chip">불참</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">불참</span></li>
+              </ul>
             </section>
 
             <section id="selectedDatePanel" class="dash-card hidden p-4 md:p-5">
@@ -2750,12 +2977,12 @@
     <section id="detail" class="view">
       <div class="mb-5 flex items-center justify-between gap-3">
         <div class="app-crumb">
-          <button type="button" id="detailBackLink" class="detail-back-link inline-flex items-center gap-1" data-detail-back="schedule" aria-label="Schedule로 돌아가기">
+          <button type="button" id="detailBackLink" class="detail-back-link inline-flex items-center gap-1" data-detail-back="schedule" aria-label="일정으로 돌아가기">
             <span class="material-symbols-outlined text-[18px] md:hidden">arrow_back</span>
-            <span id="detailBackLabel">Schedule</span>
+            <span id="detailBackLabel">일정</span>
           </button>
           <span class="material-symbols-outlined text-sm">chevron_right</span>
-          <span id="detailCrumbTitle" class="is-current">Match Details</span>
+          <span id="detailCrumbTitle" class="is-current">상세</span>
         </div>
         <div class="flex gap-1">
           <button class="btn-outline inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold" type="button" data-share-current aria-label="일정 공유">
@@ -2813,23 +3040,23 @@
   <nav id="bottomNav" class="fixed bottom-0 left-0 z-50 flex h-16 w-full items-center justify-around backdrop-blur-xl px-margin-mobile md:hidden">
     <button class="nav-item active flex flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="dashboard">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="dashboard">dashboard</span>
-      <span class="text-[10px] font-bold">Home</span>
+      <span class="text-[10px] font-bold">홈</span>
     </button>
     <button class="nav-item flex flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="schedule">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="calendar_today">calendar_today</span>
-      <span class="text-[10px] font-bold">Schedule</span>
+      <span class="text-[10px] font-bold">일정</span>
     </button>
     <button class="nav-item club-admin-nav flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="courts">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="sports_tennis">sports_tennis</span>
-      <span class="text-[10px] font-bold">Courts</span>
+      <span class="text-[10px] font-bold">코트</span>
     </button>
     <button class="nav-item club-admin-nav flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="members">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="group">group</span>
-      <span class="text-[10px] font-bold">Members</span>
+      <span class="text-[10px] font-bold">회원</span>
     </button>
     <button class="nav-item member-profile-nav flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="profile">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="person">person</span>
-      <span class="text-[10px] font-bold">Profile</span>
+      <span class="text-[10px] font-bold">내 정보</span>
     </button>
     <button class="nav-item ai-test-nav flex-1 flex-col items-center justify-center gap-1 py-1 text-on-surface-variant hover:text-on-surface transition-all duration-200" data-view="ai-test">
       <span class="material-symbols-outlined transition-transform duration-200" data-icon="science">science</span>
@@ -4332,22 +4559,22 @@
       }
 
       if (returnTo === "dashboard") {
-        backLabel.textContent = "Home";
+        backLabel.textContent = "홈";
         backLink.dataset.detailBack = "dashboard";
-        backLink.setAttribute("aria-label", "Home으로 돌아가기");
+        backLink.setAttribute("aria-label", "홈으로 돌아가기");
         return;
       }
 
       if (returnTo === "profile") {
-        backLabel.textContent = "Profile";
+        backLabel.textContent = "내 정보";
         backLink.dataset.detailBack = "profile";
-        backLink.setAttribute("aria-label", "Profile로 돌아가기");
+        backLink.setAttribute("aria-label", "내 정보로 돌아가기");
         return;
       }
 
-      backLabel.textContent = "Schedule";
+      backLabel.textContent = "일정";
       backLink.dataset.detailBack = "schedule";
-      backLink.setAttribute("aria-label", "Schedule로 돌아가기");
+      backLink.setAttribute("aria-label", "일정으로 돌아가기");
     }
 
     function openDetailNavigation() {
@@ -4732,7 +4959,12 @@
 
     function monthLabel(monthValue) {
       const [year, month] = monthValue.split("-").map(Number);
-      return `${new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "short" })}. ${year}`;
+      return `${year}년 ${Number(month)}월`;
+    }
+
+    function overviewDdayLabel(isoDate) {
+      const days = Math.round((new Date(`${isoDate}T00:00:00`) - new Date(`${todayIsoLocal()}T00:00:00`)) / 86400000);
+      return days <= 0 ? "오늘" : `D-${days}`;
     }
 
     function monthLabelKo(monthValue) {
@@ -6825,7 +7057,7 @@
         }).join("");
 
         const overflowChip = calendarItems.length > 2
-          ? `<span class="block truncate rounded bg-surface-container-high px-1.5 py-0.5 text-[10px] font-bold leading-normal text-on-surface-variant">+${calendarItems.length - 2} more</span>`
+          ? `<span class="block truncate rounded bg-surface-container-high px-1.5 py-0.5 text-[10px] font-bold leading-normal text-on-surface-variant">+${calendarItems.length - 2}</span>`
           : "";
 
         let cellClass = "bg-white border border-[rgba(0,0,0,0.10)]";
@@ -7409,7 +7641,7 @@
     }
 
     function kakaoBadgeHTML(className = "") {
-      return `<span class="inline-flex h-[18px] shrink-0 items-center rounded-md bg-[#fee500] px-1.5 text-[9px] font-bold leading-none tracking-[-0.01em] text-[#191919] ${className}">Kakao</span>`;
+      return `<span class="kakao-badge inline-flex shrink-0 items-center ${className}" title="카카오톡에서 가져온 일정">카카오</span>`;
     }
 
     function maskAccountLikeNumbers(value) {
@@ -7531,8 +7763,7 @@
         : "";
       return `
         <div class="mt-3 flex flex-wrap items-center gap-2 text-sm text-on-surface-variant">
-          ${kakaoBadgeHTML()}
-          <span class="text-xs font-semibold text-[#6e6e73]">Host</span>
+          <span class="text-xs font-semibold text-[#6e6e73]">개설</span>
           <div class="inline-flex items-center gap-2 ${memberId ? "cursor-pointer" : ""}" ${memberAttributes}>
             ${memberAvatarHTML(name, {
               className: "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white shadow-sm"
@@ -7685,7 +7916,7 @@
       if (!item || !isApprovedMember()) { document.querySelector('#detailContent').replaceChildren(); return; }
       document.querySelectorAll('[data-edit-current]').forEach(b => b.hidden = !canEditV2Schedule(item));
       document.querySelectorAll('[data-delete-current]').forEach(b => { b.hidden = !ownsV2Schedule(item) || item.status === 'cancelled'; b.setAttribute('aria-label','일정 취소'); });
-      document.querySelector("#detailCrumbTitle").textContent = "Details";
+      document.querySelector("#detailCrumbTitle").textContent = "상세";
       const capacity = item.capacity || 16;
       const attendeeCount = item.attendeeIds.length;
       const spotsLeft = Math.max(0, capacity - attendeeCount);
@@ -7843,7 +8074,7 @@
             <!-- Comments/Discussion Card -->
             <article class="app-card p-4 md:p-6">
               <h3 class="mb-4 md:mb-5 text-base md:text-lg font-semibold text-[#1d1d1f] flex items-center gap-2">
-                ${icon("forum", "text-[18px] text-primary")} Match Discussion
+                ${icon("forum", "text-[18px] text-primary")} 댓글
               </h3>
 
               ${renderDiscussionMessages(item)}
@@ -7878,7 +8109,7 @@
 
     function renderEventDetail(event = findEventById(state.selectedEventId)) {
       if (!event) return;
-      document.querySelector("#detailCrumbTitle").textContent = "Event Details";
+      document.querySelector("#detailCrumbTitle").textContent = "일정 상세";
       const category = calendarEventCategory(event);
       const location = event.location || "장소 미정";
       const note = event.note || "세부 메모가 아직 없습니다.";
@@ -8041,7 +8272,7 @@
               return `
                 <button class="dash-overview-card ${hostOnly ? "is-host" : "is-mine"} shrink-0 snap-center" type="button" data-detail-id="${schedule.id}">
                   <div class="dash-overview-row">
-                    <p class="dash-overview-label">${hostOnly ? "Host" : "My"} ${String(index + 1).padStart(2, "0")}</p>
+                    <p class="dash-overview-label tabular-nums">${overviewDdayLabel(schedule.date)}</p>
                     <p class="dash-overview-title truncate">${escapeHTML(schedule.place)}</p>
                     ${schedule.source === "kakao" ? kakaoBadgeHTML() : ""}
                   </div>
@@ -8051,7 +8282,7 @@
             }).join("") : `
                 <button class="dash-overview-card shrink-0 snap-center" type="button" data-view-link="schedule">
                   <div class="dash-overview-row">
-                    <p class="dash-overview-label">My 00</p>
+                    <p class="dash-overview-label">—</p>
                     <p class="dash-overview-title truncate">아직 없음</p>
                   </div>
                   <p class="dash-overview-meta truncate">내 참석 예정 없음</p>
@@ -8381,7 +8612,7 @@
       // Set breadcrumb name and focus it
       const crumb = document.querySelector("#memberDetailCrumbTitle");
       if (crumb) {
-        crumb.textContent = `${name} Profile`;
+        crumb.textContent = `${name} 프로필`;
         crumb.setAttribute("tabindex", "-1");
         if (!document.querySelector("#memberDetailBreadcrumb")?.classList.contains("hidden")) crumb.focus();
       }
@@ -8399,20 +8630,20 @@
                 </div>
                 <h2 class="text-xl md:text-2xl font-semibold text-[#1d1d1f] mb-1">${escapeHTML(name)}</h2>
                 <span class="rounded-full bg-[#f5f5f7] px-3 py-1 text-xs font-medium text-[#86868b] uppercase tracking-wide mb-5">
-                  ${status} member
+                  ${status === "active" ? "활동 회원" : escapeHTML(status)}
                 </span>
 
                 <div class="w-full space-y-3 pt-3 border-t border-[rgba(0,0,0,0.06)] text-left">
                   <div class="flex justify-between items-center text-sm">
-                    <span class="text-[#86868b] flex items-center gap-1.5">${icon("military_tech", "text-[18px] text-primary")} Club rank</span>
+                    <span class="text-[#86868b] flex items-center gap-1.5">${icon("military_tech", "text-[18px] text-primary")} 클럽 순위</span>
                     <span class="font-semibold text-[#1d1d1f]">${rank}위</span>
                   </div>
                   <div class="flex justify-between items-center text-sm">
-                    <span class="text-[#86868b] flex items-center gap-1.5">${icon("sports_tennis", "text-[18px] text-primary")} Total matches</span>
+                    <span class="text-[#86868b] flex items-center gap-1.5">${icon("sports_tennis", "text-[18px] text-primary")} 전체 참석</span>
                     <span class="font-semibold text-[#1d1d1f]">${overallCount}회</span>
                   </div>
                   <div class="flex justify-between items-center text-sm">
-                    <span class="text-[#86868b] flex items-center gap-1.5">${icon("calendar_month", "text-[18px] text-primary")} This month</span>
+                    <span class="text-[#86868b] flex items-center gap-1.5">${icon("calendar_month", "text-[18px] text-primary")} 이번 달</span>
                     <span class="font-semibold text-[#1d1d1f]">${monthlyCount}회</span>
                   </div>
                 </div>
@@ -8420,7 +8651,7 @@
             </article>
 
             <article class="app-card p-4">
-              <h3 class="text-xs font-medium text-[#86868b] uppercase tracking-wide mb-2">Club status</h3>
+              <h3 class="text-xs font-medium text-[#86868b] uppercase tracking-wide mb-2">클럽 활동</h3>
               <p class="text-xs leading-relaxed text-[#86868b]">
                 테니스 봄 클럽의 활성 멤버입니다. 코트 위에서 매너 있는 플레이와 성장을 지향합니다.
               </p>
@@ -8432,20 +8663,20 @@
             <!-- Stats Dashboard Grid -->
             <div class="grid grid-cols-3 gap-2.5">
               <div class="app-card p-3 md:p-4 flex flex-col justify-between">
-                <div class="text-[10px] md:text-xs font-medium text-[#86868b] uppercase tracking-wide mb-1">Total</div>
+                <div class="text-[10px] md:text-xs font-medium text-[#86868b] uppercase tracking-wide mb-1">전체</div>
                 <div class="flex items-baseline gap-1">
                   <span class="text-2xl md:text-3xl font-semibold text-primary">${overallCount}</span>
                   <span class="text-xs text-[#86868b]">경기</span>
                 </div>
               </div>
               <div class="app-card p-3 md:p-4 flex flex-col justify-between">
-                <div class="text-[10px] md:text-xs font-medium text-[#86868b] uppercase tracking-wide mb-1">Rank</div>
+                <div class="text-[10px] md:text-xs font-medium text-[#86868b] uppercase tracking-wide mb-1">순위</div>
                 <div class="flex items-baseline gap-1">
                   <span class="text-2xl md:text-3xl font-semibold text-primary">#${rank}</span>
                 </div>
               </div>
               <div class="app-card p-3 md:p-4 flex flex-col justify-between">
-                <div class="text-[10px] md:text-xs font-medium text-[#86868b] uppercase tracking-wide mb-1">Month</div>
+                <div class="text-[10px] md:text-xs font-medium text-[#86868b] uppercase tracking-wide mb-1">이번 달</div>
                 <div class="flex items-baseline gap-1">
                   <span class="text-2xl md:text-3xl font-semibold text-primary">${monthlyCount}</span>
                   <span class="text-xs text-[#86868b]">경기</span>
