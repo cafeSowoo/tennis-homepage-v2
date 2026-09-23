@@ -96,7 +96,7 @@ async page => {
  await page.locator('#addScheduleSubmit').click();
  await page.waitForFunction(()=>__v2Mock.tables.v2_schedules[0].version===2);
  await page.locator('[data-join-current]').click();
- await page.waitForFunction(()=>document.querySelector('#detailContent').innerText.includes('참석자 (1/5)'));
+ await page.waitForFunction(()=>document.querySelector('#detailContent').innerText.includes('참석자 1/5'));
  if (await page.locator('#pwaInstallDismiss').isVisible()) await page.locator('#pwaInstallDismiss').click();
  await page.locator('[data-discussion-input]').fill('브라우저 시험 댓글');
  await page.locator('[data-send-discussion]').evaluate(el=>el.scrollIntoView({block:'center'}));
