@@ -189,6 +189,9 @@
     #adminViewToggle[hidden] { display:none !important; }
     #memberAdminButton[hidden] { display: none !important; }
     #memberAdminDialog::backdrop { background: rgba(0,0,0,.4); }
+    #syncAdminButton[hidden] { display: none !important; }
+    #syncAdminDialog::backdrop { background: rgba(0,0,0,.4); }
+    #reviewLastSync.is-stale { color: #b45309; }
     /* CSS 디자인 시스템 토큰 및 변수 바인딩 */
     :root {
       --primary: #00685d;
@@ -2855,6 +2858,7 @@
     <div class="relative flex items-center gap-sm">
       <button id="memberAdminButton" type="button" class="hidden app-icon-btn shrink-0" aria-label="회원 승인 관리" title="회원 승인 관리" hidden><span class="material-symbols-outlined">manage_accounts</span></button>
       <button id="reviewMemberButton" type="button" hidden aria-label="내 이름 변경" title="내 이름 변경"><span data-review-member-label>이름 선택</span></button>
+      <button id="syncAdminButton" type="button" class="app-icon-btn shrink-0" aria-label="카카오 동기화 기록" title="카카오 동기화 기록" hidden><span class="material-symbols-outlined">monitor_heart</span></button>
       <button id="authButton" class="auth-control inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition sm:w-auto sm:gap-2 sm:px-3" type="button" aria-label="카카오 로그인" title="카카오 로그인">
         <span class="material-symbols-outlined text-[18px]" data-auth-icon>login</span>
         <span class="hidden lg:inline" data-auth-label>로그인</span>
@@ -3576,6 +3580,9 @@
     const KAKAO_MIRROR_START_DATE = "2026-10-01";
     const KAKAO_MIRROR_END_DATE = "2026-11-01";
     const REVIEW_KAKAO_REFRESH_MS = 60_000;
+    const SYNC_ADMIN_MEMBER_NAME = "김지석";
+    let syncAdminDialog = null;
+    let syncAdminPassword = "";
     const SCHEDULE_TIME_START_HOUR = 6;
     const SCHEDULE_TIME_END_HOUR = 24;
     const supabaseClient = SUPABASE_CONFIG.supabaseUrl && SUPABASE_CONFIG.supabaseAnonKey && window.supabase
@@ -4868,6 +4875,7 @@
       const checkedAt = reviewKakaoSyncState?.last_collected_at
         ? new Date(reviewKakaoSyncState.last_collected_at)
         : latestScheduleSync;
+      target.classList.remove("is-stale");
       if (!checkedAt || Number.isNaN(checkedAt.getTime())) {
         target.textContent = "마지막 확인 · 확인 중";
         return;
@@ -4895,6 +4903,13 @@
         ? `오늘 ${hourMinute}`
         : `${Number(checkedParts.month)}월 ${Number(checkedParts.day)}일 ${hourMinute}`;
 
+      if (kakaoSyncIsStale(checkedAt, new Date())) {
+        // Do not present an old check as current: "변경 없음" would read as up to date.
+        target.classList.add("is-stale");
+        target.textContent = `마지막 확인 · ${when} · 동기화 지연`;
+        return;
+      }
+
       if (!reviewKakaoSyncState?.last_collected_at) {
         target.textContent = `마지막 확인 · ${when}`;
         return;
@@ -4903,6 +4918,128 @@
       const changedAtLastCheck = latestScheduleSync
         && Math.abs(latestScheduleSync.getTime() - checkedAt.getTime()) < 5000;
       target.textContent = `마지막 확인 · ${when} · ${changedAtLastCheck ? "변경 반영됨" : "변경 없음"}`;
+    }
+
+    // The sync runs every 20 minutes; a gap of two missed runs needs attention.
+    function kakaoSyncIsStale(checkedAt, now, staleMinutes = 60) {
+      return now.getTime() - checkedAt.getTime() > staleMinutes * 60_000;
+    }
+
+    // Admin-only view of the sync run history. Choosing the name only shows the
+    // button; the password is checked by sync_admin_runs() in Supabase and is
+    // kept in memory for this page only.
+    function formatSyncRun(run) {
+      const failures = {
+        kakao_request_failed: "카카오 조회 실패",
+        recovery_deferred: "잠금·절전으로 복구 보류",
+        recovery_action_required: "자동 복구에 확인 필요",
+        safety_hold: "대량 변경 보류",
+        sync_failure: "동기화 오류"
+      };
+      const recovery = String(run.recovery || "");
+      const parts = [];
+      if (run.status === "ok") {
+        parts.push(run.operation_count ? `반영 ${run.operation_count}건` : "변경 없음");
+        if (run.held_count) parts.push(`보류 ${run.held_count}건`);
+        if (recovery.startsWith("recovered")) parts.push("자동 복구 후 성공");
+      } else {
+        parts.push(failures[run.error_kind] || run.error_kind || "실패");
+        if (recovery.includes("chat_window_not_open")) parts.push("채팅창 닫힘");
+        if (run.consecutive_failures > 1) parts.push(`연속 ${run.consecutive_failures}회`);
+      }
+      if (run.elapsed_seconds !== null && run.elapsed_seconds !== undefined) {
+        parts.push(`${Math.round(Number(run.elapsed_seconds))}초`);
+      }
+      return { ok: run.status === "ok", text: parts.join(" · ") };
+    }
+
+    function formatSyncRunTime(value) {
+      const parts = new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul", month: "numeric", day: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false
+      }).formatToParts(new Date(value)).reduce((acc, part) => {
+        if (part.type !== "literal") acc[part.type] = part.value;
+        return acc;
+      }, {});
+      return `${Number(parts.month)}/${Number(parts.day)} ${parts.hour}:${parts.minute}`;
+    }
+
+    function ensureSyncAdminDialog() {
+      if (syncAdminDialog) return syncAdminDialog;
+      const dialog = document.createElement("dialog");
+      dialog.id = "syncAdminDialog";
+      dialog.setAttribute("aria-labelledby", "syncAdminTitle");
+      dialog.style.cssText = "width:min(560px,calc(100% - 24px));max-height:85dvh;border:0;border-radius:20px;padding:24px;color:#1d1d1f;background:white;overflow:auto";
+      dialog.innerHTML = `<div class="flex items-center justify-between gap-3"><h2 id="syncAdminTitle" class="text-xl font-bold">카카오 동기화 기록</h2><button type="button" class="btn-outline px-3 py-2" data-close>닫기</button></div>
+        <form data-sync-admin-form class="mt-4 flex gap-2"><input type="password" autocomplete="current-password" aria-label="관리자 비밀번호" placeholder="관리자 비밀번호" class="min-w-0 flex-1 rounded-lg border p-2" data-sync-admin-password><button type="submit" class="btn-primary px-4 py-2">보기</button></form>
+        <p data-sync-admin-notice role="status" aria-live="polite" class="mt-3 text-sm"></p>
+        <ol data-sync-admin-runs class="mt-3 space-y-2 text-sm"></ol>`;
+      document.body.append(dialog);
+      dialog.querySelector("[data-close]").addEventListener("click", () => dialog.close());
+      dialog.querySelector("[data-sync-admin-form]").addEventListener("submit", event => {
+        event.preventDefault();
+        const input = dialog.querySelector("[data-sync-admin-password]");
+        void loadSyncAdminRuns(input.value);
+        input.value = "";
+      });
+      syncAdminDialog = dialog;
+      return dialog;
+    }
+
+    function openSyncAdminDialog() {
+      const dialog = ensureSyncAdminDialog();
+      dialog.querySelector("[data-sync-admin-form]").hidden = Boolean(syncAdminPassword);
+      if (!dialog.open) dialog.showModal();
+      if (syncAdminPassword) void loadSyncAdminRuns(syncAdminPassword);
+      else dialog.querySelector("[data-sync-admin-password]").focus();
+    }
+
+    function resetSyncAdmin() {
+      syncAdminPassword = "";
+      if (!syncAdminDialog) return;
+      syncAdminDialog.querySelector("[data-sync-admin-runs]").replaceChildren();
+      syncAdminDialog.querySelector("[data-sync-admin-notice]").textContent = "";
+      if (syncAdminDialog.open) syncAdminDialog.close();
+    }
+
+    async function loadSyncAdminRuns(password) {
+      const dialog = ensureSyncAdminDialog();
+      const form = dialog.querySelector("[data-sync-admin-form]");
+      const notice = dialog.querySelector("[data-sync-admin-notice]");
+      const list = dialog.querySelector("[data-sync-admin-runs]");
+      notice.textContent = "불러오는 중…";
+      const { data, error } = await supabaseClient.rpc("sync_admin_runs", { p_password: password, p_limit: 72 });
+      if (error) {
+        syncAdminPassword = "";
+        form.hidden = false;
+        list.replaceChildren();
+        notice.textContent = error.code === "42501"
+          ? "비밀번호가 맞지 않습니다."
+          : "기록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+        return;
+      }
+      syncAdminPassword = password;
+      form.hidden = true;
+      const runs = data || [];
+      const dayAgo = Date.now() - 24 * 60 * 60_000;
+      const recent = runs.filter(run => new Date(run.started_at).getTime() >= dayAgo);
+      const lastOk = runs.find(run => run.status === "ok");
+      notice.textContent = runs.length
+        ? `최근 24시간 성공 ${recent.filter(run => run.status === "ok").length}회 · 실패 ${recent.filter(run => run.status !== "ok").length}회`
+          + (lastOk ? ` · 마지막 성공 ${formatSyncRunTime(lastOk.finished_at)}` : "")
+        : "아직 기록된 실행이 없습니다.";
+      list.replaceChildren(...runs.map(run => {
+        const view = formatSyncRun(run);
+        const item = document.createElement("li");
+        item.className = "flex gap-2";
+        const mark = document.createElement("span");
+        mark.textContent = view.ok ? "✓" : "✕";
+        mark.style.color = view.ok ? "#00685d" : "#b91c1c";
+        const text = document.createElement("span");
+        text.textContent = `${formatSyncRunTime(run.started_at)} · ${view.text}`;
+        item.append(mark, text);
+        return item;
+      }));
     }
 
     function showDashboardShell() {
@@ -5595,6 +5732,10 @@
         const label = memberButton.querySelector("[data-review-member-label]");
         if (label) label.textContent = ready ? `${myMemberName()} · 이름 변경` : "이름 선택";
       }
+      const syncAdminButton = document.querySelector("#syncAdminButton");
+      const syncAdminVisible = ready && myMemberName() === SYNC_ADMIN_MEMBER_NAME;
+      if (syncAdminButton) syncAdminButton.hidden = !syncAdminVisible;
+      if (!syncAdminVisible) resetSyncAdmin();
     }
 
     function renderAuthStatus() {
@@ -5778,6 +5919,7 @@
       openSharedScheduleIfReady();
     });
 
+    document.querySelector('#syncAdminButton')?.addEventListener('click', openSyncAdminDialog);
     document.querySelector('#reviewMemberButton')?.addEventListener('click', () => {
       if (!REVIEW_MODE_ENABLED || !reviewState.unlocked) return;
       reviewState.memberId = '';
