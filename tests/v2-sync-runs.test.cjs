@@ -20,7 +20,7 @@ test('Kakao sync run history: owner writes, only the admin password reads',async
     create function auth.jwt() returns jsonb language sql stable as $$select nullif(current_setting('request.jwt.claims',true),'')::jsonb$$;
     grant usage on schema auth, extensions to anon, authenticated;
     create function extensions.crypt(p text, salt text) returns text language sql immutable as $$select 'test-hash:'||md5(p)$$;`);
-  await db.exec(fs.readFileSync('supabase/migrations/20260924000100_kakao_sync_runs.sql','utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/20260923155918_kakao_sync_runs.sql','utf8'));
   await db.exec(`insert into club_private.sync_admin_config(password_hash) values ('test-hash:'||md5('correct horse battery'))`);
   await db.exec(`grant usage on schema public to anon, authenticated`);
 
