@@ -2574,23 +2574,11 @@
       border-radius: 50%;
       background: #f2d500;
     }
-    body.review-mode :is(.dash-overview-card, .app-list-card) .kakao-badge { display: none; }
+    #dashboard .dash-overview-card .kakao-badge,
+    body.review-mode .app-list-card .kakao-badge { display: none; }
 
     /* Overview strip */
     #dashboard .overview-mode-toggle { background: rgba(23, 32, 28, 0.05); }
-    #dashboard .dash-overview-card,
-    #dashboard .dash-overview-card.is-mine,
-    #dashboard .dash-overview-card.is-open {
-      background: #fff;
-      border-color: var(--app-border);
-      box-shadow: var(--app-shadow);
-    }
-    #dashboard .dash-overview-card.is-mine { box-shadow: inset 3px 0 0 var(--app-green), var(--app-shadow); }
-    #dashboard .dash-overview-card.is-open { box-shadow: inset 3px 0 0 #d9b44a, var(--app-shadow); }
-    #dashboard .dash-overview-card:hover,
-    #dashboard .dash-overview-card.is-open:hover { background: #fff; border-color: rgba(11, 106, 92, 0.22); }
-    #dashboard .dash-overview-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0; text-transform: none; }
-    #dashboard .dash-overview-card.is-open .dash-overview-label { color: #8a6a00; }
 
     /* Calendar: open grid, no boxed cells */
     #dashboard .calendar-card #calendarMonthTitle { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.03em; }
