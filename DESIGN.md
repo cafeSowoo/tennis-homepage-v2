@@ -138,6 +138,15 @@ The design system is built to evoke the physical energy of a premium tennis club
 
 The aesthetic is **clean and calm first**, sporty second. High-energy secondary colors (tennis-ball yellow, clay orange) remain in the token set for calendar chips, status badges, and legacy Tailwind classes, but they are no longer the default look for page chrome or primary buttons.
 
+**Design refresh (2026-09):** A single override layer at the end of the `<style>` block in `index.html` ("Design refresh 2026-09") calms the shell:
+
+*   **One level of cards.** Schedule dates are plain headers; each day's matches sit in one white list with hairline separators (no card-in-card). Profile lists follow the same rule.
+*   **Green means "mine / today / action".** My matches get a 3px green inset bar (list rows, overview cards, calendar chips). Other matches use neutral tints; regular meetups (정기모임) use a clay tint; closed uses a soft red tint. No neon yellow-green chips.
+*   **Open calendar grid.** Desktop month view has no boxed cells—only row hairlines; today is a green number circle, past days are muted numbers.
+*   **Quiet Kakao marker.** `.kakao-badge` is a grey pill with a small yellow dot; it is hidden on list rows and overview cards in review mode (every row there is Kakao). The yellow "카카오톡에서 보기" link stays yellow.
+*   **Korean UI labels.** Navigation, breadcrumbs, month/weekday labels, profile stats and the comment section are Korean (홈 / 일정 / 내 정보, 2026년 9월, 일–토, 댓글). Overview cards lead with a D-day (오늘, D-4).
+*   Refined tokens: `--app-green #0b6a5c`, `--app-fill #f3f4f1`, `--app-text #17201c`, `--app-muted #6b7470`, `--app-line rgba(23,32,28,.06)`, `--app-clay #9a4a31`.
+
 ## Implementation map
 
 When editing UI, treat these as the source of truth:
