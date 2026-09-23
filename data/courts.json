@@ -1,7 +1,7 @@
 [
   {
     "id": "court-moonlight",
-    "name": "달빛",
+    "name": "달빛공원",
     "image": "assets/courts/dalbit_2.jpeg",
     "type": "하드 / 인조잔디",
     "location": "인천 연수구 송도동",
@@ -9,7 +9,7 @@
   },
   {
     "id": "court-moonlight-festival",
-    "name": "달빛축제",
+    "name": "달빛축제공원",
     "image": "assets/courts/dalbit-festival.jpg",
     "type": "하드",
     "location": "인천 연수구 송도동",
