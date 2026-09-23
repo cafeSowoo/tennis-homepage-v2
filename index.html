@@ -7358,26 +7358,24 @@
     }
 
     function scheduleRow(item) {
-      const empty = item.attendees.length === 0;
       const isBookClub = isBookClubSchedule(item);
       const isYonsei = isYonseiSchedule(item);
       const isMine = isMySchedule(item);
       const isHost = isMyHostSchedule(item);
       const isDeclined = isDeclinedSchedule(item);
 
+      // Icon shows my RSVP: 참석 = racket, 미정 = question mark, 불참 = calendar ✕ (colors follow the calendar legend).
       const iconClass = isDeclined
         ? "border border-zinc-300 bg-zinc-200 text-zinc-500"
         : isBookClub
           ? "border border-amber-200 bg-amber-50 text-amber-800"
           : isYonsei
             ? "border border-indigo-200 bg-indigo-50 text-indigo-700"
-            : empty
-              ? "bg-[#f5f5f7] text-[#86868b]"
-              : item.regular
-                ? "border border-tertiary/20 bg-tertiary-fixed/50 text-tertiary"
-                : "bg-[rgba(0,104,93,0.12)] text-primary";
+            : isMine
+              ? "bg-[rgba(0,104,93,0.12)] text-primary"
+              : "bg-[#e6f1ee] text-[#4f9a8a]";
 
-      const iconName = isDeclined ? "event_busy" : isBookClub ? "menu_book" : empty ? "fitness_center" : "sports_tennis";
+      const iconName = isDeclined ? "event_busy" : isBookClub ? "menu_book" : isMine ? "sports_tennis" : "help";
       const attendeeListHTML = scheduleAttendeesHTML(item);
       const rsvpButtonsHTML = scheduleRsvpButtonHTML(item);
 
