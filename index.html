@@ -2628,6 +2628,8 @@
       color: #a1a1aa !important;
     }
     #dashboard .calendar-day span[class*="bg-error-container"] { background: #fbeceb !important; color: #a3261f !important; }
+    /* Chips start right under the date number instead of sinking to the cell bottom */
+    #dashboard .calendar-chip-stack { top: 2.375rem; bottom: auto; }
     #dashboard .calendar-chip-more-row { display: flex; align-items: center; gap: 0.25rem; min-width: 0; }
     #dashboard .calendar-chip-more-row > span:first-child { flex: 1 1 auto; min-width: 0; }
     #dashboard .calendar-chip-more { flex: 0 0 auto; padding: 0 0.125rem; font-size: 0.625rem; font-weight: 700; color: var(--app-muted); line-height: 1.6; }
