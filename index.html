@@ -2639,6 +2639,49 @@
     }
     #dashboard .pulse-dot.dot-declined { background: #d4d4d8; }
 
+    /* Calendar legend: chips on PC, dots on mobile (mirrors the status styles above) */
+    #dashboard .calendar-legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.375rem 0.875rem;
+      margin: 0.75rem 0 0;
+      padding: 0 0.25rem;
+      list-style: none;
+    }
+    #dashboard .calendar-legend li { display: inline-flex; align-items: center; gap: 0.3125rem; }
+    #dashboard .calendar-legend .legend-chip {
+      display: none;
+      padding: 0.125rem 0.625rem;
+      border: 1px solid transparent;
+      border-radius: 0.375rem;
+      background: var(--app-green-tint);
+      color: #0a5449;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    #dashboard .calendar-legend .is-attending .legend-chip { border-color: var(--app-green); font-weight: 700; }
+    #dashboard .calendar-legend .is-declined .legend-chip { background: #f1f1f2; color: #a1a1aa; }
+    #dashboard .calendar-legend .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--app-green);
+    }
+    #dashboard .calendar-legend .is-attending .legend-dot {
+      background: var(--app-green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M2 4.1l1.35 1.3L6 2.7' fill='none' stroke='%23fff' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    }
+    #dashboard .calendar-legend .is-declined .legend-dot { background: #d4d4d8; }
+    #dashboard .calendar-legend .legend-label { color: var(--app-muted); font-size: 0.75rem; font-weight: 500; }
+
+    @media (min-width: 768px) {
+      #dashboard .calendar-legend { gap: 0.5rem; margin-top: 1rem; padding: 0; }
+      #dashboard .calendar-legend .legend-chip { display: inline-block; }
+      #dashboard .calendar-legend .legend-dot,
+      #dashboard .calendar-legend .legend-label { display: none; }
+    }
+
     @media (min-width: 768px) {
       #dashboard #calendarGrid,
       #dashboard .weekday-grid { gap: 0; }
@@ -2885,6 +2928,11 @@
               <div id="calendarGridWrapper" class="relative overflow-hidden">
                 <div id="calendarGrid" class="grid grid-cols-7 gap-2"></div>
               </div>
+              <ul class="calendar-legend" aria-label="달력 표시 안내">
+                <li class="is-attending"><span class="legend-chip">참석</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">참석</span></li>
+                <li class="is-undecided"><span class="legend-chip">미정</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">미정</span></li>
+                <li class="is-declined"><span class="legend-chip">불참</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">불참</span></li>
+              </ul>
             </section>
 
             <section id="selectedDatePanel" class="dash-card hidden p-4 md:p-5">
