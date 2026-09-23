@@ -4999,11 +4999,13 @@
       return `${year}년 ${Number(month)}월`;
     }
 
-    // Short card meta: "9/27 (일) · 20:00" (start time only).
+    // Short card meta: "9/27 (일) · 20:00–22:00"; the card truncates with an ellipsis.
     function overviewMetaLabel(item) {
       const [, month, dayOfMonth] = item.date.split("-");
       const weekday = String(item.day || dayNameFromDate(item.date)).charAt(0);
-      return `${Number(month)}/${Number(dayOfMonth)} (${weekday}) · ${toTwentyFourHourLabel(timeStart(item))}`;
+      const start = toTwentyFourHourLabel(timeStart(item));
+      const end = toTwentyFourHourLabel(timeEnd(item));
+      return `${Number(month)}/${Number(dayOfMonth)} (${weekday}) · ${end ? `${start}–${end}` : start}`;
     }
 
     function overviewDdayLabel(isoDate) {
