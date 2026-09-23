@@ -2628,7 +2628,9 @@
       color: #a1a1aa !important;
     }
     #dashboard .calendar-day span[class*="bg-error-container"] { background: #fbeceb !important; color: #a3261f !important; }
-    #dashboard .calendar-day span[class*="bg-surface-container-high"] { background: transparent !important; color: var(--app-muted) !important; padding-left: 0.375rem; }
+    #dashboard .calendar-chip-more-row { display: flex; align-items: center; gap: 0.25rem; min-width: 0; }
+    #dashboard .calendar-chip-more-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+    #dashboard .calendar-chip-more { flex: 0 0 auto; padding: 0 0.125rem; font-size: 0.625rem; font-weight: 700; color: var(--app-muted); line-height: 1.6; }
     #dashboard .calendar-day .rounded-full.bg-primary { width: 16px; height: 16px; box-shadow: none; --tw-ring-shadow: 0 0 #0000; }
     #dashboard .calendar-day .rounded-full.bg-primary > span { font-size: 9px; }
 
@@ -7076,7 +7078,10 @@
         const hasMySchedule = dateSchedules.some(isMySchedule);
         const hasMyHostSchedule = dateSchedules.some(isMyHostSchedule);
 
-        const eventChips = calendarItems.slice(0, 2).map(({ type, item }) => {
+        // PC shows up to 3 chips; with 4+ items the 3rd chip is shortened and carries a +N badge.
+        const CALENDAR_CHIP_LIMIT = 3;
+        const hiddenCount = Math.max(0, calendarItems.length - CALENDAR_CHIP_LIMIT);
+        const chipList = calendarItems.slice(0, CALENDAR_CHIP_LIMIT).map(({ type, item }) => {
           if (type === "event") return calendarEventChip(item);
 
           const isDeclined = isDeclinedSchedule(item);
@@ -7100,11 +7105,13 @@
               ${calendarTimeLabel(item)} · ${schedulePlaceLabel(item)}
             </span>
           `;
-        }).join("");
+        });
+        if (hiddenCount > 0) {
+          const last = chipList.length - 1;
+          chipList[last] = `<div class="calendar-chip-more-row">${chipList[last]}<span class="calendar-chip-more" aria-label="일정 ${hiddenCount}개 더">+${hiddenCount}</span></div>`;
+        }
+        const eventChips = chipList.join("");
 
-        const overflowChip = calendarItems.length > 2
-          ? `<span class="block truncate rounded bg-surface-container-high px-1.5 py-0.5 text-[10px] font-bold leading-normal text-on-surface-variant">+${calendarItems.length - 2}</span>`
-          : "";
 
         let cellClass = "bg-white border border-[rgba(0,0,0,0.10)]";
         let numberClass = "text-[#1d1d1f] font-medium";
@@ -7159,9 +7166,8 @@
             ${myScheduleBadge}
             ${myHostBadge}
             ${dotIndicator}
-            <div class="absolute bottom-2 left-2 right-2 space-y-1.5 hidden md:block">
+            <div class="calendar-chip-stack absolute bottom-2 left-2 right-2 space-y-1 hidden md:block">
               ${eventChips}
-              ${overflowChip}
             </div>
           </button>
         `);
