@@ -18,6 +18,7 @@ async page => {
  await page.evaluate(()=>shareCurrentSchedule());
  const deepLink=await page.evaluate(()=>({
    detailTitle:document.querySelector('#detailContent h2')?.textContent || '',
+   detailOriginalTitle:document.querySelector('#detailContent .detail-original-title')?.textContent || '',
    query:new URLSearchParams(location.search).get('schedule'),
    authRedirect:authRedirectUrl(),
    shared:window.__sharedPayload,
@@ -53,7 +54,7 @@ async page => {
      attendeeIds:item.attendeeIds,
      absenteeIds:item.absenteeIds,
      capacity:item.capacity,
-     badge:card.innerText.includes('Kakao'),
+     badge:!!card.querySelector('.kakao-badge'),
      cardRsvp:!!card.querySelector('[data-set-rsvp]'),
      detailReadOnly:document.querySelector('#detailContent').innerText.includes('카카오 일정 · 읽기 전용'),
      join:!!document.querySelector('#detailContent [data-join-current]'),
