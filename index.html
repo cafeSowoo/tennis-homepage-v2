@@ -2744,6 +2744,14 @@
     /* Detail */
     .apple-ui #detailContent h2 { letter-spacing: -0.03em; }
 
+    /* Place-based titles: tags keep what only the Kakao title said */
+    .schedule-title-tag { flex: none; padding: 0.0625rem 0.375rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 700; line-height: 1.4; }
+    .schedule-title-tag.is-closed { background: #fbeceb; color: #a3261f; }
+    .schedule-title-tag.is-regular { background: var(--app-clay-tint); color: var(--app-clay); }
+    .schedule-title-tag.is-notice { background: #eef0ed; color: #3a4540; }
+    .app-list-card.is-declined .schedule-title-tag { background: #ececee !important; color: #71717a !important; }
+    .detail-original-title { margin-top: 0.25rem; font-size: 0.75rem; color: var(--app-muted); word-break: keep-all; }
+
     /* Detail lower sections (B-2 style): no nested boxes */
     .detail-section-title { margin-bottom: 0.625rem; font-size: 1rem; font-weight: 600; letter-spacing: -0.02em; color: var(--app-text); }
     .detail-section-title span { margin-left: 0.125rem; font-size: 0.875rem; font-weight: 500; color: var(--app-muted); }
@@ -7359,6 +7367,33 @@
       `;
     }
 
+    // Kakao titles repeat date/time/place; cards lead with "테니스장 + 코트" instead.
+    function usesPlaceTitle(item) {
+      return item?.source === "kakao";
+    }
+
+    function scheduleCardTitle(item) {
+      if (!usesPlaceTitle(item)) return item.title;
+      const label = item.courtUnit?.label;
+      const unit = !label ? "" : /^\d+$/.test(label) ? ` ${label}번` : ` ${label}코트`;
+      return `${item.place}${unit}`;
+    }
+
+    function scheduleSurfaceLabel(item) {
+      return item.courtUnit?.surface || item.court?.type || "";
+    }
+
+    // Keep the meaning that only lived in the original Kakao title.
+    function scheduleTitleTagsHTML(item) {
+      if (!usesPlaceTitle(item)) return "";
+      const title = String(item.title || "");
+      const tags = [];
+      if (/예약일/.test(title)) tags.push(["예약일", "is-notice"]);
+      if (item.closed || /마감/.test(title)) tags.push(["마감", "is-closed"]);
+      if (item.regular || /정기/.test(title)) tags.push(["정기모임", "is-regular"]);
+      return tags.map(([text, kind]) => `<span class="schedule-title-tag ${kind}">${text}</span>`).join("");
+    }
+
     function scheduleRow(item) {
       const isBookClub = isBookClubSchedule(item);
       const isYonsei = isYonseiSchedule(item);
@@ -7392,12 +7427,15 @@
                 </div>
                 <div class="min-w-0">
                   <div class="flex min-w-0 items-center gap-2">
-                    <h4 class="min-w-0 truncate text-[15px] font-semibold text-[#1d1d1f]">${weekendDayTextHTML(item.title)}</h4>
+                    <h4 class="min-w-0 truncate text-[15px] font-semibold text-[#1d1d1f]">${usesPlaceTitle(item) ? escapeHTML(scheduleCardTitle(item)) : weekendDayTextHTML(item.title)}</h4>
+                    ${scheduleTitleTagsHTML(item)}
                     ${item.source === "kakao" ? kakaoBadgeHTML() : ""}
                     ${isHost ? `<span class="host-calendar-badge h-5 shrink-0 px-1.5 text-[9px] uppercase tracking-wide">Host</span>` : ""}
                   </div>
                   <p class="mt-1 flex items-center gap-1.5 truncate text-sm text-[#86868b]">
-                    ${icon("schedule", "text-[16px] text-primary")} <span class="tabular-nums font-medium">${scheduleTimeRangeLabel(item)}</span> @ <span class="text-[#1d1d1f] font-medium">${schedulePlaceLabel(item)}</span>
+                    ${icon("schedule", "text-[16px] text-primary")} <span class="tabular-nums font-medium text-[#1d1d1f]">${scheduleTimeRangeLabel(item)}</span>${usesPlaceTitle(item)
+                      ? (scheduleSurfaceLabel(item) ? `<span>· ${escapeHTML(scheduleSurfaceLabel(item))}</span>` : "")
+                      : ` @ <span class="text-[#1d1d1f] font-medium">${schedulePlaceLabel(item)}</span>`}
                   </p>
                 </div>
               </div>
@@ -7840,7 +7878,9 @@
 
       return `
         <dl class="detail-info" data-detail-datetime>
-          <div class="detail-info-cell is-place"><dt>장소</dt><dd><span class="truncate">${schedulePlaceLabel(item)}</span></dd></div>
+          ${usesPlaceTitle(item)
+            ? (scheduleSurfaceLabel(item) ? `<div class="detail-info-cell is-place"><dt>코트</dt><dd><span class="truncate">${escapeHTML(scheduleSurfaceLabel(item))}</span></dd></div>` : "")
+            : `<div class="detail-info-cell is-place"><dt>장소</dt><dd><span class="truncate">${schedulePlaceLabel(item)}</span></dd></div>`}
           <div class="detail-info-cell"><dt>날짜</dt><dd>${Number(month)}월 ${Number(dayOfMonth)}일 <small>(${weekday})</small></dd></div>
           <div class="detail-info-cell"><dt>시간</dt><dd class="tabular-nums">${end ? `${start}–${end}` : start}</dd></div>
           <div class="detail-info-cell"><dt>${hostLabel}</dt><dd>${hostValue}</dd></div>
@@ -8076,9 +8116,11 @@
                 <div class="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                   <div class="space-y-1 w-full md:w-auto">
                     <div class="flex min-w-0 flex-wrap items-center gap-2">
-                      <h2 class="min-w-0 text-xl md:text-2xl font-semibold text-[#1d1d1f] leading-tight">${escapeHTML(item.title)}</h2>
+                      <h2 class="min-w-0 text-xl md:text-2xl font-semibold text-[#1d1d1f] leading-tight">${escapeHTML(scheduleCardTitle(item))}</h2>
+                      ${scheduleTitleTagsHTML(item)}
                       ${item.source === "kakao" ? kakaoBadgeHTML() : ""}
                     </div>
+                    ${usesPlaceTitle(item) ? `<p class="detail-original-title">카카오 원문 · ${escapeHTML(item.title)}</p>` : ""}
                   </div>
 
                 </div>

@@ -156,7 +156,7 @@ test('cancelled and started schedules reject RSVP before network calls',async()=
 });
 test('schedule list encodes member titles in both text and accessible attributes',()=>{
  const c={weekendDayClass:()=> 'weekend',isBookClubSchedule:()=>false,isYonseiSchedule:()=>false,isMySchedule:()=>false,isMyHostSchedule:()=>false,isDeclinedSchedule:()=>false,scheduleAttendeesHTML:()=>'',scheduleRsvpButtonHTML:()=>'',icon:()=>'',scheduleTimeRangeLabel:()=>'',schedulePlaceLabel:()=>''};
- vm.createContext(c);vm.runInContext(['escapeHTML','weekendDayTextHTML','scheduleRow'].map(source).join('\n'),c);
+ vm.createContext(c);vm.runInContext(['escapeHTML','weekendDayTextHTML','usesPlaceTitle','scheduleCardTitle','scheduleSurfaceLabel','scheduleTitleTagsHTML','scheduleRow'].map(source).join('\n'),c);
  const title=`<b data-title-probe="yes">제목</b> " ' & (토)`;
  const result=c.scheduleRow({id:'fixture',title,attendees:[]});
  assert.ok(result.includes('aria-label="'+c.escapeHTML(title)+' 상세 보기"'));
