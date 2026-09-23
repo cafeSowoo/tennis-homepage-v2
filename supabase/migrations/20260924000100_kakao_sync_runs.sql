@@ -30,6 +30,7 @@ create table if not exists club_private.sync_admin_config (
   password_hash text not null,
   updated_at timestamptz not null default clock_timestamp()
 );
+alter table club_private.sync_admin_config enable row level security;
 revoke all on table club_private.sync_admin_config from public, anon, authenticated;
 
 create function public.sync_admin_runs(p_password text, p_limit integer default 72)
