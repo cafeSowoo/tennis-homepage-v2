@@ -13,7 +13,7 @@ assert.equal(r.status,0,output||r.stderr);
 const match=/### Result\s*\n([^\n]+)/.exec(output);assert.ok(match,output);
 const result=JSON.parse(match[1]);
 assert.deepEqual(result.errors,[]);assert.equal(result.titleSafety,true);
-assert.equal(result.deepLink.detailTitle,'10월 Kakao Mirror 시험');assert.equal(result.deepLink.query,'kakao-fixture');assert.equal(result.deepLink.shareButton,true);assert.match(result.deepLink.shareLabel,/공유하기/);
+assert.equal(result.deepLink.detailTitle,'테스트 코트');assert.equal(result.deepLink.detailOriginalTitle,'카카오 원문 · 10월 Kakao Mirror 시험');assert.equal(result.deepLink.query,'kakao-fixture');assert.equal(result.deepLink.shareButton,true);assert.match(result.deepLink.shareLabel,/공유하기/);
 assert.equal(result.deepLink.shared.url.endsWith('/?schedule=kakao-fixture'),true);assert.equal(result.deepLink.shared.title,'10월 Kakao Mirror 시험');
 assert.equal(result.deepLink.authRedirect.includes('schedule=kakao-fixture'),true);if(result.qrInteraction.desktop){assert.equal(result.qrInteraction.hoverVisible,true);assert.equal(result.qrInteraction.clickVisible,true);assert.equal(result.qrInteraction.outsideHidden,true);}else{assert.equal(result.qrInteraction.helpCount,0);}assert.equal(result.clearedDeepLink,false);
 assert.deepEqual(result.mirror.attendeeIds,['member-a']);assert.deepEqual(result.mirror.absenteeIds,['member-b']);
