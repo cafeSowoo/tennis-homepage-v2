@@ -108,7 +108,8 @@ async page => {
  const cancelled=await page.evaluate(()=>({responses:__v2Mock.tables.v2_schedule_rsvps.length,comments:__v2Mock.tables.v2_discussions.length,join:!!document.querySelector('[data-join-current]'),composer:!!document.querySelector('[data-discussion-input]'),deleteComment:!!document.querySelector('[data-delete-discussion]')}));
  await page.locator('[data-delete-discussion]').click();
  await page.waitForFunction(()=>__v2Mock.tables.v2_discussions.length===0);
- await page.locator('#authButton').click();
+ await page.locator('[data-view-link="profile"]').first().click();
+ await page.locator('[data-sign-out]').click();
  await page.waitForFunction(()=>!document.querySelector('#memberGate').hidden);
  const loggedOut=await page.evaluate(()=>({detail:document.querySelector('#detailContent').innerText,schedules:typeof schedules==='undefined'?null:schedules.length,gate:!document.querySelector('#memberGate').hidden,calls:__v2Mock.calls.map(c=>c.name)}));
  return {errors,dialogs,deepLink,qrInteraction,clearedDeepLink,mirror,cancelled,loggedOut,titleSafety};
