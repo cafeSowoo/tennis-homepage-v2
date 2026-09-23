@@ -7158,7 +7158,7 @@
         }
 
         cells.push(`
-          <button class="calendar-day ${isPast ? "is-past" : ""} ${hasMySchedule ? "has-my-schedule" : ""} ${state.selectedDate === iso ? "selected-date" : ""} relative aspect-square h-auto md:aspect-auto md:h-32 rounded-lg ${cellClass} p-2 text-left transition-all duration-200" data-date="${iso}" aria-label="${day}일 ${calendarItems.length}개 일정">
+          <button class="calendar-day ${isPast ? "is-past" : ""} ${hasMySchedule ? "has-my-schedule" : ""} ${state.selectedDate === iso ? "selected-date" : ""} relative aspect-square h-auto md:aspect-auto md:h-32 rounded-lg ${cellClass} p-2 text-left transition-all duration-200" data-date="${iso}" aria-label="${day}일 ${calendarItems.length}개 일정${hasMySchedule ? ` · ${myNameLabel} 참석 일정` : ""}">
             <span class="${numberClass} absolute top-1 left-1/2 -translate-x-1/2 md:top-2 md:left-2 md:translate-x-0 inline-flex h-6 w-6 items-center justify-center rounded-full font-label-md text-label-md">${day}</span>
             ${myHostBadge}
             ${dotIndicator}
