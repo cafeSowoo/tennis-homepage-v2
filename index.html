@@ -2632,9 +2632,10 @@
     #dashboard .pulse-dot.dot-primary,
     #dashboard .pulse-dot.dot-tertiary { background: var(--app-green); }
     #dashboard .pulse-dot.my-schedule-dot {
-      background: var(--app-green) !important;
-      border: 1.5px solid #17201c !important;
-      box-shadow: 0 0 0 1px #fff !important;
+      width: 8px !important;
+      height: 8px !important;
+      border: 0 !important;
+      background: var(--app-green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M2 4.1l1.35 1.3L6 2.7' fill='none' stroke='%23fff' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important;
     }
     #dashboard .pulse-dot.dot-declined { background: #d4d4d8; }
 
