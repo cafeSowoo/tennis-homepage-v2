@@ -2606,26 +2606,36 @@
     #dashboard .calendar-day.is-today > span:first-child { background: var(--app-green) !important; color: #fff !important; }
     #dashboard .calendar-day.selected-date { background: var(--app-green-soft) !important; box-shadow: none !important; border-color: rgba(11, 106, 92, 0.28) !important; }
 
-    /* Calendar chips: tints, green only for my matches */
-    #dashboard .calendar-day span[class*="bg-secondary-container"] { background: #eef0ed !important; color: #3a4540 !important; }
-    #dashboard .calendar-day span[class*="bg-tertiary-container"] { background: var(--app-clay-tint) !important; color: var(--app-clay) !important; }
-    #dashboard .calendar-day span[class*="bg-error-container"] { background: #fbeceb !important; color: #a3261f !important; }
-    #dashboard .calendar-day span[class*="border-primary"] {
-      border: 0 !important;
+    /* Calendar status colors (PC chips / mobile dots)
+       미정·참석 = same green; 참석 adds an outline; 불참 = grey. */
+    #dashboard .calendar-day span[class*="bg-secondary-container"],
+    #dashboard .calendar-day span[class*="bg-tertiary-container"] {
+      border: 1px solid transparent !important;
       background: var(--app-green-tint) !important;
       color: #0a5449 !important;
-      box-shadow: inset 2px 0 0 var(--app-green) !important;
-      font-weight: 600 !important;
     }
+    #dashboard .calendar-day span[class*="border-primary"] {
+      border: 1px solid var(--app-green) !important;
+      font-weight: 700 !important;
+    }
+    #dashboard .calendar-day span[class*="bg-zinc-100"] {
+      border: 1px solid transparent !important;
+      background: #f1f1f2 !important;
+      color: #a1a1aa !important;
+    }
+    #dashboard .calendar-day span[class*="bg-error-container"] { background: #fbeceb !important; color: #a3261f !important; }
     #dashboard .calendar-day span[class*="bg-surface-container-high"] { background: transparent !important; color: var(--app-muted) !important; padding-left: 0.375rem; }
     #dashboard .calendar-day .rounded-full.bg-primary { width: 16px; height: 16px; box-shadow: none; --tw-ring-shadow: 0 0 #0000; }
     #dashboard .calendar-day .rounded-full.bg-primary > span { font-size: 9px; }
 
-    /* Calendar dots (mobile) */
     #dashboard .pulse-dot { box-shadow: none !important; border: 0 !important; }
-    #dashboard .pulse-dot.dot-primary { background: #b7c0bc; }
-    #dashboard .pulse-dot.dot-tertiary { background: #cf8a70; }
-    #dashboard .pulse-dot.my-schedule-dot { background: var(--app-green) !important; }
+    #dashboard .pulse-dot.dot-primary,
+    #dashboard .pulse-dot.dot-tertiary { background: var(--app-green); }
+    #dashboard .pulse-dot.my-schedule-dot {
+      background: var(--app-green) !important;
+      border: 1.5px solid #17201c !important;
+      box-shadow: 0 0 0 1px #fff !important;
+    }
     #dashboard .pulse-dot.dot-declined { background: #d4d4d8; }
 
     @media (min-width: 768px) {

@@ -141,7 +141,7 @@ The aesthetic is **clean and calm first**, sporty second. High-energy secondary 
 **Design refresh (2026-09):** A single override layer at the end of the `<style>` block in `index.html` ("Design refresh 2026-09") calms the shell:
 
 *   **No card-in-card on the schedule page.** Schedule dates are plain headers above the match cards. Match row cards (`.app-list-card`) and overview cards (`.dash-overview-card`) keep their original style: my matches use the green border + soft green gradient; overview cards never show the Kakao badge.
-*   **Green means "mine / today / action".** In calendar chips, my matches get a green tint with a 2px green inset bar. Other matches use neutral tints; regular meetups (정기모임) use a clay tint; closed uses a soft red tint. No neon yellow-green chips.
+*   **Calendar status colors.** 미정 (no response) and 참석 share the same green (tint chip on PC, green dot on mobile); 참석 adds an outline (1px green border on the PC chip, dark ring on the mobile dot); 불참 is grey. Closed uses a soft red tint; book club / Yonsei keep their own category colors. No neon yellow-green chips.
 *   **Open calendar grid.** Desktop month view has no boxed cells—only row hairlines; today is a green number circle, past days are muted numbers.
 *   **Quiet Kakao marker.** `.kakao-badge` is a grey pill with a small yellow dot; it is always hidden on overview cards and hidden on list rows in review mode (every row there is Kakao). The yellow "카카오톡에서 보기" link stays yellow.
 *   **Korean UI labels.** Navigation, breadcrumbs, month/weekday labels, profile stats and the comment section are Korean (홈 / 일정 / 내 정보, 2026년 9월, 일–토, 댓글). Overview cards lead with a D-day (오늘, D-4).
