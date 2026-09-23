@@ -2999,7 +2999,7 @@
 
           <aside class="review-version-note" aria-label="테스트 버전 안내">
             <p>일정·댓글은 카카오톡과 자동 동기화됩니다.</p>
-            <p><strong id="reviewLastSync">마지막 동기화 · 확인 중</strong></p>
+            <p><strong id="reviewLastSync">마지막 확인 · 확인 중</strong></p>
             <p>홈페이지에서는 아직 일정 등록/댓글 작성이 지원되지 않습니다.</p>
           </aside>
       </div>
@@ -3644,6 +3644,7 @@
     let activeSheetType = "";
     let suppressSheetPopState = false;
     let photoViewerHistoryActive = false;
+    let photoViewerDismissTimer = 0;
     let weatherForecast = null;
     let scheduleFormMode = "create";
     let eventFormMode = "create";
@@ -4738,6 +4739,8 @@
     function openPhotoViewerHistory() {
       if (photoViewerHistoryActive && isSheetOpen("#memberPhotoViewer")) return;
 
+      // A fallback from the previous dismiss must not close this new viewer.
+      window.clearTimeout(photoViewerDismissTimer);
       const previousHash = window.location.hash || "";
       history.pushState(
         { tennisHomeView: "photo-viewer", previousHash },
@@ -4767,7 +4770,8 @@
       if (!photoViewerHistoryActive) return false;
 
       history.back();
-      window.setTimeout(() => {
+      window.clearTimeout(photoViewerDismissTimer);
+      photoViewerDismissTimer = window.setTimeout(() => {
         if (!photoViewerHistoryActive || !isSheetOpen("#memberPhotoViewer")) return;
         if (window.location.hash !== PHOTO_VIEWER_HASH) {
           photoViewerHistoryActive = false;
@@ -4790,13 +4794,15 @@
       panel.style.opacity = "";
     }
 
-    function handleAppPopState() {
+    function handleAppPopState({ photoViewerWasOpen = false } = {}) {
       if (suppressSheetPopState) {
         suppressSheetPopState = false;
         return;
       }
 
-      if (isSheetOpen("#memberPhotoViewer")) {
+      // hashchange can close the viewer before this deferred handler runs;
+      // this back step still belongs to the viewer, not the page under it.
+      if (photoViewerWasOpen || isSheetOpen("#memberPhotoViewer")) {
         photoViewerHistoryActive = false;
         closeMemberPhotoViewer({ fromHistory: true });
         return;
@@ -10690,8 +10696,9 @@
     setupSheetSwipeDismiss({ sheetId: "#addEventSheet", onDismiss: closeAddEvent });
     window.addEventListener("resize", updatePanelGeometry, { passive: true });
     window.addEventListener("scroll", updatePanelGeometry, { passive: true });
-    window.addEventListener("popstate", event => {
-      window.setTimeout(() => handleAppPopState(event), 0);
+    window.addEventListener("popstate", () => {
+      const photoViewerWasOpen = isSheetOpen("#memberPhotoViewer");
+      window.setTimeout(() => handleAppPopState({ photoViewerWasOpen }), 0);
     });
     window.addEventListener("hashchange", syncPhotoViewerFromLocation);
     window.addEventListener("pageshow", event => {

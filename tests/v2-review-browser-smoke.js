@@ -70,6 +70,16 @@ async page => {
   await page.waitForFunction(()=>document.querySelector('#memberPhotoViewer').classList.contains('hidden'));
   const photoViewerClosedByImage=await page.evaluate(()=>document.querySelector('#memberPhotoViewer').classList.contains('hidden'));
 
+  // Without a close animation the viewer hides before the deferred popstate handler runs; that back step must not also leave the detail.
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.locator('#detailContent [data-avatar-view]').first().click();
+  await page.waitForFunction(()=>!document.querySelector('#memberPhotoViewer').classList.contains('hidden'));
+  await page.locator('#memberPhotoViewerImage').click();
+  await page.waitForFunction(()=>document.querySelector('#memberPhotoViewer').classList.contains('hidden') && location.hash!=='#photo-viewer');
+  await page.waitForTimeout(150);
+  const photoViewerInstantCloseKeepsDetail=await page.evaluate(()=>!!document.querySelector('#detail.active'));
+  await page.emulateMedia({reducedMotion:null});
+
   await page.locator('[data-absentee-list] summary').click();
   const absenteeNames=await page.locator('[data-absentee-list]').innerText();
   const absenteeDirection=await page.locator('[data-absentee-items]').evaluate(el=>getComputedStyle(el).flexDirection);
@@ -105,5 +115,5 @@ async page => {
   const switched=await page.evaluate(()=>({member:myMemberName(),declined:isDeclinedSchedule(schedules[0])}));
 
   const calls=await page.evaluate(()=>__v2Mock.calls.map(c=>c.name));
-  return {errors,locked,wrongRejected,entered,photoViewerOpened,photoViewerClosedByImage,absenteeNames,absenteeDirection,profile,refreshed,persisted,switched,calls};
+  return {errors,locked,wrongRejected,entered,photoViewerOpened,photoViewerClosedByImage,photoViewerInstantCloseKeepsDetail,absenteeNames,absenteeDirection,profile,refreshed,persisted,switched,calls};
 }
