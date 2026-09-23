@@ -2579,6 +2579,10 @@
 
     /* Overview strip */
     #dashboard .overview-mode-toggle { background: rgba(23, 32, 28, 0.05); }
+    #dashboard .dash-overview-card { width: 9.25rem; }
+    @media (min-width: 768px) {
+      #dashboard .dash-overview-card { width: 10.5rem; }
+    }
 
     /* Calendar: open grid, no boxed cells */
     #dashboard .calendar-card #calendarMonthTitle { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.03em; }
@@ -4993,6 +4997,15 @@
     function monthLabel(monthValue) {
       const [year, month] = monthValue.split("-").map(Number);
       return `${year}년 ${Number(month)}월`;
+    }
+
+    // Short card meta: "9/27(일) 20:00-22:00"; the card truncates with an ellipsis.
+    function overviewMetaLabel(item) {
+      const [, month, dayOfMonth] = item.date.split("-");
+      const weekday = String(item.day || dayNameFromDate(item.date)).charAt(0);
+      const start = toTwentyFourHourLabel(timeStart(item));
+      const end = toTwentyFourHourLabel(timeEnd(item));
+      return `${Number(month)}/${Number(dayOfMonth)}(${weekday}) ${end ? `${start}-${end}` : start}`;
     }
 
     function overviewDdayLabel(isoDate) {
@@ -8276,7 +8289,7 @@
                     <p class="dash-overview-title truncate">${escapeHTML(schedule.place)}</p>
                     ${schedule.source === "kakao" ? kakaoBadgeHTML() : ""}
                   </div>
-                  <p class="dash-overview-meta truncate">${escapeHTML(`${dateLabel(schedule)} · ${scheduleTimeRangeLabel(schedule)}`)}</p>
+                  <p class="dash-overview-meta truncate tabular-nums">${escapeHTML(overviewMetaLabel(schedule))}</p>
                 </button>
               `;
             }).join("") : `
@@ -8299,7 +8312,7 @@
                     <p class="dash-overview-title truncate">${escapeHTML(schedule.place)}</p>
                     ${schedule.source === "kakao" ? kakaoBadgeHTML() : ""}
                   </div>
-                  <p class="dash-overview-meta truncate">${escapeHTML(`${dateLabel(schedule)} · ${scheduleTimeRangeLabel(schedule)}`)}</p>
+                  <p class="dash-overview-meta truncate tabular-nums">${escapeHTML(overviewMetaLabel(schedule))}</p>
                 </button>
               `;
             }).join("") : `
