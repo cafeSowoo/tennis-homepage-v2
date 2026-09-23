@@ -2656,7 +2656,7 @@
     #dashboard .review-version-note { background: transparent; border: 0; padding-left: 0; padding-right: 0; color: var(--app-muted); }
     #dashboard .review-version-note strong { color: var(--app-text); font-weight: 700; }
 
-    /* Schedule list: date headers + single-level rows */
+    /* Schedule list: date as a plain header, original row cards below it */
     .apple-ui #scheduleGroups > section {
       padding: 0;
       background: transparent;
@@ -2666,27 +2666,6 @@
     }
     .apple-ui #scheduleGroups > section > div:first-child { margin-bottom: 0.5rem; padding: 0 0.25rem; }
     .apple-ui #scheduleGroups > section h3 { font-size: 0.9375rem; font-weight: 700; color: var(--app-text); }
-    .apple-ui #scheduleGroups > section > div.space-y-2\.5 {
-      overflow: hidden;
-      border: 1px solid var(--app-border);
-      border-radius: 1rem;
-      background: #fff;
-      box-shadow: var(--app-shadow);
-    }
-    .apple-ui #scheduleGroups > section > div.space-y-2\.5 > * + * { margin-top: 0 !important; border-top: 1px solid var(--app-line) !important; }
-    .apple-ui #scheduleGroups .app-list-card,
-    .apple-ui #scheduleGroups .app-list-card.is-mine,
-    .apple-ui #scheduleGroups .app-list-card.is-host,
-    .apple-ui #scheduleGroups .app-list-card.is-mine.is-host {
-      border: 0;
-      border-radius: 0;
-      background: #fff;
-    }
-    .apple-ui #scheduleGroups .app-list-card.is-mine { box-shadow: inset 3px 0 0 var(--app-green); }
-    .apple-ui #scheduleGroups .app-list-card:hover { background: #fafbf9; }
-    .apple-ui #scheduleGroups .app-list-card.is-declined { background: #f7f7f6 !important; border: 0 !important; }
-    .apple-ui .app-list-card .schedule-card-button .rounded-full[class*="bg-"] { width: 2.25rem; height: 2.25rem; border: 0; }
-    .apple-ui .app-list-card h4 { font-size: 0.9375rem; letter-spacing: -0.02em; }
 
     /* Selected-date panel: row titles must not inherit the section-label style */
     #dashboard #selectedDateList article h4,
@@ -2698,24 +2677,6 @@
       color: var(--app-text);
     }
     #dashboard #selectedDateList article.is-declined h4 { color: #71717a; }
-    #dashboard #selectedDateList article.is-mine:not(.is-declined),
-    #dashboard #selectedDateList article.is-mine:not(.is-declined):hover {
-      border-color: var(--app-border) !important;
-      background: #fff !important;
-      box-shadow: inset 3px 0 0 var(--app-green) !important;
-    }
-    #dashboard #selectedDateList article.is-declined { background: #f7f7f6 !important; border-color: var(--app-border) !important; }
-
-    /* Lists inside a card (profile upcoming / past): separators, not nested boxes */
-    .apple-ui #memberDetailContent .app-card .space-y-3 > .app-list-card {
-      margin-top: 0;
-      border: 0;
-      border-radius: 0.625rem;
-      background: transparent;
-    }
-    .apple-ui #memberDetailContent .app-card .space-y-3 > .app-list-card + .app-list-card { border-top: 1px solid var(--app-line); border-radius: 0; }
-    .apple-ui #memberDetailContent .app-card .space-y-3 > .app-list-card.is-mine { background: transparent; }
-    .apple-ui #memberDetailContent .app-card .space-y-3 > .app-list-card:hover { background: #fafbf9; }
 
     /* Detail */
     .apple-ui #detailContent h2 { letter-spacing: -0.03em; }
