@@ -945,7 +945,7 @@
       }
     }
     /* Display the supplied wordmark's lettering without its transparent canvas margins. */
-    .brand-wordmark { display:block; flex-shrink:0; width:142px; height:auto; aspect-ratio:1600 / 350; background-image:url("assets/brand-wordmark.png"); background-repeat:no-repeat; background-size:135.75% auto; background-position:15.7343% 52.139%; }
+    .brand-wordmark { display:block; flex-shrink:0; width:142px; height:auto; aspect-ratio:1600 / 350; background-image:url("assets/brand-wordmark.webp"); background-repeat:no-repeat; background-size:135.75% auto; background-position:15.7343% 52.139%; }
     header .brand-wordmark { width:168px; }
     @media (max-width: 374px) {
       header .font-headline-md {
@@ -2756,6 +2756,24 @@
     /* Detail */
     .apple-ui #detailContent h2 { letter-spacing: -0.03em; }
 
+    /* Header: approved members see only their avatar (logout/alerts live in 내 정보) */
+    body.approved-club-member #authButton { display: none !important; }
+    .header-profile { display: flex; }
+    .header-profile-button { display: flex; width: 2.25rem; height: 2.25rem; align-items: center; justify-content: center; overflow: hidden; border-radius: 9999px; border: 1px solid var(--app-border); color: #fff; font-size: 0.75rem; font-weight: 800; transition: box-shadow 0.15s ease; }
+    .header-profile-button img { width: 100%; height: 100%; object-fit: cover; }
+    .header-profile-button:hover, .header-profile-button:focus-visible { box-shadow: 0 0 0 3px var(--app-green-soft); outline: none; }
+
+    /* 내 정보 > 설정 */
+    .profile-settings-title { margin-bottom: 0.25rem; font-size: 0.8125rem; font-weight: 700; color: var(--app-text); }
+    .profile-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.625rem 0; }
+    .profile-settings-row[hidden] { display: none; }
+    .profile-settings-label { font-size: 0.875rem; font-weight: 600; color: var(--app-text); }
+    .profile-settings-help { margin-top: 0.125rem; font-size: 0.6875rem; color: var(--app-muted); word-break: keep-all; }
+    .profile-settings-toggle, .profile-settings-signout { flex: none; display: inline-flex; align-items: center; gap: 0.25rem; height: 2rem; padding: 0 0.75rem; border-radius: 9999px; border: 1px solid var(--app-border); background: #fff; font-size: 0.75rem; font-weight: 600; color: var(--app-text); }
+    .profile-settings-toggle.is-primary { border-color: var(--app-green); background: var(--app-green-tint); color: #0a5449; }
+    .profile-settings-toggle:disabled { opacity: 0.55; cursor: not-allowed; }
+    .profile-settings-signout { color: #a3261f; }
+
     /* Place-based titles: tags keep what only the Kakao title said */
     .schedule-title-tag { flex: none; padding: 0.0625rem 0.375rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 700; line-height: 1.4; }
     .schedule-title-tag.is-closed { background: #fbeceb; color: #a3261f; }
@@ -2806,7 +2824,7 @@
   <nav id="sideNav" class="fixed left-0 top-0 z-50 hidden h-screen w-64 flex-col gap-base backdrop-blur-xl py-md md:flex">
     <div class="mb-lg px-margin-mobile">
       <button type="button" class="brand-home flex w-full items-center gap-3" aria-label="Home으로 이동">
-        <img class="h-12 w-12 shrink-0 object-contain" src="assets/logo.png" alt="">
+        <img class="h-12 w-12 shrink-0 object-contain" src="assets/logo-192.webp" alt="">
         <div>
           <h1 class="sr-only">테니스 봄</h1>
           <span class="brand-wordmark" role="img" aria-label="테니스 봄"></span>
@@ -2861,7 +2879,7 @@
   <header id="appHeader" class="fixed left-0 right-0 top-0 z-[70] flex h-[54px] items-center justify-between backdrop-blur-xl px-margin-mobile md:left-64 md:h-16 md:px-margin-desktop">
     <div class="flex items-center gap-sm">
       <button type="button" class="brand-home flex items-center gap-2 sm:hidden" aria-label="Home으로 이동">
-        <img class="h-7 w-7 shrink-0 object-contain" src="assets/logo.png" alt="" aria-hidden="true">
+        <img class="h-7 w-7 shrink-0 object-contain" src="assets/logo-192.webp" alt="" aria-hidden="true">
         <span class="brand-wordmark" role="img" aria-label="테니스 봄"></span>
       </button>
     </div>
@@ -2875,16 +2893,13 @@
         <span class="material-symbols-outlined text-[18px]" data-auth-icon>login</span>
         <span class="hidden lg:inline" data-auth-label>로그인</span>
       </button>
-      <button id="scheduleReminderButton" class="app-icon-btn shrink-0" type="button" aria-label="내 일정 알림 켜기" title="내 일정 알림 켜기">
-        <span class="material-symbols-outlined text-[18px]" data-reminder-icon>notifications</span>
-      </button>
-      <div id="headerProfileAvatar" class="avatar-tactile ml-2 hidden h-10 w-10 items-center justify-center overflow-hidden text-xs font-black text-white transition-all hover:scale-105 sm:flex">성</div>
+      <div id="headerProfileAvatar" class="hidden"></div>
     </div>
   </header>
 
   <section id="reviewGate" class="fixed inset-0 z-[75] overflow-y-auto" aria-labelledby="reviewGateTitle" hidden>
     <div class="member-gate-card">
-      <div class="member-gate-brand"><img src="assets/logo.png" alt=""><span class="brand-wordmark" role="img" aria-label="테니스 봄"></span></div>
+      <div class="member-gate-brand"><img src="assets/logo-192.webp" alt=""><span class="brand-wordmark" role="img" aria-label="테니스 봄"></span></div>
       <p class="member-gate-eyebrow">REVIEW MODE</p>
       <h1 id="reviewGateTitle" class="text-[30px] font-extrabold leading-[1.35] tracking-[-.04em]">클럽 비밀번호 입력</h1>
       <p id="reviewGateText">처음 한 번만 클럽 비밀번호를 입력해 주세요.</p>
@@ -2905,7 +2920,7 @@
 
   <section id="memberGate" class="fixed inset-0 z-[65] overflow-y-auto" aria-labelledby="memberGateTitle" hidden>
     <div class="member-gate-card">
-      <div class="member-gate-brand"><img src="assets/logo.png" alt=""><span class="brand-wordmark" role="img" aria-label="테니스 봄"></span></div>
+      <div class="member-gate-brand"><img src="assets/logo-192.webp" alt=""><span class="brand-wordmark" role="img" aria-label="테니스 봄"></span></div>
       <p class="member-gate-eyebrow">함께 치는 즐거움</p>
       <h1 id="memberGateTitle">코트에서 만나는<br>우리의 다음 일정</h1>
       <p id="memberGateText">카카오 계정으로 로그인하고,<br>함께할 일정과 참석 현황을 확인해 보세요.</p>
@@ -3136,7 +3151,7 @@
   <div id="pwaInstallBanner" class="fixed inset-x-0 bottom-16 z-[60] hidden px-margin-mobile md:hidden" role="region" aria-label="홈 화면 추가 안내">
     <div class="pwa-banner-inner rounded-2xl bg-white p-4">
       <div class="flex items-start gap-3">
-        <img class="h-11 w-11 shrink-0 object-contain" src="assets/logo.png" alt="" aria-hidden="true">
+        <img class="h-11 w-11 shrink-0 object-contain" src="assets/logo-192.webp" alt="" aria-hidden="true">
         <div class="min-w-0 flex-1">
           <p class="text-sm font-semibold text-[#1d1d1f]">홈 화면에 추가</p>
           <p id="pwaInstallMessage" class="mt-1 text-xs leading-relaxed text-[#86868b]"></p>
@@ -4647,10 +4662,12 @@
       backLink.setAttribute("aria-label", "일정으로 돌아가기");
     }
 
-    function openDetailNavigation() {
+    function openDetailNavigation({ replace = false } = {}) {
       state.detailReturnTo = computeDetailReturnTo();
       switchView("detail");
-      history.pushState({ tennisHomeView: "detail", returnTo: state.detailReturnTo }, "");
+      const entry = { tennisHomeView: "detail", returnTo: state.detailReturnTo };
+      if (replace) history.replaceState(entry, "");
+      else history.pushState(entry, "");
       detailHistoryActive = true;
     }
 
@@ -4720,8 +4737,18 @@
       history.back();
     }
 
-    function closeDatePanel({ fromHistory = false, immediate = false, rerenderCalendar = false } = {}) {
+    function closeDatePanel({ fromHistory = false, immediate = false, rerenderCalendar = false, silent = false } = {}) {
       if (!state.selectedDate && !datePanelHistoryActive) return;
+
+      if (!fromHistory && datePanelHistoryActive && silent) {
+        // Leaving the dashboard: drop the panel's history step without letting the
+        // resulting popstate close whatever view is being opened now.
+        suppressSheetPopState = true;
+        datePanelHistoryActive = false;
+        history.back();
+        clearSelectedDatePanel({ immediate, rerenderCalendar });
+        return;
+      }
 
       if (!fromHistory && datePanelHistoryActive) {
         history.back();
@@ -5118,10 +5145,13 @@
         headerAvatar.innerHTML = "";
         return;
       }
-      headerAvatar.className = "ml-2 hidden sm:flex";
-      headerAvatar.innerHTML = memberAvatarHTML(memberName, {
-        className: "flex h-10 w-10 items-center justify-center overflow-hidden rounded-full text-xs font-black text-white transition-all hover:scale-105"
-      });
+      // The avatar is the way into 내 정보 (settings and logout live there), not a photo viewer.
+      const photo = MEMBER_AVATAR_SOURCES[memberName];
+      headerAvatar.className = "header-profile";
+      headerAvatar.innerHTML = `
+        <button type="button" class="header-profile-button ${photo ? "avatar-photo" : getAvatarClassForMember(memberName)}" data-view-link="profile" aria-label="${escapeHTML(memberName)} · 내 정보" title="내 정보">
+          ${photo ? `<img src="${avatarThumbSrc(photo)}" alt="">` : initials(memberName)}
+        </button>`;
     }
 
     function findScheduleById(id) {
@@ -5509,8 +5539,13 @@
       };
     }
 
+    // Court photos in assets/courts have lighter WebP copies in assets/courts/opt (DB rows keep the original paths).
+    function optimizedCourtImage(src) {
+      return String(src || "").replace(/^(?:\.\/)?assets\/courts\/([^/]+)\.(?:png|jpe?g)$/i, "assets/courts/opt/$1.webp");
+    }
+
     function scheduleHeroImage(item) {
-      return item?.photoUrl || item?.court?.image || courtImage(item?.place || "", item?.courtId || "");
+      return item?.photoUrl || optimizedCourtImage(item?.court?.image || courtImage(item?.place || "", item?.courtId || ""));
     }
 
     function scheduleHeroImageStyle(item) {
@@ -6392,10 +6427,14 @@
           if (!button) return;
 
           const icon = button.querySelector("[data-reminder-icon]");
+          const label = button.querySelector("[data-reminder-label]");
+          const row = button.closest("[data-reminder-row]");
           if (!notificationSupported()) {
             button.hidden = true;
+            if (row) row.hidden = true;
             return;
           }
+          if (row) row.hidden = false;
 
           button.hidden = false;
           button.disabled = false;
@@ -6406,6 +6445,7 @@
             button.setAttribute("aria-label", "알림이 차단됨");
             button.setAttribute("title", "브라우저 설정에서 알림 허용이 필요합니다");
             if (icon) icon.textContent = "notifications_off";
+            if (label) label.textContent = "차단됨";
             return;
           }
 
@@ -6414,12 +6454,14 @@
             button.setAttribute("aria-label", "내 일정 알림 끄기");
             button.setAttribute("title", "내 일정 알림 켜짐");
             if (icon) icon.textContent = "notifications_active";
+            if (label) label.textContent = "켜짐";
             return;
           }
 
           button.setAttribute("aria-label", "내 일정 알림 켜기");
           button.setAttribute("title", "내 일정 알림 켜기");
           if (icon) icon.textContent = "notifications";
+          if (label) label.textContent = "꺼짐";
         }
 
         async function toggleScheduleReminders() {
@@ -7654,26 +7696,31 @@
     }
 
     const MEMBER_AVATAR_SOURCES = {
-      "김지석": "assets/members/member-kim-jiseok.png",
-      "김태환": "assets/members/member-kim-taehwan.png",
-      "민문기": "assets/members/member-min-mungi.png",
-      "박지영": "assets/members/member-park-jiyoung.png",
-      "박창언": "assets/members/member-park-changeon.png",
-      "송영희": "assets/members/member-song-younghee.png",
-      "신경은": "assets/members/member-shin-kyoungeun.png",
-      "윤인선": "assets/members/member-yoon-inseon.png",
-      "윤준": "assets/members/member-yoon-jun.png",
-      "이민경": "assets/members/member-lee-minkyung.png",
-      "이상백": "assets/members/member-lee-sangbaek.png",
-      "이희지": "assets/members/member-lee-heeji.png",
-      "조형철": "assets/members/member-cho-hyeongcheol.png",
-      "최빛나": "assets/members/member-choi-bitna.png",
-      "한인호": "assets/members/member-han-inho.png",
-      "허수정": "assets/members/member-heo-sujeong.png"
+      "김지석": "assets/members/opt/member-kim-jiseok.webp",
+      "김태환": "assets/members/opt/member-kim-taehwan.webp",
+      "민문기": "assets/members/opt/member-min-mungi.webp",
+      "박지영": "assets/members/opt/member-park-jiyoung.webp",
+      "박창언": "assets/members/opt/member-park-changeon.webp",
+      "송영희": "assets/members/opt/member-song-younghee.webp",
+      "신경은": "assets/members/opt/member-shin-kyoungeun.webp",
+      "윤인선": "assets/members/opt/member-yoon-inseon.webp",
+      "윤준": "assets/members/opt/member-yoon-jun.webp",
+      "이민경": "assets/members/opt/member-lee-minkyung.webp",
+      "이상백": "assets/members/opt/member-lee-sangbaek.webp",
+      "이희지": "assets/members/opt/member-lee-heeji.webp",
+      "조형철": "assets/members/opt/member-cho-hyeongcheol.webp",
+      "최빛나": "assets/members/opt/member-choi-bitna.webp",
+      "한인호": "assets/members/opt/member-han-inho.webp",
+      "허수정": "assets/members/opt/member-heo-sujeong.webp"
     };
 
     function initials(name) {
       return name.slice(0, 1);
+    }
+
+    // Avatars show at <= 96px, so they load the 192px thumbnail; the photo viewer keeps the 512px file.
+    function avatarThumbSrc(src) {
+      return String(src).replace(/\.webp$/, "-192.webp");
     }
 
     function memberAvatarHTML(name, { className = "", attributes = "" } = {}) {
@@ -7687,7 +7734,7 @@
       return `
         <div class="${className} ${avatarClass}" ${viewerAttributes} ${attributes}>
           ${avatarSrc
-            ? `<img src="${avatarSrc}" alt="${label}" loading="lazy">`
+            ? `<img src="${avatarThumbSrc(avatarSrc)}" alt="${label}" loading="lazy">`
             : initials(name)}
         </div>
       `;
@@ -8644,7 +8691,7 @@
         const items = schedules.filter(s => isVisibleSchedule(s) && s.place === place);
         const next = items.find(s => new Date(s.date + "T00:00:00") >= today) || items[0];
         const court = courts.find(item => item.name === place || item.canonicalName === place) || next?.court || {};
-        const image = court.image || courtImage(place);
+        const image = optimizedCourtImage(court.image || courtImage(place));
         const courtType = court.type || "Outdoor Court";
         const subLocation = court.location || "인천 연수구 송도동";
 
@@ -8905,12 +8952,33 @@
               </div>
             </article>
 
+            ${String(member.id) === String(myMemberId()) && !REVIEW_MODE_ENABLED ? `
+            <article class="app-card profile-settings p-4">
+              <h3 class="profile-settings-title">설정</h3>
+              <div class="profile-settings-row" data-reminder-row>
+                <div class="min-w-0">
+                  <p class="profile-settings-label">일정 알림</p>
+                  <p class="profile-settings-help">참석하는 일정을 전날과 당일에 알려 드려요</p>
+                </div>
+                <button id="scheduleReminderButton" class="profile-settings-toggle" type="button" aria-label="내 일정 알림 켜기">
+                  <span class="material-symbols-outlined text-[16px]" data-reminder-icon>notifications</span>
+                  <span data-reminder-label>꺼짐</span>
+                </button>
+              </div>
+              <div class="profile-settings-row">
+                <div class="min-w-0">
+                  <p class="profile-settings-label">로그아웃</p>
+                  <p class="profile-settings-help">카카오 계정 연결을 이 기기에서 해제합니다</p>
+                </div>
+                <button class="profile-settings-signout" type="button" data-sign-out>로그아웃</button>
+              </div>
+            </article>` : `
             <article class="app-card p-4">
               <h3 class="text-xs font-medium text-[#86868b] uppercase tracking-wide mb-2">클럽 활동</h3>
               <p class="text-xs leading-relaxed text-[#86868b]">
                 테니스 봄 클럽의 활성 멤버입니다. 코트 위에서 매너 있는 플레이와 성장을 지향합니다.
               </p>
-            </article>
+            </article>`}
           </div>
 
           <!-- Matches Section -->
@@ -8969,6 +9037,7 @@
           </div>
         </div>
       `;
+      updateScheduleReminderButton();
     }
 
     function renderAddScheduleFormOptions() {
@@ -10309,7 +10378,7 @@
 
       const updateDOM = () => {
         if (view !== "dashboard" && view !== "detail" && (state.selectedDate || document.body.classList.contains("selected-date-active"))) {
-          closeDatePanel({ immediate: true });
+          closeDatePanel({ immediate: true, silent: true });
         }
 
         if (contentView !== "member-detail" && document.querySelector("#member-detail.active")) {
@@ -10532,6 +10601,12 @@
       const reminderButton = event.target.closest("#scheduleReminderButton");
       if (reminderButton) {
         toggleScheduleReminders().catch(error => console.warn("Schedule reminder failed", error));
+        return;
+      }
+
+      const signOutButton = event.target.closest("[data-sign-out]");
+      if (signOutButton) {
+        handleAuthButton().catch(error => alert(error.message));
         return;
       }
 
@@ -10980,6 +11055,12 @@
               closeAddSchedule({ retainHistory: true });
               setAiTestStatus(`일정 ${completed}건을 모두 등록했습니다.`, "success");
             }
+          } else if (sheetHistoryActive && activeSheetType === "schedule") {
+            // history.back() is async; backing out of the sheet and then pushing the detail
+            // raced and left an extra entry (leaving detail later exited the site on mobile).
+            // Reuse the sheet's entry for the new detail instead.
+            closeAddSchedule({ fromHistory: true });
+            openDetailNavigation({ replace: true });
           } else {
             closeAddSchedule({ retainHistory: true });
             openDetailNavigation();
@@ -11190,8 +11271,11 @@
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         let refreshing = false;
+        // Only reload when a new worker replaces an existing one. The first install
+        // (clients.claim on a fresh visit) must not reload the page the user just opened.
+        const hadController = Boolean(navigator.serviceWorker.controller);
         navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (refreshing || !navigator.serviceWorker.controller) return;
+          if (refreshing || !hadController || !navigator.serviceWorker.controller) return;
           refreshing = true;
           window.location.reload();
         });
