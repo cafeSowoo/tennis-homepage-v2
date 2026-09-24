@@ -190,6 +190,15 @@
     #memberAdminButton[hidden] { display: none !important; }
     #memberAdminDialog::backdrop { background: rgba(0,0,0,.4); }
     #syncAdminButton[hidden] { display: none !important; }
+    /* PC review mode: the header only held the name and sync-history buttons,
+       so they live at the bottom of the sidebar and the header row is removed. */
+    #sideAccountSlot { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+    #sideAccountSlot:not(:has(> :not([hidden]))) { display: none; }
+    #sideAccountSlot #reviewMemberButton { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    @media (min-width: 768px) {
+      body.review-mode #appHeader { display: none; }
+      body.review-mode > main { padding-top: 2.5rem; }  /* first row aligns with the sidebar logo */
+    }
     #syncAdminDialog::backdrop { background: rgba(0,0,0,.4); }
     #reviewLastSync.is-stale { color: #b45309; }
     /* CSS 디자인 시스템 토큰 및 변수 바인딩 */
@@ -2845,10 +2854,11 @@
       <button id="sideScheduleAddBtn" class="btn-primary w-full py-3.5 text-label-md font-bold" type="button" aria-controls="sideScheduleAddMenu" aria-expanded="false">
         일정 추가
       </button>
+      <div id="sideAccountSlot"></div>
     </div>
   </nav>
 
-  <header class="fixed left-0 right-0 top-0 z-[70] flex h-[54px] items-center justify-between backdrop-blur-xl px-margin-mobile md:left-64 md:h-16 md:px-margin-desktop">
+  <header id="appHeader" class="fixed left-0 right-0 top-0 z-[70] flex h-[54px] items-center justify-between backdrop-blur-xl px-margin-mobile md:left-64 md:h-16 md:px-margin-desktop">
     <div class="flex items-center gap-sm">
       <button type="button" class="brand-home flex items-center gap-2 sm:hidden" aria-label="Home으로 이동">
         <img class="h-7 w-7 shrink-0 object-contain" src="assets/logo.png" alt="" aria-hidden="true">
@@ -2857,8 +2867,10 @@
     </div>
     <div class="relative flex items-center gap-sm">
       <button id="memberAdminButton" type="button" class="hidden app-icon-btn shrink-0" aria-label="회원 승인 관리" title="회원 승인 관리" hidden><span class="material-symbols-outlined">manage_accounts</span></button>
-      <button id="reviewMemberButton" type="button" hidden aria-label="내 이름 변경" title="내 이름 변경"><span data-review-member-label>이름 선택</span></button>
-      <button id="syncAdminButton" type="button" class="app-icon-btn shrink-0" aria-label="카카오 동기화 기록" title="카카오 동기화 기록" hidden><span class="material-symbols-outlined">monitor_heart</span></button>
+      <span id="headerAccountSlot" class="contents">
+        <button id="reviewMemberButton" type="button" hidden aria-label="내 이름 변경" title="내 이름 변경"><span data-review-member-label>이름 선택</span></button>
+        <button id="syncAdminButton" type="button" class="app-icon-btn shrink-0" aria-label="카카오 동기화 기록" title="카카오 동기화 기록" hidden><span class="material-symbols-outlined">monitor_heart</span></button>
+      </span>
       <button id="authButton" class="auth-control inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition sm:w-auto sm:gap-2 sm:px-3" type="button" aria-label="카카오 로그인" title="카카오 로그인">
         <span class="material-symbols-outlined text-[18px]" data-auth-icon>login</span>
         <span class="hidden lg:inline" data-auth-label>로그인</span>
@@ -2911,9 +2923,9 @@
     </div>
     <p class="member-gate-footer">기존 회원의 경기·참석 기록은 그대로 이어집니다.</p>
   </section>
-  <main class="min-h-screen px-margin-mobile pb-16 pt-20 md:pt-24 md:ml-64 md:px-margin-desktop">
+  <main class="min-h-screen px-margin-mobile pb-16 pt-[66px] md:pt-24 md:ml-64 md:px-margin-desktop">
     <section id="dashboard" class="view active active-animate">
-      <div class="space-y-5 md:-mt-4 md:space-y-6">
+      <div class="space-y-3 md:-mt-4 md:space-y-6">
           <div class="dashboard-overview-row">
             <div class="overview-strip">
             <div class="overview-mode-toggle" role="group" aria-label="상단 일정 보기 전환">
@@ -5924,6 +5936,19 @@
     });
 
     document.querySelector('#syncAdminButton')?.addEventListener('click', openSyncAdminDialog);
+
+    // Move (not copy) the account buttons so their listeners and state follow them.
+    function placeReviewAccountControls(isPcLayout) {
+      const target = document.querySelector(REVIEW_MODE_ENABLED && isPcLayout ? "#sideAccountSlot" : "#headerAccountSlot");
+      if (!target) return;
+      for (const id of ["reviewMemberButton", "syncAdminButton"]) {
+        const button = document.getElementById(id);
+        if (button && button.parentElement !== target) target.append(button);
+      }
+    }
+    const pcLayoutQuery = window.matchMedia("(min-width: 768px)");
+    placeReviewAccountControls(pcLayoutQuery.matches);
+    pcLayoutQuery.addEventListener("change", event => placeReviewAccountControls(event.matches));
     document.querySelector('#reviewMemberButton')?.addEventListener('click', () => {
       if (!REVIEW_MODE_ENABLED || !reviewState.unlocked) return;
       reviewState.memberId = '';
