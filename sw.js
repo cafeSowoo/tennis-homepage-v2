@@ -13,6 +13,7 @@ async function matchAppCache(request) {
 const SHELL_ASSETS = [
   "./manifest.webmanifest",
   "./assets/logo-192.webp",
+  "./assets/icons/favicon-48.png",
   "./assets/icons/apple-touch-icon.png",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
