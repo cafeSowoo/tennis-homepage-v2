@@ -143,11 +143,16 @@ test('personal calendar client keeps links per member, gates access and survives
   assert.equal(calls[0].init.headers['x-review-token'], 'tok');
   assert.equal(calls[0].init.headers.apikey, 'pk');
   assert.deepEqual(cal.events().map(e => [e.title, e.category, e.readOnly]), [['약속', 'mycal', true]]);
+  assert.equal(cal.status().color, 'sky', 'sky is the default colour');
+  assert.equal(cal.setColor('grey'), false);
+  assert.equal(cal.setColor('violet'), true);
+  assert.equal(cal.status().color, 'violet');
 
   assert.equal(await cal.refresh(), false, 'fresh cache is not refetched');
   clock += 16 * 60 * 1000; reply = { ok: false, body: { code: 'FEED_NOT_FOUND' } };
   assert.equal(await cal.refresh(), false);
   assert.equal(cal.events().length, 1, 'last good events stay after a failure');
+  assert.equal(cal.status().color, 'violet', 'colour survives refreshes');
   assert.match(cal.status().error, /찾을 수 없어요/);
   reply = { throws: true };
   await assert.rejects(cal.refresh({ force: true }), /인터넷 연결/);

@@ -2,8 +2,12 @@
 
 A member can paste their own calendar's iCal link (Google "iCal 형식의 비공개 주소" or an
 iCloud public calendar link) on their profile. Their personal events then appear on the home
-calendar as hollow grey dots / dashed chips, in the date panel under "내 캘린더", and in a
+calendar as filled dots / dashed chips, in the date panel under "내 캘린더", and in a
 read-only detail view. It is one-way: the original calendar stays the source of truth.
+
+The member picks the display colour on the profile (하늘 default, 보라, 분홍, 주황; grey is
+avoided because it reads as 불참). It is saved with the link on this device and applied through
+the `--mycal-*` CSS variables used by the mobile dot, PC chip, date-panel card, detail badge and legend.
 
 ## Privacy model
 

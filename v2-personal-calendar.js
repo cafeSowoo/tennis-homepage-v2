@@ -3,6 +3,8 @@
   'use strict';
   const STORAGE_KEY = 'tennis.v2.personalCalendar';
   const STALE_MS = 15 * 60 * 1000;
+  const COLORS = ['sky', 'violet', 'pink', 'orange'];
+  const DEFAULT_COLOR = COLORS[0];
   const ALLOWED_HOST = /^(calendar\.google\.com|[a-z0-9-]+(\.[a-z0-9-]+)*\.icloud\.com|outlook\.live\.com|outlook\.office365\.com)$/i;
   const ERRORS = {
     UNSUPPORTED_URL: '구글 캘린더의 "iCal 형식의 비공개 주소"나 iCloud 공개 캘린더 링크만 연결할 수 있어요.',
@@ -113,6 +115,14 @@
       }
     }
 
+    function setColor(color) {
+      const row = entry();
+      if (!row || !COLORS.includes(color)) return false;
+      save(memberId(), { ...row, color });
+      onChange();
+      return true;
+    }
+
     function disconnect() {
       if (!memberId()) return;
       request += 1; loading = false;
@@ -136,15 +146,16 @@
       const row = entry();
       return {
         enabled: enabled(), connected: Boolean(row), loading,
+        color: COLORS.includes(row?.color) ? row.color : DEFAULT_COLOR,
         fetchedAt: row?.fetchedAt || 0, error: row?.error || '',
         count: Array.isArray(row?.events) ? row.events.length : 0, truncated: Boolean(row?.truncated)
       };
     }
 
-    return { enabled, connect, refresh, disconnect, events, status };
+    return { enabled, connect, refresh, disconnect, setColor, events, status };
   }
 
-  const api = { create, normalizeUrl, STORAGE_KEY };
+  const api = { create, normalizeUrl, STORAGE_KEY, COLORS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.V2PersonalCalendar = api;
 })(typeof window === 'object' ? window : globalThis);
