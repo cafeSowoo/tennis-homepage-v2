@@ -384,12 +384,14 @@
       background-color: #f43f5e;
       box-shadow: 0 0 6px rgba(244, 63, 94, 0.55);
     }
+    /* 내 캘린더 colours come from --mycal-* (set per device from the chosen swatch; sky by default). */
+    :root { --mycal-dot: #0ea5e9; --mycal-bg: #f0f9ff; --mycal-bd: #7dd3fc; --mycal-tx: #0369a1; }
     .pulse-dot.dot-event-mycal {
-      background-color: transparent;
-      border: 1.5px solid #64748b;
+      background-color: var(--mycal-dot);
       box-shadow: none;
       animation: none;
     }
+    .mycal-chip { border: 1px dashed var(--mycal-bd); background-color: var(--mycal-bg); color: var(--mycal-tx); }
     .pulse-dot.dot-declined {
       background-color: #a1a1aa;
       box-shadow: none;
@@ -1950,7 +1952,7 @@
     #dashboard .calendar-day [class*="bg-error"],
     #dashboard .calendar-day [class*="bg-amber"],
     #dashboard .calendar-day [class*="bg-indigo"],
-    #dashboard .calendar-day [class*="bg-slate-50"] {
+    #dashboard .calendar-day .mycal-chip {
       border-radius: 0.375rem;
       font-weight: 500 !important;
       font-size: 0.625rem !important;
@@ -2667,8 +2669,7 @@
       background: var(--app-green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M2 4.1l1.35 1.3L6 2.7' fill='none' stroke='%23fff' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important;
     }
     #dashboard .pulse-dot.dot-declined { background: #d4d4d8; }
-    /* 내 캘린더 (personal feed): hollow grey ring so it never reads as a club schedule */
-    #dashboard .pulse-dot.dot-event-mycal { background: radial-gradient(circle closest-side, #fff 50%, #8391a7 58%) !important; }
+    #dashboard .pulse-dot.dot-event-mycal { background: var(--mycal-dot) !important; }
 
     /* Calendar legend: chips on PC, dots on mobile (mirrors the status styles above) */
     #dashboard .calendar-legend {
@@ -2706,8 +2707,8 @@
     #dashboard .calendar-legend .is-undecided .legend-dot { background: #8fc7ba; }
     #dashboard .calendar-legend .is-declined .legend-dot { background: #d4d4d8; }
     #dashboard .calendar-legend li[hidden] { display: none; }
-    #dashboard .calendar-legend .is-mycal .legend-chip { border: 1px dashed #cbd5e1; background: #f8fafc; color: #475569; }
-    #dashboard .calendar-legend .is-mycal .legend-dot { background: radial-gradient(circle closest-side, #fff 50%, #8391a7 58%); }
+    #dashboard .calendar-legend .is-mycal .legend-chip { border: 1px dashed var(--mycal-bd); background: var(--mycal-bg); color: var(--mycal-tx); }
+    #dashboard .calendar-legend .is-mycal .legend-dot { background: var(--mycal-dot); }
     #dashboard .calendar-legend .legend-label { color: var(--app-muted); font-size: 0.75rem; font-weight: 500; }
 
     @media (min-width: 768px) {
@@ -2797,6 +2798,9 @@
     .personal-calendar-guide b { color: var(--app-text); font-weight: 600; }
     .personal-calendar-error { font-size: 0.75rem; font-weight: 600; color: #a3261f; word-break: keep-all; }
     .personal-calendar-actions { display: flex; justify-content: flex-end; gap: 0.375rem; }
+    .personal-calendar-swatches { display: flex; gap: 0.5rem; }
+    .personal-calendar-swatch { width: 1.75rem; height: 1.75rem; border-radius: 9999px; background: var(--swatch); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
+    .personal-calendar-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--swatch); }
 
     /* Place-based titles: tags keep what only the Kakao title said */
     .schedule-title-tag { flex: none; padding: 0.0625rem 0.375rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 700; line-height: 1.4; }
@@ -4936,7 +4940,17 @@
       }
     }
 
+    function applyPersonalCalendarColor() {
+      const color = PERSONAL_CALENDAR_COLORS[personalCalendar.status().color] || PERSONAL_CALENDAR_COLORS.sky;
+      const root = document.documentElement.style;
+      root.setProperty("--mycal-dot", color.dot);
+      root.setProperty("--mycal-bg", color.bg);
+      root.setProperty("--mycal-bd", color.bd);
+      root.setProperty("--mycal-tx", color.tx);
+    }
+
     function renderDashboard() {
+      applyPersonalCalendarColor();
       const myCalendarLegend = document.querySelector(".calendar-legend .is-mycal");
       if (myCalendarLegend) myCalendarLegend.hidden = !personalCalendar.status().connected;
       renderCalendar();
@@ -7254,7 +7268,7 @@
         bookclub: { label: "독서모임", icon: "menu_book", chip: "border border-amber-300 bg-amber-50 text-amber-800", dot: "dot-bookclub" },
         family: { label: "가족", icon: "home", chip: "border border-rose-300 bg-rose-50 text-rose-800", dot: "dot-event-family" },
         other: { label: "기타", icon: "event_note", chip: "border border-rose-300 bg-rose-50 text-rose-800", dot: "dot-event-other" },
-        mycal: { label: "내 캘린더", icon: "calendar_month", chip: "border border-dashed border-slate-300 bg-slate-50 text-slate-600", dot: "dot-event-mycal" }
+        mycal: { label: "내 캘린더", icon: "calendar_month", chip: "mycal-chip", dot: "dot-event-mycal" }
       };
       return categories[event.category] || categories.other;
     }
@@ -8935,6 +8949,12 @@
       }).join("");
     }
 
+    const PERSONAL_CALENDAR_COLORS = {
+      sky: { label: "하늘", dot: "#0ea5e9", bg: "#f0f9ff", bd: "#7dd3fc", tx: "#0369a1" },
+      violet: { label: "보라", dot: "#8b5cf6", bg: "#f5f3ff", bd: "#c4b5fd", tx: "#6d28d9" },
+      pink: { label: "분홍", dot: "#ec4899", bg: "#fdf2f8", bd: "#f9a8d4", tx: "#be185d" },
+      orange: { label: "주황", dot: "#f97316", bg: "#fff7ed", bd: "#fdba74", tx: "#c2410c" }
+    };
     let personalCalendarFormOpen = false;
     let personalCalendarDraft = "";
     let personalCalendarFormError = "";
@@ -8966,6 +8986,14 @@
                 <span class="material-symbols-outlined text-[16px]">sync</span><span>새로고침</span>
               </button>
               <button class="profile-settings-signout" type="button" data-personal-calendar-disconnect>해제</button>
+            </div>
+          </div>
+          <div class="profile-settings-row">
+            <p class="profile-settings-label">표시 색상</p>
+            <div class="personal-calendar-swatches" role="radiogroup" aria-label="내 캘린더 표시 색상">
+              ${Object.entries(PERSONAL_CALENDAR_COLORS).map(([key, color]) => `
+                <button class="personal-calendar-swatch" type="button" role="radio" aria-checked="${status.color === key}" aria-label="${color.label}" title="${color.label}"
+                  style="--swatch: ${color.dot}" data-personal-calendar-color="${key}"></button>`).join("")}
             </div>
           </div>`;
       }
@@ -10778,6 +10806,11 @@
         personalCalendarDraft = "";
         personalCalendarFormError = "";
         renderPersonalCalendarSettings();
+        return;
+      }
+      const personalCalendarSwatch = event.target.closest("[data-personal-calendar-color]");
+      if (personalCalendarSwatch) {
+        personalCalendar.setColor(personalCalendarSwatch.dataset.personalCalendarColor);
         return;
       }
       if (event.target.closest("[data-personal-calendar-refresh]")) {
