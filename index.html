@@ -4030,13 +4030,12 @@
     }
 
     async function loadKakaoMirrorSchedules() {
-      const startDate = REVIEW_MODE_ENABLED ? todayIsoLocal() : KAKAO_MIRROR_START_DATE;
+      // Review mode keeps past Kakao schedules on the calendar; the sync only touches today onward.
       let query = supabaseClient
         .from("schedules")
         .select("*")
-        .eq("source", "kakao")
-        .gte("date", startDate);
-      if (!REVIEW_MODE_ENABLED) query = query.lt("date", KAKAO_MIRROR_END_DATE);
+        .eq("source", "kakao");
+      if (!REVIEW_MODE_ENABLED) query = query.gte("date", KAKAO_MIRROR_START_DATE).lt("date", KAKAO_MIRROR_END_DATE);
       const { data, error } = await query
         .order("date")
         .order("time");
