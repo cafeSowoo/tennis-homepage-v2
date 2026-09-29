@@ -29,6 +29,7 @@
   <script src="v2-member-request.js"></script>
   <script src="build-info.js"></script>
   <script src="v2-feedback.js"></script>
+  <script src="v2-personal-calendar.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
   <script>
@@ -382,6 +383,12 @@
     .pulse-dot.dot-event-other {
       background-color: #f43f5e;
       box-shadow: 0 0 6px rgba(244, 63, 94, 0.55);
+    }
+    .pulse-dot.dot-event-mycal {
+      background-color: transparent;
+      border: 1.5px solid #64748b;
+      box-shadow: none;
+      animation: none;
     }
     .pulse-dot.dot-declined {
       background-color: #a1a1aa;
@@ -1942,7 +1949,8 @@
     #dashboard .calendar-day [class*="bg-tertiary"],
     #dashboard .calendar-day [class*="bg-error"],
     #dashboard .calendar-day [class*="bg-amber"],
-    #dashboard .calendar-day [class*="bg-indigo"] {
+    #dashboard .calendar-day [class*="bg-indigo"],
+    #dashboard .calendar-day [class*="bg-slate-50"] {
       border-radius: 0.375rem;
       font-weight: 500 !important;
       font-size: 0.625rem !important;
@@ -2659,6 +2667,8 @@
       background: var(--app-green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M2 4.1l1.35 1.3L6 2.7' fill='none' stroke='%23fff' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important;
     }
     #dashboard .pulse-dot.dot-declined { background: #d4d4d8; }
+    /* 내 캘린더 (personal feed): hollow grey ring so it never reads as a club schedule */
+    #dashboard .pulse-dot.dot-event-mycal { background: radial-gradient(circle closest-side, #fff 50%, #8391a7 58%) !important; }
 
     /* Calendar legend: chips on PC, dots on mobile (mirrors the status styles above) */
     #dashboard .calendar-legend {
@@ -2695,6 +2705,9 @@
     }
     #dashboard .calendar-legend .is-undecided .legend-dot { background: #8fc7ba; }
     #dashboard .calendar-legend .is-declined .legend-dot { background: #d4d4d8; }
+    #dashboard .calendar-legend li[hidden] { display: none; }
+    #dashboard .calendar-legend .is-mycal .legend-chip { border: 1px dashed #cbd5e1; background: #f8fafc; color: #475569; }
+    #dashboard .calendar-legend .is-mycal .legend-dot { background: radial-gradient(circle closest-side, #fff 50%, #8391a7 58%); }
     #dashboard .calendar-legend .legend-label { color: var(--app-muted); font-size: 0.75rem; font-weight: 500; }
 
     @media (min-width: 768px) {
@@ -2774,6 +2787,16 @@
     .profile-settings-toggle.is-primary { border-color: var(--app-green); background: var(--app-green-tint); color: #0a5449; }
     .profile-settings-toggle:disabled { opacity: 0.55; cursor: not-allowed; }
     .profile-settings-signout { color: #a3261f; }
+    .profile-settings-help.is-error { color: #a3261f; }
+    .personal-calendar-form { display: grid; gap: 0.5rem; padding: 0.25rem 0 0.75rem; }
+    .personal-calendar-form input { width: 100%; min-width: 0; height: 2.5rem; padding: 0 0.75rem; border: 1px solid rgba(0, 0, 0, 0.14); border-radius: 0.625rem; background: #fff; font-size: 16px; color: var(--app-text); }
+    .personal-calendar-form input:focus { outline: 2px solid var(--app-green); outline-offset: 1px; }
+    .personal-calendar-guide { font-size: 0.75rem; line-height: 1.55; color: var(--app-muted); word-break: keep-all; }
+    .personal-calendar-guide summary { cursor: pointer; font-weight: 600; color: var(--app-text); }
+    .personal-calendar-guide ol { margin: 0.375rem 0; padding-left: 1.1rem; list-style: decimal; display: grid; gap: 0.25rem; }
+    .personal-calendar-guide b { color: var(--app-text); font-weight: 600; }
+    .personal-calendar-error { font-size: 0.75rem; font-weight: 600; color: #a3261f; word-break: keep-all; }
+    .personal-calendar-actions { display: flex; justify-content: flex-end; gap: 0.375rem; }
 
     /* Place-based titles: tags keep what only the Kakao title said */
     .schedule-title-tag { flex: none; padding: 0.0625rem 0.375rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 700; line-height: 1.4; }
@@ -3013,6 +3036,7 @@
                 <li class="is-attending"><span class="legend-chip">참석</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">참석</span></li>
                 <li class="is-undecided"><span class="legend-chip">미정</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">미정</span></li>
                 <li class="is-declined"><span class="legend-chip">불참</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">불참</span></li>
+                <li class="is-mycal" hidden><span class="legend-chip">내 캘린더</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">내 캘린더</span></li>
               </ul>
             </section>
 
@@ -3609,6 +3633,8 @@
     const KAKAO_MIRROR_END_DATE = "2026-11-01";
     const REVIEW_KAKAO_REFRESH_MS = 60_000;
     const SYNC_ADMIN_MEMBER_NAME = "김지석";
+    // Personal calendar overlay is piloted by the club owner first; add member ids here to open it up.
+    const PERSONAL_CALENDAR_MEMBER_IDS = new Set(SUPABASE_CONFIG.personalCalendarMemberIds || ["member-kim-jiseok"]);
     let syncAdminDialog = null;
     let syncAdminPassword = "";
     let syncAdminRequestId = 0;
@@ -3647,6 +3673,16 @@
       memberId: () => myMemberId(),
       memberName: () => myMemberName(),
       context: () => ({view: document.querySelector('.view.active')?.id || 'other', scheduleId: document.querySelector('#detail.active') && state.detailType === 'schedule' ? String(state.selectedId) : null})
+    });
+    const personalCalendar = window.V2PersonalCalendar.create({
+      functionUrl: `${SUPABASE_CONFIG.supabaseUrl || ""}/functions/v1/personal-calendar-feed`,
+      apiKey: SUPABASE_CONFIG.supabaseAnonKey || "",
+      memberId: () => myMemberId(),
+      isEnabled: memberId => PERSONAL_CALENDAR_MEMBER_IDS.has(String(memberId)),
+      authHeaders: () => REVIEW_MODE_ENABLED
+        ? { "x-review-token": reviewState.accessToken }
+        : (authState.session?.access_token ? { Authorization: `Bearer ${authState.session.access_token}` } : {}),
+      onChange: () => onPersonalCalendarChange()
     });
     let courts = [];
     let courtUnits = [];
@@ -4456,12 +4492,15 @@
           attendees
         };
       }).sort(compareSchedulesByTime);
-      calendarEvents = dataStore.events.map((event, index) => ({
-        ...event,
-        id: event.id ?? `event-${index}`,
-        category: event.category || "other",
-        source: event.source || "event"
-      })).sort(compareCalendarItemsByTime);
+      calendarEvents = [
+        ...dataStore.events.map((event, index) => ({
+          ...event,
+          id: event.id ?? `event-${index}`,
+          category: event.category || "other",
+          source: event.source || "event"
+        })),
+        ...personalCalendar.events()
+      ].sort(compareCalendarItemsByTime);
 
       people = unique(
         members
@@ -4898,6 +4937,8 @@
     }
 
     function renderDashboard() {
+      const myCalendarLegend = document.querySelector(".calendar-legend .is-mycal");
+      if (myCalendarLegend) myCalendarLegend.hidden = !personalCalendar.status().connected;
       renderCalendar();
       renderSelectedDate();
       renderUpcoming();
@@ -5975,6 +6016,7 @@
       reviewState.memberId = memberId;
       localStorage.setItem(REVIEW_MEMBER_ID_KEY, memberId);
       refreshViews();
+      refreshPersonalCalendar();
       renderAuthStatus();
       openSharedScheduleIfReady();
     });
@@ -6116,6 +6158,7 @@
 
     function calendarTimeLabel(item) {
       if (item.startTime) return item.startTime;
+      if (item.allDay) return "종일";
       return toTwentyFourHourLabel(timeStart(item));
     }
 
@@ -7210,7 +7253,8 @@
         work: { label: "업무", icon: "business_center", chip: "border border-rose-300 bg-rose-50 text-rose-800", dot: "dot-event-work" },
         bookclub: { label: "독서모임", icon: "menu_book", chip: "border border-amber-300 bg-amber-50 text-amber-800", dot: "dot-bookclub" },
         family: { label: "가족", icon: "home", chip: "border border-rose-300 bg-rose-50 text-rose-800", dot: "dot-event-family" },
-        other: { label: "기타", icon: "event_note", chip: "border border-rose-300 bg-rose-50 text-rose-800", dot: "dot-event-other" }
+        other: { label: "기타", icon: "event_note", chip: "border border-rose-300 bg-rose-50 text-rose-800", dot: "dot-event-other" },
+        mycal: { label: "내 캘린더", icon: "calendar_month", chip: "border border-dashed border-slate-300 bg-slate-50 text-slate-600", dot: "dot-event-mycal" }
       };
       return categories[event.category] || categories.other;
     }
@@ -7455,7 +7499,7 @@
       const selectedDateWeatherSummaryHTML = renderSelectedDateWeatherSummary(state.selectedDate);
       const eventHTML = eventItems.length
         ? `<div class="space-y-3">
-            <h4 class="text-xs font-black uppercase tracking-wider text-on-surface-variant">다른 일정</h4>
+            <h4 class="text-xs font-black uppercase tracking-wider text-on-surface-variant">${eventItems.every(item => item.readOnly) ? "내 캘린더" : "다른 일정"}</h4>
             ${eventItems.map(calendarEventRow).join("")}
           </div>`
         : "";
@@ -8244,6 +8288,7 @@
     }
 
     function renderDetail(item = findScheduleById(state.selectedId)) {
+      syncDetailHeaderActions(false);
       if (!item || !isApprovedMember()) { document.querySelector('#detailContent').replaceChildren(); return; }
       document.querySelectorAll('[data-edit-current]').forEach(b => b.hidden = !canEditV2Schedule(item));
       document.querySelectorAll('[data-delete-current]').forEach(b => { b.hidden = !ownsV2Schedule(item) || item.status === 'cancelled'; b.setAttribute('aria-label','일정 취소'); });
@@ -8418,12 +8463,22 @@
       }
     }
 
+    // Personal-calendar events are only visible on this device, so sharing/editing them makes no sense.
+    function syncDetailHeaderActions(readOnly) {
+      document.querySelectorAll("#detail .app-crumb ~ div [data-share-current], #detail .app-crumb ~ div [data-edit-current]").forEach(button => {
+        button.style.display = readOnly ? "none" : "";
+      });
+    }
+
     function renderEventDetail(event = findEventById(state.selectedEventId)) {
       if (!event) return;
+      syncDetailHeaderActions(Boolean(event.readOnly));
       document.querySelector("#detailCrumbTitle").textContent = "일정 상세";
       const category = calendarEventCategory(event);
       const location = event.location || "장소 미정";
-      const note = event.note || "세부 메모가 아직 없습니다.";
+      const note = event.readOnly
+        ? "내 개인 캘린더에서 가져온 일정이에요. 이 기기에서 나에게만 보이며, 수정은 원래 캘린더 앱에서 해 주세요."
+        : (event.note || "세부 메모가 아직 없습니다.");
 
       // Conflict detection logic
       const conflicts = getScheduleOverlapAlerts(event.date, event.startTime, event.endTime, event.id);
@@ -8450,7 +8505,7 @@
                 </div>
                 <div class="absolute bottom-3 left-4 md:bottom-4 md:left-6 flex flex-wrap items-center gap-2 md:gap-3">
                   <span class="rounded-full px-2.5 py-0.5 md:px-3.5 md:py-1 text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-sm ${category.chip}">${category.label}</span>
-                  <span class="rounded-full border border-white/40 bg-white/35 px-2.5 py-0.5 md:px-3.5 md:py-1 text-[10px] md:text-xs font-bold text-on-surface backdrop-blur-md shadow-sm">Other Event</span>
+                  <span class="rounded-full border border-white/40 bg-white/35 px-2.5 py-0.5 md:px-3.5 md:py-1 text-[10px] md:text-xs font-bold text-on-surface backdrop-blur-md shadow-sm">${event.readOnly ? "My Calendar" : "Other Event"}</span>
                 </div>
               </div>
 
@@ -8499,7 +8554,7 @@
               <!-- Desktop-only Header Info -->
               <div class="hidden md:block">
                 <h3 class="mb-2 text-lg font-bold text-on-surface">Calendar Event</h3>
-                <p class="mb-6 text-sm font-medium leading-relaxed text-on-surface-variant">테니스 일정과 함께 달력에서 확인하는 별도 일정입니다.</p>
+                <p class="${event.readOnly ? "" : "mb-6 "}text-sm font-medium leading-relaxed text-on-surface-variant">${event.readOnly ? "내 캘린더와 자동으로 맞춰지는 읽기 전용 일정입니다." : "테니스 일정과 함께 달력에서 확인하는 별도 일정입니다."}</p>
               </div>
 
               <!-- Container for buttons & mobile-layout -->
@@ -8507,18 +8562,18 @@
                 <!-- Mobile-only quick info (on the left side) -->
                 <div class="md:hidden flex flex-col justify-center">
                   <span class="text-[10px] font-black uppercase tracking-widest text-sky-600 leading-none">Event</span>
-                  <span class="text-sm font-black text-on-surface leading-tight mt-0.5">개인 일정</span>
+                  <span class="text-sm font-black text-on-surface leading-tight mt-0.5">${event.readOnly ? "내 캘린더 · 읽기 전용" : "개인 일정"}</span>
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="flex flex-1 md:w-full items-center gap-2 md:flex-col justify-end">
+                ${event.readOnly ? "" : `<div class="flex flex-1 md:w-full items-center gap-2 md:flex-col justify-end">
                   <button class="flex w-full md:w-full items-center justify-center gap-1.5 rounded-lg bg-sky-500 py-2.5 md:py-3.5 text-xs sm:text-sm font-bold text-white shadow transition-colors hover:bg-sky-600" type="button" data-edit-current>
                     ${icon("edit", "text-[16px] sm:text-[18px]")} <span>수정</span>
                   </button>
                   <button class="w-full rounded-lg border border-error bg-transparent py-2.5 md:py-3.5 text-xs sm:text-sm font-bold text-error transition hover:bg-error-container" type="button" data-delete-current>
                     <span>일정 취소</span>
                   </button>
-                </div>
+                </div>`}
               </div>
             </article>
           </aside>
@@ -8673,7 +8728,7 @@
           const inScheduleWindow = item => state.scheduleWindow !== "upcoming" || item.date >= todayIso;
           const inScheduleScope = item => state.scheduleScope !== "mine" || isMySchedule(item) || isMyHostSchedule(item);
           const filteredSchedules = schedules.filter(item => isVisibleSchedule(item) && inScheduleWindow(item) && inScheduleScope(item) && matches(item)).map(item => ({ type: "schedule", item }));
-          const filteredEvents = calendarEvents.filter(item => inScheduleWindow(item) && matchesEvent(item)).map(item => ({ type: "event", item }));
+          const filteredEvents = calendarEvents.filter(item => !item.readOnly && inScheduleWindow(item) && matchesEvent(item)).map(item => ({ type: "event", item }));
           const filtered = [...filteredSchedules, ...filteredEvents].sort((a, b) => compareCalendarItemsByTime(a.item, b.item));
           const groups = filtered.reduce((acc, row) => ((acc[row.item.date] ||= []).push(row), acc), {});
           const emptyTitle = state.scheduleWindow === "upcoming" ? "오늘 이후 일정이 없습니다" : "조건에 맞는 경기가 없습니다";
@@ -8880,6 +8935,108 @@
       }).join("");
     }
 
+    let personalCalendarFormOpen = false;
+    let personalCalendarDraft = "";
+    let personalCalendarFormError = "";
+
+    function personalCalendarSyncLabel(status) {
+      if (!status.fetchedAt) return "아직 동기화 전";
+      const date = new Date(status.fetchedAt);
+      const time = formatKoreanTime(`${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`);
+      const day = date.toDateString() === new Date().toDateString() ? "" : `${date.getMonth() + 1}/${date.getDate()} `;
+      return `${day}${time} 동기화`;
+    }
+
+    function personalCalendarSettingsHTML() {
+      const status = personalCalendar.status();
+      if (status.connected) {
+        const help = status.loading
+          ? "캘린더를 불러오는 중…"
+          : status.error
+            ? `마지막 동기화 실패 · ${status.error}`
+            : `연결됨 · ${personalCalendarSyncLabel(status)} · 일정 ${status.count}개${status.truncated ? " (일부만)" : ""}`;
+        return `
+          <div class="profile-settings-row">
+            <div class="min-w-0">
+              <p class="profile-settings-label">내 캘린더</p>
+              <p class="profile-settings-help${status.error && !status.loading ? " is-error" : ""}">${escapeHTML(help)}</p>
+            </div>
+            <div class="flex flex-none items-center gap-1.5">
+              <button class="profile-settings-toggle" type="button" data-personal-calendar-refresh ${status.loading ? "disabled" : ""} aria-label="내 캘린더 새로고침">
+                <span class="material-symbols-outlined text-[16px]">sync</span><span>새로고침</span>
+              </button>
+              <button class="profile-settings-signout" type="button" data-personal-calendar-disconnect>해제</button>
+            </div>
+          </div>`;
+      }
+      const row = `
+        <div class="profile-settings-row">
+          <div class="min-w-0">
+            <p class="profile-settings-label">내 캘린더 연결</p>
+            <p class="profile-settings-help">구글·애플 캘린더 일정을 홈 달력에 함께 보여 드려요. 이 기기에서 나에게만 보여요</p>
+          </div>
+          ${personalCalendarFormOpen ? "" : `<button class="profile-settings-toggle" type="button" data-personal-calendar-open>
+            <span class="material-symbols-outlined text-[16px]">calendar_add_on</span><span>연결</span>
+          </button>`}
+        </div>`;
+      if (!personalCalendarFormOpen) return row;
+      return `${row}
+        <form class="personal-calendar-form" data-personal-calendar-form novalidate>
+          <label class="profile-settings-help" for="personalCalendarUrl">캘린더 링크 (iCal 주소)</label>
+          <input id="personalCalendarUrl" name="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+            placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" value="${escapeHTML(personalCalendarDraft)}" ${status.loading ? "disabled" : ""}>
+          <details class="personal-calendar-guide">
+            <summary>링크는 어디서 찾나요?</summary>
+            <ol>
+              <li><b>구글 캘린더</b> · PC에서 calendar.google.com → 설정(톱니바퀴) → 왼쪽에서 내 캘린더 선택 → "캘린더 통합" → <b>iCal 형식의 비공개 주소</b> 복사</li>
+              <li><b>애플 캘린더</b> · 아이폰 캘린더 앱 → 아래 "캘린더" → 캘린더 옆 ⓘ → <b>공개 캘린더</b> 켜기 → 링크 공유 → 복사</li>
+            </ol>
+            <p>링크는 이 기기에만 저장되고 서버에는 남지 않아요. 링크를 가진 사람은 누구나 일정을 볼 수 있으니 다른 사람과 공유하지 마세요.</p>
+          </details>
+          ${personalCalendarFormError ? `<p class="personal-calendar-error" role="alert">${escapeHTML(personalCalendarFormError)}</p>` : ""}
+          <div class="personal-calendar-actions">
+            <button class="profile-settings-toggle" type="button" data-personal-calendar-cancel ${status.loading ? "disabled" : ""}>취소</button>
+            <button class="profile-settings-toggle is-primary" type="submit" ${status.loading ? "disabled" : ""}>${status.loading ? "불러오는 중…" : "연결하기"}</button>
+          </div>
+        </form>`;
+    }
+
+    function renderPersonalCalendarSettings() {
+      const target = document.querySelector("[data-personal-calendar-settings]");
+      if (!target) return;
+      const input = target.querySelector("#personalCalendarUrl");
+      if (input) personalCalendarDraft = input.value;
+      const hadFocus = input && document.activeElement === input;
+      target.innerHTML = personalCalendarSettingsHTML();
+      if (hadFocus) target.querySelector("#personalCalendarUrl")?.focus();
+    }
+
+    function onPersonalCalendarChange() {
+      rebuildDataIndexes();
+      renderDashboard();
+      renderPersonalCalendarSettings();
+    }
+
+    function refreshPersonalCalendar() {
+      personalCalendar.refresh().catch(error => console.warn("Personal calendar refresh failed", error));
+    }
+
+    async function connectPersonalCalendar(form) {
+      const input = form.querySelector("#personalCalendarUrl");
+      personalCalendarDraft = input?.value || "";
+      personalCalendarFormError = "";
+      try {
+        const connected = await personalCalendar.connect(personalCalendarDraft);
+        if (connected) {
+          personalCalendarFormOpen = false;
+          personalCalendarDraft = "";
+        }
+      } catch (error) {
+        personalCalendarFormError = error.message;
+      }
+      renderPersonalCalendarSettings();
+    }
+
     function renderMemberDetail() {
       const memberId = state.selectedMemberId;
       const member = members.find(m => String(m.id) === String(memberId)) || members.find(m => m.name === memberId);
@@ -8961,9 +9118,11 @@
               </div>
             </article>
 
-            ${String(member.id) === String(myMemberId()) && !REVIEW_MODE_ENABLED ? `
+            ${String(member.id) === String(myMemberId()) && (!REVIEW_MODE_ENABLED || personalCalendar.enabled()) ? `
             <article class="app-card profile-settings p-4">
               <h3 class="profile-settings-title">설정</h3>
+              ${personalCalendar.enabled() ? `<div data-personal-calendar-settings>${personalCalendarSettingsHTML()}</div>` : ""}
+              ${REVIEW_MODE_ENABLED ? "" : `
               <div class="profile-settings-row" data-reminder-row>
                 <div class="min-w-0">
                   <p class="profile-settings-label">일정 알림</p>
@@ -8980,7 +9139,7 @@
                   <p class="profile-settings-help">카카오 계정 연결을 이 기기에서 해제합니다</p>
                 </div>
                 <button class="profile-settings-signout" type="button" data-sign-out>로그아웃</button>
-              </div>
+              </div>`}
             </article>` : `
             <article class="app-card p-4">
               <h3 class="text-xs font-medium text-[#86868b] uppercase tracking-wide mb-2">클럽 활동</h3>
@@ -9536,7 +9695,7 @@
         const selectedDateWeatherSummaryHTML = renderSelectedDateWeatherSummary(state.selectedDate);
         const eventHTML = eventItems.length
           ? `<div class="space-y-3">
-              <h4 class="text-xs font-black uppercase tracking-wider text-on-surface-variant">다른 일정</h4>
+              <h4 class="text-xs font-black uppercase tracking-wider text-on-surface-variant">${eventItems.every(item => item.readOnly) ? "내 캘린더" : "다른 일정"}</h4>
               ${eventItems.map(calendarEventRow).join("")}
             </div>`
           : "";
@@ -10607,6 +10766,31 @@
         }
       }
 
+      if (event.target.closest("[data-personal-calendar-open]")) {
+        personalCalendarFormOpen = true;
+        personalCalendarFormError = "";
+        renderPersonalCalendarSettings();
+        document.querySelector("#personalCalendarUrl")?.focus();
+        return;
+      }
+      if (event.target.closest("[data-personal-calendar-cancel]")) {
+        personalCalendarFormOpen = false;
+        personalCalendarDraft = "";
+        personalCalendarFormError = "";
+        renderPersonalCalendarSettings();
+        return;
+      }
+      if (event.target.closest("[data-personal-calendar-refresh]")) {
+        personalCalendar.refresh({ force: true }).catch(() => {});
+        return;
+      }
+      if (event.target.closest("[data-personal-calendar-disconnect]")) {
+        if (confirm("내 캘린더 연결을 해제할까요? 이 기기에 저장된 링크와 일정이 지워지고, 원래 캘린더에는 영향이 없어요.")) {
+          personalCalendar.disconnect();
+        }
+        return;
+      }
+
       const reminderButton = event.target.closest("#scheduleReminderButton");
       if (reminderButton) {
         toggleScheduleReminders().catch(error => console.warn("Schedule reminder failed", error));
@@ -11039,6 +11223,13 @@
         closeAddSchedule();
       }
     });
+    document.addEventListener("submit", event => {
+      const form = event.target.closest?.("[data-personal-calendar-form]");
+      if (!form) return;
+      event.preventDefault();
+      connectPersonalCalendar(form);
+    });
+
     document.querySelector("#addScheduleForm").addEventListener("submit", async event => {
       event.preventDefault();
       const submit = document.querySelector('#addScheduleSubmit');
@@ -11167,6 +11358,7 @@
         renderAuthStatus();
         renderDashboard();
         initHeaderAvatar();
+        refreshPersonalCalendar();
         deferSecondaryRenders();
         openSharedScheduleIfReady();
         updateScheduleReminderButton();
@@ -11184,6 +11376,7 @@
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && authState.initialized) {
+        refreshPersonalCalendar();
         if (REVIEW_MODE_ENABLED) {
           refreshReviewKakaoSchedules();
           return;

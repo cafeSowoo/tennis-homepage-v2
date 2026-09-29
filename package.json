@@ -6,6 +6,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
-    "acorn": "8.15.0"
+    "acorn": "8.15.0",
+    "ical.js": "2.2.1"
   }
 }
