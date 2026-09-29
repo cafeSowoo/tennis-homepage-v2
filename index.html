@@ -4007,7 +4007,7 @@
     async function loadKakaoSyncState() {
       const { data, error } = await supabaseClient
         .from("kakao_sync_state")
-        .select("id,last_collected_at,completed_at,schedule_count")
+        .select("id,last_collected_at,completed_at,schedule_count,held_count")
         .eq("id", "kakao")
         .maybeSingle();
       if (error) {
@@ -4958,7 +4958,15 @@
 
       const changedAtLastCheck = latestScheduleSync
         && Math.abs(latestScheduleSync.getTime() - checkedAt.getTime()) < 5000;
-      target.textContent = `마지막 확인 · ${when} · ${changedAtLastCheck ? "변경 반영됨" : "변경 없음"}`;
+      target.textContent = `마지막 확인 · ${when} · ${kakaoSyncCheckResult(reviewKakaoSyncState.held_count, changedAtLastCheck)}`;
+    }
+
+    // Schedules held for review (e.g. an unknown court) are named so the check
+    // is not read as complete; everything else in that check was synced.
+    function kakaoSyncCheckResult(heldCount, changedAtLastCheck) {
+      const held = Number(heldCount) || 0;
+      if (held > 0) return `확인 필요 ${held}건`;
+      return changedAtLastCheck ? "변경 반영됨" : "변경 없음";
     }
 
     // The sync runs every 20 minutes; a gap of two missed runs needs attention.

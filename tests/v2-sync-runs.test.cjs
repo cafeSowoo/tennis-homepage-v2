@@ -48,7 +48,7 @@ test('Kakao sync run history: owner writes, only the admin password reads',async
 
 test('review page flags a stale Kakao check and summarizes runs for the admin view',()=>{
   const vm=require('node:vm'),acorn=require('acorn');
-  const html=fs.readFileSync('index.html','utf8'),names=['kakaoSyncIsStale','formatSyncRun'];let source='';
+  const html=fs.readFileSync('index.html','utf8'),names=['kakaoSyncIsStale','formatSyncRun','kakaoSyncCheckResult'];let source='';
   for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))for(const n of acorn.parse(m[1],{ecmaVersion:'latest'}).body)
     if(n.type==='FunctionDeclaration'&&names.includes(n.id.name))source+=m[1].slice(n.start,n.end)+'\n';
   const c={};vm.createContext(c);vm.runInContext(source,c);
@@ -60,4 +60,28 @@ test('review page flags a stale Kakao check and summarizes runs for the admin vi
     '반영 3건 · 보류 1건 · 자동 복구 후 성공 · 48초');
   const failed=c.formatSyncRun({status:'error',error_kind:'recovery_action_required',recovery:'blocked:chat_window_not_open',consecutive_failures:3,elapsed_seconds:4});
   assert.deepEqual([failed.ok,failed.text],[false,'자동 복구에 확인 필요 · 채팅창 닫힘 · 연속 3회 · 4초']);
+  assert.equal(c.kakaoSyncCheckResult(2,true),'확인 필요 2건');
+  assert.equal(c.kakaoSyncCheckResult(0,true),'변경 반영됨');
+  assert.equal(c.kakaoSyncCheckResult(undefined,false),'변경 없음');  // before the column exists
+});
+
+test('sync state records the check time with how many schedules await review',async()=>{
+  const db=new PGlite();
+  await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
+    create function auth.jwt() returns jsonb language sql stable as $$select nullif(current_setting('request.jwt.claims',true),'')::jsonb$$;
+    grant usage on schema auth to anon, authenticated; grant usage on schema public to anon, authenticated;`);
+  await db.exec(fs.readFileSync('supabase/migrations/20260912053018_kakao_sync_state.sql','utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/20260929073142_kakao_sync_held_count.sql','utf8'));
+  const fp=c=>`'${c.repeat(64)}'`;
+  await db.exec(`set role authenticated; select set_config('request.jwt.claims','${MEMBER}',false)`);
+  await assert.rejects(db.exec(`select public.record_kakao_sync('2026-09-29T07:00:00Z',46,${fp('a')},2)`),/Owner login required/);
+  await db.exec(`select set_config('request.jwt.claims','${OWNER}',false)`);
+  await db.exec(`select public.record_kakao_sync('2026-09-29T07:00:00Z',46,${fp('a')},2)`);
+  await assert.rejects(db.exec(`select public.record_kakao_sync('2026-09-29T07:20:00Z',46,${fp('b')},-1)`),/negative/);
+  // Callers that predate held_count (three named arguments) still work and mean "nothing held".
+  await db.exec(`select public.record_kakao_sync(p_collected_at=>'2026-09-29T07:20:00Z',p_schedule_count=>46,p_fingerprint=>${fp('c')})`);
+  await db.exec('reset role; set role anon');
+  assert.deepEqual((await db.query('select held_count from public.kakao_sync_state')).rows,[{held_count:0}]);
+  await denied(db,`select public.record_kakao_sync('2026-09-29T07:40:00Z',46,${fp('d')},0)`);
+  await db.close();
 });
