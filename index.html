@@ -2539,6 +2539,15 @@
     #aiCaptureSheet.has-capture-results #aiTestImagePreview { width:32px; height:32px; margin:0; }
     #aiTestResultCard > div:first-child > span { white-space:nowrap; flex-shrink:0; }
 
+    /* Schedule list filters: the selected state is always visible, never implied by the label. */
+    .schedule-seg { display:inline-flex; gap:2px; padding:3px; border-radius:9999px; background:var(--app-fill); border:1px solid var(--app-border); }
+    .schedule-seg button { min-width:3.5rem; padding:0.375rem 0.875rem; border-radius:9999px; font-size:0.875rem; font-weight:600; color:var(--app-muted); transition:background-color .15s, color .15s; }
+    .schedule-seg button[aria-pressed="true"] { background:#fff; color:var(--app-green); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+    .schedule-chip { display:inline-flex; align-items:center; gap:4px; padding:0.4375rem 0.875rem; border-radius:9999px; border:1px solid var(--app-border); background:#fff; font-size:0.875rem; font-weight:600; color:var(--app-text); transition:background-color .15s, border-color .15s, color .15s; }
+    .schedule-chip .material-symbols-outlined { display:none; font-size:16px; }
+    .schedule-chip[aria-pressed="true"] { background:var(--app-green-soft); border-color:var(--app-green); color:var(--app-green); }
+    .schedule-chip[aria-pressed="true"] .material-symbols-outlined { display:inline-block; }
+
     /* ── Design refresh 2026-09 ──────────────────────────────────────────
        Calmer club look: one level of cards (no card-in-card), hairline
        separators, green reserved for "mine / today / action", soft tints
@@ -3068,15 +3077,16 @@
     <section id="schedule" class="view md:-mt-4">
       <div class="mb-5 flex flex-col gap-4 md:mb-6 md:flex-row md:items-end md:justify-between">
         <p id="kakaoSyncStatus" class="mt-2 hidden text-xs text-on-surface-variant"></p>
-        <div class="grid grid-cols-2 gap-2 md:ml-auto md:flex md:flex-row md:flex-wrap">
+        <div class="flex flex-wrap items-center gap-2 md:ml-auto">
           <button class="btn-primary min-w-0 justify-center px-3 py-2 text-sm md:px-4" type="button" data-add-schedule>
             <span class="material-symbols-outlined text-[18px]">add</span> 일정 추가
           </button>
-          <button id="scheduleWindowToggle" class="btn-outline min-w-0 justify-center px-3 py-2 text-sm md:px-4" type="button">
-            지난 일정 보기
-          </button>
-          <button id="scheduleScopeToggle" class="btn-outline min-w-0 justify-center px-3 py-2 text-sm md:px-4" type="button">
-            내 일정만 보기
+          <div id="scheduleWindowToggle" class="schedule-seg" role="group" aria-label="일정 기간">
+            <button type="button" data-schedule-window="upcoming" aria-pressed="true">예정</button>
+            <button type="button" data-schedule-window="past" aria-pressed="false">지난</button>
+          </div>
+          <button id="scheduleScopeToggle" class="schedule-chip" type="button" aria-pressed="false">
+            <span class="material-symbols-outlined">check</span>내 일정만
           </button>
         </div>
       </div>
@@ -8727,29 +8737,29 @@
     function renderFilters() {
       const scopeButton = document.querySelector("#scheduleScopeToggle");
       if (!scopeButton) return;
-      const mineOnly = state.scheduleScope === "mine";
-      scopeButton.textContent = mineOnly ? "전체 일정 보기" : "내 일정만 보기";
-      scopeButton.setAttribute("aria-pressed", String(mineOnly));
+      scopeButton.setAttribute("aria-pressed", String(state.scheduleScope === "mine"));
     }
 
         function renderSchedule() {
-          const windowButton = document.querySelector("#scheduleWindowToggle");
-          if (windowButton) {
-            windowButton.textContent = state.scheduleWindow === "upcoming" ? "지난 일정 보기" : "오늘 이후만 보기";
-            windowButton.setAttribute("aria-pressed", String(state.scheduleWindow !== "upcoming"));
-          }
-          const inScheduleWindow = item => state.scheduleWindow !== "upcoming" || item.date >= todayIso;
+          const past = state.scheduleWindow === "past";
+          document.querySelectorAll("[data-schedule-window]").forEach(button => {
+            button.setAttribute("aria-pressed", String(button.dataset.scheduleWindow === state.scheduleWindow));
+          });
+          const inScheduleWindow = item => past ? item.date < todayIso : item.date >= todayIso;
           const inScheduleScope = item => state.scheduleScope !== "mine" || isMySchedule(item) || isMyHostSchedule(item);
           const filteredSchedules = schedules.filter(item => isVisibleSchedule(item) && inScheduleWindow(item) && inScheduleScope(item) && matches(item)).map(item => ({ type: "schedule", item }));
           const filteredEvents = calendarEvents.filter(item => !item.readOnly && inScheduleWindow(item) && matchesEvent(item)).map(item => ({ type: "event", item }));
           const filtered = [...filteredSchedules, ...filteredEvents].sort((a, b) => compareCalendarItemsByTime(a.item, b.item));
           const groups = filtered.reduce((acc, row) => ((acc[row.item.date] ||= []).push(row), acc), {});
-          const emptyTitle = state.scheduleWindow === "upcoming" ? "오늘 이후 일정이 없습니다" : "조건에 맞는 경기가 없습니다";
-          const emptyMessage = state.scheduleWindow === "upcoming"
-            ? (state.scheduleScope === "mine" ? "예정된 내 일정이 없습니다." : "지난 일정이 필요하면 필터를 전환하거나 새 일정을 추가하세요.")
-            : (state.scheduleScope === "mine" ? "조건에 맞는 내 일정이 없습니다." : "다른 검색어를 입력해 보세요.");
+          const mineOnly = state.scheduleScope === "mine";
+          const emptyTitle = past ? "지난 일정이 없습니다" : "오늘 이후 일정이 없습니다";
+          const emptyMessage = past
+            ? (mineOnly ? "지난 내 일정이 없습니다." : "다른 검색어를 입력해 보세요.")
+            : (mineOnly ? "예정된 내 일정이 없습니다." : "지난 일정은 '지난'을 눌러 확인하세요.");
+          // Past schedules read newest first; upcoming ones soonest first.
+          const groupEntries = past ? Object.entries(groups).reverse() : Object.entries(groups);
           // Stitch bridge: Schedule grouped-list HTML markup starts here.
-          document.querySelector("#scheduleGroups").innerHTML = Object.entries(groups).map(([date, rows]) => `
+          document.querySelector("#scheduleGroups").innerHTML = groupEntries.map(([date, rows]) => `
         <section>
           <div class="mb-4 flex items-center justify-between gap-3">
             <h3>${dateLabelHTML(rows[0].item)}</h3>
@@ -11063,8 +11073,10 @@
           renderFilters();
           renderSchedule();
         });
-        document.querySelector("#scheduleWindowToggle").addEventListener("click", () => {
-          state.scheduleWindow = state.scheduleWindow === "upcoming" ? "all" : "upcoming";
+        document.querySelector("#scheduleWindowToggle").addEventListener("click", event => {
+          const button = event.target.closest("[data-schedule-window]");
+          if (!button || button.dataset.scheduleWindow === state.scheduleWindow) return;
+          state.scheduleWindow = button.dataset.scheduleWindow;
           renderSchedule();
         });
     document.querySelector("#memberMonthFilter").addEventListener("change", event => {
