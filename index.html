@@ -1767,6 +1767,18 @@
       color: #9a3412;
     }
 
+    #dashboard .dash-overview-host-tag {
+      flex: none;
+      align-self: center;
+      padding: 0.0625rem 0.375rem;
+      border-radius: 0.375rem;
+      background: #fdf0e7;
+      color: #9a3412;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
     #dashboard .dash-overview-label {
       flex-shrink: 0;
       font-size: 0.625rem;
@@ -8885,7 +8897,7 @@
                 </button>
               `;
           } else {
-            const myUpcoming = schedules.filter(schedule => schedule.status !== 'cancelled' && schedule.date >= todayIso && (isMySchedule(schedule) || isMyHostSchedule(schedule)));
+            const myUpcoming = schedules.filter(schedule => schedule.status !== 'cancelled' && schedule.date >= todayIso && (isMySchedule(schedule) || (isMyHostSchedule(schedule) && !isDeclinedSchedule(schedule))));
             cards = myUpcoming.length ? myUpcoming.map((schedule, index) => {
               const hostOnly = isMyHostSchedule(schedule) && !isMySchedule(schedule);
               return `
@@ -8893,6 +8905,7 @@
                   <div class="dash-overview-row">
                     <p class="dash-overview-label tabular-nums">${overviewDdayLabel(schedule.date)}</p>
                     <p class="dash-overview-title truncate">${escapeHTML(schedule.place)}</p>
+                    ${hostOnly ? `<span class="dash-overview-host-tag">개설</span>` : ""}
                     ${schedule.source === "kakao" ? kakaoBadgeHTML() : ""}
                   </div>
                   <p class="dash-overview-meta truncate tabular-nums">${escapeHTML(overviewMetaLabel(schedule))}</p>
@@ -8978,7 +8991,7 @@
           const inScheduleWindow = item => past ? item.date < todayIso : item.date >= todayIso;
           const inScheduleScope = item => {
             if (state.scheduleScope === "host") return isMyHostSchedule(item);
-            if (state.scheduleScope === "mine") return isMySchedule(item) || isMyHostSchedule(item);
+            if (state.scheduleScope === "mine") return isMySchedule(item) || (isMyHostSchedule(item) && !isDeclinedSchedule(item));
             return true;
           };
           const filteredSchedules = schedules.filter(item => isVisibleSchedule(item) && inScheduleWindow(item) && inScheduleScope(item) && matches(item)).map(item => ({ type: "schedule", item }));
