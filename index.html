@@ -2744,6 +2744,8 @@
     #dashboard .calendar-legend li[hidden] { display: none; }
     #dashboard .calendar-legend .is-mycal .legend-chip { border: 1px dashed var(--mycal-bd); background: var(--mycal-bg); color: var(--mycal-tx); }
     #dashboard .calendar-legend .is-mycal .legend-dot { background: var(--mycal-dot); }
+    /* Host is marked by the corner dot on both layouts, so its legend stays a dot on PC too. */
+    #dashboard .calendar-legend .is-host .legend-dot { width: 6px; height: 6px; background: #c9845c; }
     #dashboard .calendar-legend .legend-label { color: var(--app-muted); font-size: 0.75rem; font-weight: 500; }
 
     @media (min-width: 768px) {
@@ -2751,6 +2753,9 @@
       #dashboard .calendar-legend .legend-chip { display: inline-block; }
       #dashboard .calendar-legend .legend-dot,
       #dashboard .calendar-legend .legend-label { display: none; }
+      #dashboard .calendar-legend .is-host { padding: 0 0.375rem; }
+      #dashboard .calendar-legend .is-host .legend-dot { display: inline-block; }
+      #dashboard .calendar-legend .is-host .legend-label { display: inline; font-size: 0.6875rem; color: #9a3412; }
     }
 
     @media (min-width: 768px) {
@@ -3106,6 +3111,7 @@
                 <li class="is-attending"><span class="legend-chip">참석</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">참석</span></li>
                 <li class="is-undecided"><span class="legend-chip">미정</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">미정</span></li>
                 <li class="is-declined"><span class="legend-chip">불참</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">불참</span></li>
+                <li class="is-host"><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">내 Host</span></li>
                 <li class="is-mycal" hidden><span class="legend-chip">내 캘린더</span><span class="legend-dot" aria-hidden="true"></span><span class="legend-label">내 캘린더</span></li>
               </ul>
             </section>
