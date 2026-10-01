@@ -3107,8 +3107,11 @@
             <button type="button" data-schedule-window="upcoming" aria-pressed="true">예정</button>
             <button type="button" data-schedule-window="past" aria-pressed="false">지난</button>
           </div>
-          <button id="scheduleScopeToggle" class="schedule-chip" type="button" aria-pressed="false">
+          <button id="scheduleScopeToggle" class="schedule-chip" type="button" data-schedule-scope="mine" aria-pressed="false">
             <span class="material-symbols-outlined">check</span>내 일정만
+          </button>
+          <button id="scheduleHostToggle" class="schedule-chip" type="button" data-schedule-scope="host" aria-pressed="false">
+            <span class="material-symbols-outlined">check</span>내 Host
           </button>
         </div>
       </div>
@@ -6431,7 +6434,8 @@
           const memberName = myMemberName();
           return Boolean(
             (memberId && String(item.hostId || "") === String(memberId)) ||
-            (memberName && item.hostName === memberName)
+            (memberName && item.hostName === memberName) ||
+            (memberName && item.source === "kakao" && item.kakaoCreatorName === memberName)
           );
         }
 
@@ -8788,9 +8792,9 @@
     }
 
     function renderFilters() {
-      const scopeButton = document.querySelector("#scheduleScopeToggle");
-      if (!scopeButton) return;
-      scopeButton.setAttribute("aria-pressed", String(state.scheduleScope === "mine"));
+      document.querySelectorAll("[data-schedule-scope]").forEach(button => {
+        button.setAttribute("aria-pressed", String(state.scheduleScope === button.dataset.scheduleScope));
+      });
     }
 
         function renderSchedule() {
@@ -8799,16 +8803,20 @@
             button.setAttribute("aria-pressed", String(button.dataset.scheduleWindow === state.scheduleWindow));
           });
           const inScheduleWindow = item => past ? item.date < todayIso : item.date >= todayIso;
-          const inScheduleScope = item => state.scheduleScope !== "mine" || isMySchedule(item) || isMyHostSchedule(item);
+          const inScheduleScope = item => {
+            if (state.scheduleScope === "host") return isMyHostSchedule(item);
+            if (state.scheduleScope === "mine") return isMySchedule(item) || isMyHostSchedule(item);
+            return true;
+          };
           const filteredSchedules = schedules.filter(item => isVisibleSchedule(item) && inScheduleWindow(item) && inScheduleScope(item) && matches(item)).map(item => ({ type: "schedule", item }));
           const filteredEvents = calendarEvents.filter(item => !item.readOnly && inScheduleWindow(item) && matchesEvent(item)).map(item => ({ type: "event", item }));
           const filtered = [...filteredSchedules, ...filteredEvents].sort((a, b) => compareCalendarItemsByTime(a.item, b.item));
           const groups = filtered.reduce((acc, row) => ((acc[row.item.date] ||= []).push(row), acc), {});
-          const mineOnly = state.scheduleScope === "mine";
+          const scopeLabel = { mine: "내 일정", host: "내가 Host인 일정" }[state.scheduleScope];
           const emptyTitle = past ? "지난 일정이 없습니다" : "오늘 이후 일정이 없습니다";
           const emptyMessage = past
-            ? (mineOnly ? "지난 내 일정이 없습니다." : "다른 검색어를 입력해 보세요.")
-            : (mineOnly ? "예정된 내 일정이 없습니다." : "지난 일정은 '지난'을 눌러 확인하세요.");
+            ? (scopeLabel ? `지난 ${scopeLabel}이 없습니다.` : "다른 검색어를 입력해 보세요.")
+            : (scopeLabel ? `예정된 ${scopeLabel}이 없습니다.` : "지난 일정은 '지난'을 눌러 확인하세요.");
           // Past schedules read newest first; upcoming ones soonest first.
           const groupEntries = past ? Object.entries(groups).reverse() : Object.entries(groups);
           // Stitch bridge: Schedule grouped-list HTML markup starts here.
@@ -11121,11 +11129,12 @@
       event.stopPropagation();
       toggleSideScheduleAddMenu();
     });
-        document.querySelector("#scheduleScopeToggle")?.addEventListener("click", () => {
-          state.scheduleScope = state.scheduleScope === "mine" ? "all" : "mine";
+        document.querySelectorAll("[data-schedule-scope]").forEach(button => button.addEventListener("click", () => {
+          const scope = button.dataset.scheduleScope;
+          state.scheduleScope = state.scheduleScope === scope ? "all" : scope;
           renderFilters();
           renderSchedule();
-        });
+        }));
         document.querySelector("#scheduleWindowToggle").addEventListener("click", event => {
           const button = event.target.closest("[data-schedule-window]");
           if (!button || button.dataset.scheduleWindow === state.scheduleWindow) return;
