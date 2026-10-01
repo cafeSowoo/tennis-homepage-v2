@@ -207,3 +207,23 @@ test('cancelled schedules are excluded from calendar and default lists without r
  assert.match(html,/byDate = schedules\.filter\(isVisibleSchedule\)\.reduce/);
  assert.match(html,/schedules\.filter\(item => isVisibleSchedule\(item\) && inScheduleWindow/);
 });
+
+test('DB-sourced place, name and image values are escaped before entering HTML', () => {
+  for (const raw of [
+    '>${schedulePlaceLabel(item)}<',
+    '· ${schedulePlaceLabel(item)}',
+    'title="${timeStart(item)}',
+    'alt="${item.place}',
+    'src="${scheduleHeroImage(item)}"',
+    'src="${image}"',
+    'alt="${place}"',
+    'aria-label="${place}',
+    'aria-label="${name}',
+    '>${place}</h3>',
+    '${subLocation}',
+    '>${courtType}<',
+    '>${court.name}</option>'
+  ]) {
+    assert.equal(html.includes(raw), false, raw);
+  }
+});
