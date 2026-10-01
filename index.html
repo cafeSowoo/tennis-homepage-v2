@@ -30,6 +30,7 @@
   <script src="build-info.js"></script>
   <script src="v2-feedback.js"></script>
   <script src="v2-personal-calendar.js"></script>
+  <script src="v2-onboarding-tour.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
   <script>
@@ -2824,6 +2825,28 @@
     .personal-calendar-swatch { width: 1.75rem; height: 1.75rem; border-radius: 9999px; background: var(--swatch); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
     .personal-calendar-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--swatch); }
 
+    /* 첫 방문 튜토리얼 */
+    .tour-root { position: fixed; inset: 0; z-index: 120; }
+    .tour-root.is-centered { background: rgba(0, 0, 0, 0.55); }
+    .tour-spot { position: fixed; border-radius: 1rem; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); pointer-events: none; transition: left .28s ease, top .28s ease, width .28s ease, height .28s ease; }
+    .tour-root.is-centered .tour-spot { display: none; }
+    .tour-card { position: fixed; width: min(340px, calc(100vw - 32px)); padding: 1.125rem 1.125rem 0.875rem; border-radius: 1.25rem; background: #fff; color: var(--app-text); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22); outline: none; transition: left .28s ease, top .28s ease, opacity .18s ease; }
+    .tour-root.is-centered .tour-card { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); }
+    .tour-root.is-moving .tour-card { opacity: 0; }
+    .tour-step { font-size: 0.6875rem; font-weight: 700; letter-spacing: .04em; color: var(--app-green); }
+    .tour-card h2 { margin-top: 0.25rem; font-size: 1.0625rem; font-weight: 800; letter-spacing: -0.02em; word-break: keep-all; }
+    .tour-body { display: grid; gap: 0.375rem; margin-top: 0.5rem; font-size: 0.8125rem; line-height: 1.55; color: #48484a; word-break: keep-all; }
+    .tour-body .tour-note { margin-top: 0.25rem; padding: 0.5rem 0.625rem; border-radius: 0.625rem; background: var(--app-fill); font-size: 0.75rem; color: var(--app-muted); }
+    .tour-body .tour-install { justify-self: start; margin-top: 0.25rem; }
+    .tour-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.875rem; }
+    .tour-nav { display: flex; gap: 0.375rem; margin-left: auto; }
+    .tour-actions button { height: 2.25rem; padding: 0 0.875rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 700; }
+    .tour-skip { padding-left: 0.25rem !important; color: var(--app-muted); }
+    .tour-prev { border: 1px solid var(--app-border); background: #fff; }
+    .tour-next { background: var(--app-green); color: #fff; }
+    .tour-actions button:focus-visible, .tour-install:focus-visible { outline: 2px solid var(--app-green); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .tour-spot, .tour-card { transition: none; } }
+
     /* Place-based titles: tags keep what only the Kakao title said */
     .schedule-title-tag { flex: none; padding: 0.0625rem 0.375rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 700; line-height: 1.4; }
     .schedule-title-tag.is-closed { background: #fbeceb; color: #a3261f; }
@@ -3723,6 +3746,154 @@
         : (authState.session?.access_token ? { Authorization: `Bearer ${authState.session.access_token}` } : {}),
       onChange: () => onPersonalCalendarChange()
     });
+    // First-visit tour. Targets are looked up lazily so PC (side nav) and mobile (bottom nav) both work.
+    const visibleNavButton = view => [...document.querySelectorAll(`.nav-item[data-view="${view}"]`)]
+      .find(button => button.getBoundingClientRect().width > 0) || null;
+    const tourNeedsPwaStep = () => isMobileViewport() && !isStandalonePwa();
+    const onboardingTour = window.V2OnboardingTour.create({
+      switchView: view => switchView(view),
+      activeView: () => {
+        const id = document.querySelector(".view.active")?.id || "";
+        return id === "member-detail" && state.selectedMemberId === String(myMemberId()) ? "profile" : id;
+      },
+      steps: () => [
+        {
+          id: "welcome",
+          view: "dashboard",
+          title: `${myMemberName() || "회원"}님, 환영해요!`,
+          body: [
+            "테니스 봄 일정과 참석 현황을 한곳에서 볼 수 있어요.",
+            "주요 기능을 30초 만에 둘러볼게요."
+          ],
+          extra: () => {
+            if (!REVIEW_MODE_ENABLED) return null;
+            const note = document.createElement("p");
+            note.className = "tour-note";
+            note.textContent = "지금은 테스트 버전이라 참석 신청과 댓글은 지금처럼 카카오톡에서 해 주세요. 홈페이지는 카톡 내용을 자동으로 가져와 보여 줘요.";
+            return note;
+          }
+        },
+        {
+          id: "overview",
+          view: "dashboard",
+          target: () => document.querySelector("#dashboard .overview-strip"),
+          title: "내 일정 한눈에 보기",
+          body: [
+            "맨 위 카드에는 내가 참석하는 일정이 나와요.",
+            "'모집 중'을 누르면 아직 자리가 남은 일정을 볼 수 있어요."
+          ]
+        },
+        {
+          id: "calendar",
+          view: "dashboard",
+          target: () => document.querySelector("#dashboard .calendar-card"),
+          title: "달력",
+          body: [
+            "날짜를 누르면 그날 일정이 아래에 펼쳐져요.",
+            "색깔로 내 참석·미정·불참 상태를 구분해요."
+          ]
+        },
+        {
+          id: "schedule",
+          view: "schedule",
+          target: () => document.querySelector("#scheduleWindowToggle")?.parentElement,
+          title: "전체 일정 목록",
+          body: [
+            "'예정 / 지난'으로 기간을 바꾸고, '내 일정만'·'내 Host'로 내 일정만 골라 볼 수 있어요.",
+            "일정을 누르면 참석자, 코트, 댓글을 확인할 수 있어요."
+          ]
+        },
+        {
+          id: "personal-calendar",
+          view: "profile",
+          when: () => personalCalendar.enabled(),
+          target: () => document.querySelector("[data-personal-calendar-settings]"),
+          title: "내 캘린더 연결",
+          body: [
+            "구글·아이클라우드 캘린더를 연결하면 내 개인 일정도 홈 달력에 함께 보여요.",
+            "연결한 일정은 이 기기에서 나에게만 보여요. 필요할 때 '연결'을 눌러 주세요."
+          ]
+        },
+        {
+          id: "install",
+          view: "dashboard",
+          when: tourNeedsPwaStep,
+          title: "홈 화면에 추가하기",
+          body: [
+            isIosSafari()
+              ? "Safari 아래 공유(↑) 버튼 → '홈 화면에 추가'를 누르면 앱처럼 바로 열 수 있어요."
+              : /Android/i.test(navigator.userAgent)
+                ? "브라우저 메뉴(⋮) → '앱 설치' 또는 '홈 화면에 추가'를 누르면 앱처럼 바로 열 수 있어요."
+                : "브라우저 메뉴에서 '홈 화면에 추가'를 누르면 앱처럼 바로 열 수 있어요."
+          ],
+          extra: () => {
+            const wrap = document.createDocumentFragment();
+            const install = document.createElement("button");
+            install.type = "button";
+            install.className = "btn-primary tour-install px-3 py-2 text-xs";
+            install.textContent = "지금 설치";
+            install.dataset.tourInstall = "";
+            install.hidden = !pwaDeferredPrompt;
+            install.addEventListener("click", async () => {
+              if (!pwaDeferredPrompt) return;
+              pwaDeferredPrompt.prompt();
+              await pwaDeferredPrompt.userChoice;
+              pwaDeferredPrompt = null;
+              install.hidden = true;
+            });
+            wrap.append(install, tourReplayNote());
+            return wrap;
+          }
+        },
+        {
+          id: "done",
+          view: "dashboard",
+          when: () => !tourNeedsPwaStep(),
+          target: () => visibleNavButton("profile"),
+          title: "준비 끝!",
+          body: ["이제 자유롭게 둘러보세요."],
+          extra: tourReplayNote
+        }
+      ],
+      onFinish: shown => {
+        if (shown.includes("install")) {
+          try { localStorage.setItem(PWA_DISMISS_KEY, "1"); } catch {}
+        }
+      },
+      onSkip: () => setTimeout(initPwaInstallBanner, 400)
+    });
+    let onboardingTourTimer = 0;
+    let onboardingTourChecked = false;
+
+    function tourReplayNote() {
+      const note = document.createElement("p");
+      note.className = "tour-note";
+      note.textContent = "이 안내는 '내 정보 → 설정 → 사용법 다시 보기'에서 언제든 다시 볼 수 있어요.";
+      return note;
+    }
+
+    function onboardingTourPending() {
+      return onboardingTour.active() || (!onboardingTour.seen() && !onboardingTourChecked);
+    }
+
+    // Starts once per device, only when the member lands on the home view with nothing else open
+    // (a shared Kakao link that opens a schedule directly is left alone for this visit).
+    function scheduleOnboardingTour() {
+      if (onboardingTourChecked || onboardingTourTimer || onboardingTour.seen() || !isApprovedMember()) return;
+      onboardingTourTimer = setTimeout(() => {
+        onboardingTourTimer = 0;
+        if (!isApprovedMember() || onboardingTour.active()) return;
+        onboardingTourChecked = true;
+        const blocked = !document.querySelector("#dashboard.active") || document.querySelector("dialog[open]")
+          || document.body.classList.contains("selected-date-active");
+        if (blocked) {
+          initPwaInstallBanner();
+          return;
+        }
+        hidePwaInstallBanner();
+        onboardingTour.start();
+      }, 900);
+    }
     let courts = [];
     let courtUnits = [];
     let schedules = [];
@@ -5901,6 +6072,7 @@
       const syncAdminVisible = ready && myMemberName() === SYNC_ADMIN_MEMBER_NAME;
       if (syncAdminButton) syncAdminButton.hidden = !syncAdminVisible;
       if (!syncAdminVisible) resetSyncAdmin();
+      scheduleOnboardingTour();
     }
 
     function renderAuthStatus() {
@@ -5923,6 +6095,7 @@
       document.querySelector('#memberGateSteps').hidden = Boolean(authState.user);
       document.querySelector('#memberGateTitle').innerHTML = authState.user ? '회원 연결 및 가입' : '코트에서 만나는<br>우리의 다음 일정';
       if (authState.user) document.querySelector('#memberGateLoginNotice').textContent = '';
+      scheduleOnboardingTour();
       const button = document.querySelector("#authButton");
       if (!button) return;
 
@@ -9216,10 +9389,19 @@
               </div>
             </article>
 
-            ${String(member.id) === String(myMemberId()) && (!REVIEW_MODE_ENABLED || personalCalendar.enabled()) ? `
+            ${String(member.id) === String(myMemberId()) ? `
             <article class="app-card profile-settings p-4">
               <h3 class="profile-settings-title">설정</h3>
               ${personalCalendar.enabled() ? `<div data-personal-calendar-settings>${personalCalendarSettingsHTML()}</div>` : ""}
+              <div class="profile-settings-row">
+                <div class="min-w-0">
+                  <p class="profile-settings-label">사용법 다시 보기</p>
+                  <p class="profile-settings-help">처음 들어왔을 때 본 안내를 다시 보여 드려요</p>
+                </div>
+                <button class="profile-settings-toggle" type="button" data-onboarding-replay>
+                  <span class="material-symbols-outlined text-[16px]">school</span><span>보기</span>
+                </button>
+              </div>
               ${REVIEW_MODE_ENABLED ? "" : `
               <div class="profile-settings-row" data-reminder-row>
                 <div class="min-w-0">
@@ -10900,6 +11082,11 @@
         return;
       }
 
+      if (event.target.closest("[data-onboarding-replay]")) {
+        onboardingTour.start();
+        return;
+      }
+
       const signOutButton = event.target.closest("[data-sign-out]");
       if (signOutButton) {
         handleAuthButton().catch(error => alert(error.message));
@@ -11540,7 +11727,7 @@
     }
 
     function initPwaInstallBanner() {
-      if (isStandalonePwa() || !isMobileViewport() || localStorage.getItem(PWA_DISMISS_KEY)) {
+      if (isStandalonePwa() || !isMobileViewport() || localStorage.getItem(PWA_DISMISS_KEY) || onboardingTourPending()) {
         return;
       }
 
@@ -11574,6 +11761,7 @@
         initPwaInstallBanner();
         updatePwaInstallBanner();
       }
+      document.querySelector("[data-tour-install]")?.removeAttribute("hidden");
     });
 
     if ("serviceWorker" in navigator) {
