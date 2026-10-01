@@ -4255,6 +4255,11 @@
 
     async function loadKakaoMirrorSchedules() {
       // Review mode keeps past Kakao schedules on the calendar; the sync only touches today onward.
+      // The schedules table is closed to anonymous reads, so review mode goes through its access token.
+      if (REVIEW_MODE_ENABLED) {
+        const data = await TennisV2.rpc(supabaseClient, "review_kakao_schedules", { p_token: reviewState.accessToken });
+        return (data || []).map(fromKakaoMirrorSchedule);
+      }
       let query = supabaseClient
         .from("schedules")
         .select("*")
@@ -4310,7 +4315,7 @@
 
     async function loadReviewData() {
       const [memberRows, courtRows, unitRows, kakaoMirrorRows, syncState] = await Promise.all([
-        TennisV2.rows(supabaseClient, 'members'),
+        TennisV2.rpc(supabaseClient, 'review_members', { p_token: reviewState.accessToken }).then(rows => rows || []),
         TennisV2.rows(supabaseClient, 'courts'),
         TennisV2.rows(supabaseClient, 'court_units'),
         loadKakaoMirrorSchedules(),
