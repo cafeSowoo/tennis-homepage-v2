@@ -27,8 +27,9 @@ async page => {
   await page.locator('#reviewPasswordInput').fill('review-pass');
   await page.locator('#reviewPasswordButton').click();
   await page.waitForFunction(()=>!document.querySelector('#reviewMemberStep').hidden);
-  await page.locator('#reviewMemberSelect').selectOption('member-a');
-  await page.locator('#reviewMemberConfirm').click();
+  await page.locator('#reviewMemberPicker').click();
+  await page.locator('#reviewMemberGrid [data-member-id="member-a"]').click();
+  await page.locator('#reviewMemberGrid [data-member-id="member-a"]').click();
   await page.waitForFunction(()=>document.querySelector('#reviewGate').hidden && document.body.classList.contains('approved-club-member'));
   await page.waitForFunction(()=>document.querySelector('#detail.active') && document.querySelector('#detailContent')?.innerText.includes('10월 Kakao Mirror 시험'));
   await page.waitForFunction(()=>document.querySelector('#detailContent')?.innerText.includes('카카오 댓글 내용'));
@@ -109,8 +110,9 @@ async page => {
 
   await page.locator('#reviewMemberButton').click();
   await page.waitForFunction(()=>!document.querySelector('#reviewGate').hidden && !document.querySelector('#reviewMemberStep').hidden);
-  await page.locator('#reviewMemberSelect').selectOption('member-b');
-  await page.locator('#reviewMemberConfirm').click();
+  await page.locator('#reviewMemberPicker').click();
+  await page.locator('#reviewMemberGrid [data-member-id="member-b"]').click();
+  await page.locator('#reviewMemberGrid [data-member-id="member-b"]').click();
   await page.waitForFunction(()=>document.querySelector('#reviewGate').hidden);
   const switched=await page.evaluate(()=>({member:myMemberName(),declined:isDeclinedSchedule(schedules[0])}));
 
