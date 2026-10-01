@@ -11,6 +11,11 @@ See `../docs/storage-policy.md` for the full storage policy.
 - `events.json`: non-tennis calendar events. Use this for personal, work, book club, family, or other dates that should appear on the dashboard calendar.
 - `discussions.json`: match discussion records. Discussion rows reference schedules by `schedule.id` and members by `member.id`. Use `displayTime` when the source only provides a human-readable timestamp.
 
+`members.json`, `schedules.json` and `discussions.json` hold members' personal data
+(real names, bank accounts in comments), so they are git-ignored and kept only on
+the local machine. The public repo ships `courts.json`, `court-units.json` and
+`events.json` only.
+
 Keep `id` values stable. They are the bridge between these seed files, Supabase,
 and any imported Kakao schedule data.
 

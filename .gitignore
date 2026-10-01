@@ -11,3 +11,10 @@ tmp/
 output/playwright/
 supabase/.temp/
 node_modules/
+
+# Member personal data (real names, bank accounts, profile captures) stays local only;
+# this repo is public for GitHub Pages. Supabase is the source of truth.
+data/members.json
+data/schedules.json
+data/discussions.json
+kakao-member-photos/
