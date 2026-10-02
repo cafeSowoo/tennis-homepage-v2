@@ -3728,8 +3728,9 @@
           }
         })
       : null;
-    const todayIso = todayIsoLocal();
-    const today = new Date(`${todayIso}T00:00:00`);
+    // Updated by syncToday() when the Korean date rolls over while the app stays open.
+    let todayIso = todayIsoLocal();
+    let today = new Date(`${todayIso}T00:00:00`);
         const state = { query: "", scheduleScope: "all", scheduleWindow: "upcoming", overviewMode: "mine", memberSort: "count", memberMonth: "all", selectedId: 0, selectedEventId: "", selectedMemberId: "", detailType: "schedule", detailReturnTo: "schedule", selectedDate: "", currentMonth: todayIso.slice(0, 7) };
     const authState = { session: null, user: null, memberAccount: null, member: null, initialized: false };
     const REVIEW_ACCESS_TOKEN_KEY = "tennis.v2.reviewAccessToken";
@@ -3973,13 +3974,17 @@
 
     const unique = arr => [...new Set(arr)].sort((a,b) => a.localeCompare(b, "ko"));
 
+    // Club schedules are dated in Korea time, so "today" follows KST whatever the device's time zone.
     function todayIsoLocal() {
-      const now = new Date();
-      return [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, "0"),
-        String(now.getDate()).padStart(2, "0")
-      ].join("-");
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    }
+
+    function syncToday() {
+      const next = todayIsoLocal();
+      if (next === todayIso) return false;
+      todayIso = next;
+      today = new Date(`${todayIso}T00:00:00`);
+      return true;
     }
 
     async function fetchJSON(path) {
@@ -11708,6 +11713,7 @@
     }
 
     document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncToday();
       if (document.visibilityState === 'visible' && authState.initialized) {
         refreshPersonalCalendar();
         if (REVIEW_MODE_ENABLED) {
@@ -11718,6 +11724,7 @@
       }
     });
     startReviewKakaoAutoRefresh();
+    window.setInterval(() => { if (syncToday()) refreshViews(); }, 60_000);
     initApp();
 
     const PWA_DISMISS_KEY = "tennis.v2.pwaInstallDismissed";

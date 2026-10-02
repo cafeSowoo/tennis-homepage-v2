@@ -255,3 +255,16 @@ test('Kakao comments re-read after a minute and keep the last copy when a refres
   await ctx.loadKakaoComments('k');
   assert.equal(calls, 3, 'a failed refresh waits for the next window instead of looping');
 });
+
+test('today follows Korea time and rolls over while the app stays open', () => {
+  let now = Date.parse('2026-10-02T14:59:00Z'); // 23:59 KST
+  const FixedDate = class extends Date { constructor(...a) { super(...(a.length ? a : [now])); } };
+  const ctx = { Intl, Date: FixedDate };
+  vm.createContext(ctx);
+  vm.runInContext(source('todayIsoLocal') + '\n' + source('syncToday') + '\nlet todayIso = todayIsoLocal(); let today = new Date(`${todayIso}T00:00:00`);\nthis.read = () => todayIso;', ctx);
+  assert.equal(ctx.read(), '2026-10-02');
+  assert.equal(ctx.syncToday(), false);
+  now = Date.parse('2026-10-02T15:01:00Z'); // 00:01 KST next day, still Oct 2 in UTC
+  assert.equal(ctx.syncToday(), true);
+  assert.equal(ctx.read(), '2026-10-03');
+});
