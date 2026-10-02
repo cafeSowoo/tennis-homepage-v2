@@ -10,7 +10,9 @@ async function matchAppCache(request) {
   const cache = await caches.open(CACHE_NAME);
   return cache.match(request);
 }
+const OFFLINE_PAGE = "./offline.html";
 const SHELL_ASSETS = [
+  OFFLINE_PAGE,
   "./manifest.webmanifest",
   "./assets/logo-192.webp",
   "./assets/icons/favicon-48.png",
@@ -95,10 +97,8 @@ self.addEventListener("fetch", event => {
 
   if (isHtmlRequest(request)) {
     event.respondWith(
-      fetch(request).catch(async () => {
-        const cached = await matchAppCache(request);
-        return cached || matchAppCache(new URL("index.html", APP_URL).href);
-      })
+      // Pages are never cached; without a connection show the cached offline notice instead.
+      fetch(request).catch(() => matchAppCache(new URL(OFFLINE_PAGE, APP_URL).href))
     );
     return;
   }

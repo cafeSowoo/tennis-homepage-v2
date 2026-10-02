@@ -3712,6 +3712,7 @@
     const KAKAO_MIRROR_START_DATE = "2026-10-01";
     const KAKAO_MIRROR_END_DATE = "2026-11-01";
     const REVIEW_KAKAO_REFRESH_MS = 60_000;
+    const KAKAO_COMMENTS_REFRESH_MS = 50_000; // a little under the 60s schedule refresh so each tick re-reads
     const SYNC_ADMIN_MEMBER_NAME = "김지석";
     // Personal calendar overlay is piloted by the club owner first; add member ids here to open it up.
     const PERSONAL_CALENDAR_MEMBER_IDS = new Set(SUPABASE_CONFIG.personalCalendarMemberIds || ["member-kim-jiseok"]);
@@ -3727,8 +3728,9 @@
           }
         })
       : null;
-    const todayIso = todayIsoLocal();
-    const today = new Date(`${todayIso}T00:00:00`);
+    // Updated by syncToday() when the Korean date rolls over while the app stays open.
+    let todayIso = todayIsoLocal();
+    let today = new Date(`${todayIso}T00:00:00`);
         const state = { query: "", scheduleScope: "all", scheduleWindow: "upcoming", overviewMode: "mine", memberSort: "count", memberMonth: "all", selectedId: 0, selectedEventId: "", selectedMemberId: "", detailType: "schedule", detailReturnTo: "schedule", selectedDate: "", currentMonth: todayIso.slice(0, 7) };
     const authState = { session: null, user: null, memberAccount: null, member: null, initialized: false };
     const REVIEW_ACCESS_TOKEN_KEY = "tennis.v2.reviewAccessToken";
@@ -3972,13 +3974,17 @@
 
     const unique = arr => [...new Set(arr)].sort((a,b) => a.localeCompare(b, "ko"));
 
+    // Club schedules are dated in Korea time, so "today" follows KST whatever the device's time zone.
     function todayIsoLocal() {
-      const now = new Date();
-      return [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, "0"),
-        String(now.getDate()).padStart(2, "0")
-      ].join("-");
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    }
+
+    function syncToday() {
+      const next = todayIsoLocal();
+      if (next === todayIso) return false;
+      todayIso = next;
+      today = new Date(`${todayIso}T00:00:00`);
+      return true;
     }
 
     async function fetchJSON(path) {
@@ -6011,10 +6017,13 @@
       }
 
       try {
-        const { data, error } = await supabaseClient.rpc("review_access_check", { p_token: reviewState.accessToken });
-        if (error || data !== true) {
+        // Renewing keeps an active visitor's token alive and trades the old shared token for a personal one.
+        const { data, error } = await supabaseClient.rpc("review_access_renew", { p_token: reviewState.accessToken });
+        if (error || !data) {
           clearReviewAccess();
         } else {
+          reviewState.accessToken = String(data);
+          localStorage.setItem(REVIEW_ACCESS_TOKEN_KEY, reviewState.accessToken);
           reviewState.unlocked = true;
         }
       } catch {
@@ -6258,7 +6267,9 @@
         document.querySelector('#reviewMemberPicker')?.focus();
       } catch (error) {
         console.warn('Review access could not be verified.', error);
-        notice.textContent = '비밀번호를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+        notice.textContent = error?.code === '54000'
+          ? '비밀번호를 여러 번 틀려 잠시 막혔습니다. 15분 뒤 다시 시도해 주세요.'
+          : '비밀번호를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.';
       } finally {
         button.disabled = false;
       }
@@ -7659,8 +7670,8 @@
             chipClass += " border border-primary/60";
           }
           return `
-            <span class="block truncate rounded px-1.5 py-0.5 text-[10px] font-bold leading-normal ${chipClass} shadow-sm" title="${timeStart(item)} ${schedulePlaceLabel(item)}">
-              ${calendarTimeLabel(item)} · ${schedulePlaceLabel(item)}
+            <span class="block truncate rounded px-1.5 py-0.5 text-[10px] font-bold leading-normal ${chipClass} shadow-sm" title="${escapeHTML(`${timeStart(item)} ${schedulePlaceLabel(item)}`)}">
+              ${escapeHTML(calendarTimeLabel(item))} · ${escapeHTML(schedulePlaceLabel(item))}
             </span>
           `;
         });
@@ -7983,7 +7994,7 @@
                   <p class="mt-1 flex items-center gap-1.5 truncate text-sm text-[#86868b]">
                     ${icon("schedule", "text-[16px] text-primary")} <span class="tabular-nums font-medium text-[#1d1d1f]">${scheduleTimeRangeLabel(item)}</span>${usesPlaceTitle(item)
                       ? (scheduleSurfaceLabel(item) ? `<span>· ${escapeHTML(scheduleSurfaceLabel(item))}</span>` : "")
-                      : ` @ <span class="text-[#1d1d1f] font-medium">${schedulePlaceLabel(item)}</span>`}
+                      : ` @ <span class="text-[#1d1d1f] font-medium">${escapeHTML(schedulePlaceLabel(item))}</span>`}
                   </p>
                 </div>
               </div>
@@ -8292,14 +8303,18 @@
       const key = String(scheduleId || "");
       if (!key || !supabaseClient) return;
       const existing = kakaoCommentSnapshots.get(key);
-      if (existing?.status === "loading" || existing?.status === "loaded") return;
+      // Re-read at most once a minute (and retry failures on the same beat) while the detail stays open.
+      if (existing?.fetching) return;
+      if (existing && Date.now() - (existing.checkedAt || 0) < KAKAO_COMMENTS_REFRESH_MS) return;
+      if (REVIEW_MODE_ENABLED && (!reviewState.unlocked || !reviewState.accessToken)) return;
 
       const request = ++kakaoCommentsRequest;
-      kakaoCommentSnapshots.set(key, { status: "loading", comments: [] });
+      kakaoCommentSnapshots.set(key, existing?.status === "loaded"
+        ? { ...existing, fetching: true }
+        : { status: "loading", comments: [], fetching: true });
       try {
         let comments = [];
         if (REVIEW_MODE_ENABLED) {
-          if (!reviewState.unlocked || !reviewState.accessToken) return;
           const { data, error } = await supabaseClient.rpc("review_kakao_comments", {
             p_token: reviewState.accessToken,
             p_schedule_id: key
@@ -8323,11 +8338,17 @@
             message: maskAccountLikeNumbers(row.message)
           }));
         }
-        if (request !== kakaoCommentsRequest && !REVIEW_MODE_ENABLED) return;
-        kakaoCommentSnapshots.set(key, { status: "loaded", comments });
+        if (request !== kakaoCommentsRequest && !REVIEW_MODE_ENABLED) {
+          if (kakaoCommentSnapshots.get(key)?.fetching) kakaoCommentSnapshots.delete(key);
+          return;
+        }
+        kakaoCommentSnapshots.set(key, { status: "loaded", comments, checkedAt: Date.now() });
       } catch (error) {
         console.warn("Kakao comments could not be loaded.", error);
-        kakaoCommentSnapshots.set(key, { status: "error", comments: [] });
+        // Keep the last comments on a failed refresh; the next refresh tries again.
+        kakaoCommentSnapshots.set(key, existing?.status === "loaded"
+          ? { ...existing, fetching: false, checkedAt: Date.now() }
+          : { status: "error", comments: [], checkedAt: Date.now() });
       }
 
       if (
@@ -8433,7 +8454,7 @@
         <dl class="detail-info" data-detail-datetime>
           ${usesPlaceTitle(item)
             ? (scheduleSurfaceLabel(item) ? `<div class="detail-info-cell is-place"><dt>코트</dt><dd><span class="truncate">${escapeHTML(scheduleSurfaceLabel(item))}</span></dd></div>` : "")
-            : `<div class="detail-info-cell is-place"><dt>장소</dt><dd><span class="truncate">${schedulePlaceLabel(item)}</span></dd></div>`}
+            : `<div class="detail-info-cell is-place"><dt>장소</dt><dd><span class="truncate">${escapeHTML(schedulePlaceLabel(item))}</span></dd></div>`}
           <div class="detail-info-cell"><dt>날짜</dt><dd>${Number(month)}월 ${Number(dayOfMonth)}일 <small>(${weekday})</small></dd></div>
           <div class="detail-info-cell"><dt>시간</dt><dd class="tabular-nums">${end ? `${start}–${end}` : start}</dd></div>
           <div class="detail-info-cell"><dt>${hostLabel}</dt><dd>${hostValue}</dd></div>
@@ -8605,7 +8626,7 @@
               className: "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white"
             })}
             <span class="min-w-0 flex-1 truncate text-sm leading-tight">${memberAttendeeNameHTML(name)}</span>
-            <button class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-error-container hover:text-on-error-container md:opacity-0 md:group-hover:opacity-100" type="button" data-remove-attendee="${memberId}" aria-label="${name} 참석자 제거">
+            <button class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-error-container hover:text-on-error-container md:opacity-0 md:group-hover:opacity-100" type="button" data-remove-attendee="${escapeHTML(memberId)}" aria-label="${escapeHTML(name)} 참석자 제거">
               <span class="material-symbols-outlined text-[16px]">close</span>
             </button>
           </div>
@@ -8654,7 +8675,7 @@
             <!-- Hero Info Card -->
             <article class="app-card overflow-hidden">
               <div class="relative h-32 md:h-48 w-full overflow-hidden bg-[#f5f5f7]">
-                <img src="${scheduleHeroImage(item)}" alt="${item.place} 전경" class="w-full h-full object-cover" style="${scheduleHeroImageStyle(item)}" />
+                <img src="${escapeHTML(scheduleHeroImage(item))}" alt="${escapeHTML(item.place)} 전경" class="w-full h-full object-cover" style="${scheduleHeroImageStyle(item)}" />
                 <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
                 <div class="absolute bottom-3 left-4 flex flex-wrap items-center gap-2 md:bottom-4 md:left-5">
                   ${myHosting ? `<span class="rounded-full bg-transparent px-3 py-1 text-[11px] font-black uppercase tracking-wide text-orange-800">Host</span>` : ""}
@@ -8734,7 +8755,7 @@
         </div>
       `;
       initKakaoQrHelpers();
-      if (item.source === "kakao" && !kakaoCommentSnapshots.has(String(item.id))) {
+      if (item.source === "kakao") {
         void loadKakaoComments(item.id);
       }
     }
@@ -9043,7 +9064,7 @@
         return `
           <article class="card-premium app-card flex flex-col overflow-hidden">
             <div class="h-28 md:h-40 w-full relative overflow-hidden bg-[#f5f5f7]">
-              <img src="${image}" alt="${place}" class="w-full h-full object-cover" />
+              <img src="${escapeHTML(image)}" alt="${escapeHTML(place)}" class="w-full h-full object-cover" />
               <div class="absolute top-2.5 right-2.5 md:top-3 md:right-3">
                 <span class="court-badge inline-flex items-center gap-1.5 rounded-full px-2.5 py-1">
                   <span class="dot"></span>
@@ -9051,7 +9072,7 @@
                 </span>
               </div>
               ${court.id ? `
-                <button class="absolute left-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow-sm backdrop-blur transition hover:bg-white" type="button" data-edit-court="${court.id}" aria-label="${place} 코트 수정">
+                <button class="absolute left-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow-sm backdrop-blur transition hover:bg-white" type="button" data-edit-court="${escapeHTML(court.id)}" aria-label="${escapeHTML(place)} 코트 수정">
                   ${icon("edit", "text-[18px]")}
                 </button>
               ` : ""}
@@ -9060,12 +9081,12 @@
             <div class="p-4 md:p-5 flex flex-col flex-1">
               <div class="flex justify-between items-start mb-2 gap-2">
                 <div>
-                  <h3 class="text-base md:text-lg font-semibold text-[#1d1d1f] leading-snug">${place}</h3>
+                  <h3 class="text-base md:text-lg font-semibold text-[#1d1d1f] leading-snug">${escapeHTML(place)}</h3>
                   <p class="text-xs md:text-sm text-[#86868b] flex items-center gap-1 mt-1">
-                    ${icon("location_on", "text-[14px] text-primary")} ${subLocation}
+                    ${icon("location_on", "text-[14px] text-primary")} ${escapeHTML(subLocation)}
                   </p>
                 </div>
-                <span class="rounded-md bg-[rgba(0,104,93,0.08)] text-primary px-2 py-0.5 text-[10px] md:text-xs font-medium uppercase tracking-wide shrink-0">${courtType}</span>
+                <span class="rounded-md bg-[rgba(0,104,93,0.08)] text-primary px-2 py-0.5 text-[10px] md:text-xs font-medium uppercase tracking-wide shrink-0">${escapeHTML(courtType)}</span>
               </div>
 
               <div class="mt-3 mb-4 flex-1">
@@ -9073,7 +9094,7 @@
                 <div class="flex gap-2 flex-wrap">
                   ${next
                     ? `<button class="btn-outline px-2.5 py-1 md:px-3 md:py-1.5 text-[10px] md:text-xs" data-detail-id="${next.id}">
-                        ${icon("event_available", "text-[12px] text-primary")} ${dateLabel(next).replace("2026-", "")}, ${timeStart(next)}${next.courtUnit ? ` · ${courtUnitLabel(next.courtUnit)}` : ""}
+                        ${icon("event_available", "text-[12px] text-primary")} ${dateLabel(next).replace("2026-", "")}, ${escapeHTML(timeStart(next))}${next.courtUnit ? ` · ${escapeHTML(courtUnitLabel(next.courtUnit))}` : ""}
                        </button>`
                     : `<span class="text-xs text-[#86868b]">예정된 일정이 없습니다.</span>`}
                 </div>
@@ -9514,7 +9535,7 @@
 
     function renderAddScheduleFormOptions() {
       document.querySelector("#addScheduleCourt").innerHTML = courts.map(court => `
-        <option value="${court.id}">${court.name}</option>
+        <option value="${escapeHTML(court.id)}">${escapeHTML(court.name)}</option>
       `).join("");
       renderAddScheduleCourtUnitOptions();
       document.querySelector("#addScheduleMembers").innerHTML = members
@@ -11692,6 +11713,7 @@
     }
 
     document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncToday();
       if (document.visibilityState === 'visible' && authState.initialized) {
         refreshPersonalCalendar();
         if (REVIEW_MODE_ENABLED) {
@@ -11702,6 +11724,7 @@
       }
     });
     startReviewKakaoAutoRefresh();
+    window.setInterval(() => { if (syncToday()) refreshViews(); }, 60_000);
     initApp();
 
     const PWA_DISMISS_KEY = "tennis.v2.pwaInstallDismissed";

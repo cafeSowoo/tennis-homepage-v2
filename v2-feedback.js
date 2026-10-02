@@ -73,7 +73,7 @@ window.V2Feedback = {
         const article = document.createElement('article');
         article.append(node('h4', `${categories[row.category]} · ${statuses[row.status]}`));
         const body = node('p',row.body); body.className = 'feedback-body'; article.append(body);
-        article.append(node('small',`${row.author_name} · ${new Date(row.created_at).toLocaleString('ko-KR')} · ${views[row.view_name] || '기타 화면'} · 버전 ${row.client_version}`));
+        article.append(node('small',`${row.author_name}${row.author_user_id ? '' : ' (이름 선택으로 제출)'} · ${new Date(row.created_at).toLocaleString('ko-KR')} · ${views[row.view_name] || '기타 화면'} · 버전 ${row.client_version}`));
         if (row.schedule_id) article.append(node('small',`관련 일정: ${scheduleTitle(row.schedule_id) || '현재 목록에서 찾을 수 없는 일정'}`));
         if (isAdmin()) {
           const label = node('label','처리 상태'); const select = document.createElement('select'); select.setAttribute('aria-label','처리 상태');

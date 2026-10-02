@@ -41,7 +41,7 @@ jobs:
           cp index.html v2-data.js v2-admin.js v2-member-request.js v2-feedback.js v2-personal-calendar.js v2-onboarding-tour.js _site/
           echo "window.TENNIS_BUILD = '${GITHUB_SHA::7}';" > _site/build-info.js
           cp -R club _site/
-          cp manifest.webmanifest _site/
+          cp manifest.webmanifest offline.html _site/
           sed "s/__CACHE_VERSION__/${GITHUB_SHA::7}/g" sw.js > _site/sw.js
           cp -R assets _site/
           cp env.js _site/

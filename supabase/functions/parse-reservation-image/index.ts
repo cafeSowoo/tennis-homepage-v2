@@ -1,9 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2.116.0"
 import { corsHeaders } from "npm:@supabase/supabase-js@2.116.0/cors"
+import { cleanDraft, MAX_IMAGE_BYTES, MAX_REQUEST_BYTES, readBodyWithin } from "./limits.ts"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 const GROQ_MODEL = "qwen/qwen3.8-27b"
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const GROQ_TIMEOUT_MS = 30_000
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 
 const responseSchema = {
@@ -104,8 +105,13 @@ function base64ToBytes(value: string): Uint8Array {
 async function readImage(req: Request): Promise<{ bytes: Uint8Array; mimeType: string }> {
   const contentType = req.headers.get("content-type") || ""
 
+  if (!contentType.includes("multipart/form-data") && !contentType.includes("application/json")) {
+    throw new Error("UNSUPPORTED_CONTENT_TYPE")
+  }
+  const body = await readBodyWithin(req, MAX_REQUEST_BYTES)
+
   if (contentType.includes("multipart/form-data")) {
-    const formData = await req.formData()
+    const formData = await new Response(body, { headers: { "content-type": contentType } }).formData()
     const image = formData.get("image") ?? formData.get("file")
     if (!(image instanceof File)) throw new Error("IMAGE_REQUIRED")
     return {
@@ -114,16 +120,12 @@ async function readImage(req: Request): Promise<{ bytes: Uint8Array; mimeType: s
     }
   }
 
-  if (contentType.includes("application/json")) {
-    const body = await req.json()
-    if (!body || typeof body.image_base64 !== "string") throw new Error("IMAGE_REQUIRED")
-    return {
-      bytes: base64ToBytes(body.image_base64),
-      mimeType: typeof body.mime_type === "string" ? body.mime_type : "application/octet-stream",
-    }
+  const json = JSON.parse(new TextDecoder().decode(body))
+  if (!json || typeof json.image_base64 !== "string") throw new Error("IMAGE_REQUIRED")
+  return {
+    bytes: base64ToBytes(json.image_base64),
+    mimeType: typeof json.mime_type === "string" ? json.mime_type : "application/octet-stream",
   }
-
-  throw new Error("UNSUPPORTED_CONTENT_TYPE")
 }
 
 function validScheduleStatus(value: unknown): boolean {
@@ -193,7 +195,7 @@ async function requireApprovedMember(req: Request) {
     return { ok: false as const, status: 403, error: "Active club member required." }
   }
 
-  return { ok: true as const }
+  return { ok: true as const, supabase }
 }
 
 Deno.serve(async (req: Request) => {
@@ -214,6 +216,9 @@ Deno.serve(async (req: Request) => {
     if (code === "UNSUPPORTED_CONTENT_TYPE") {
       return jsonResponse({ error: "Use multipart/form-data or application/json." }, 415)
     }
+    if (code === "TOO_LARGE") {
+      return jsonResponse({ error: "Image must be between 1 byte and 5 MB." }, 413)
+    }
     return jsonResponse({ error: "An image file is required." }, 400)
   }
 
@@ -222,6 +227,13 @@ Deno.serve(async (req: Request) => {
   }
   if (image.bytes.byteLength === 0 || image.bytes.byteLength > MAX_IMAGE_BYTES) {
     return jsonResponse({ error: "Image must be between 1 byte and 5 MB." }, 413)
+  }
+
+  // Each member gets a limited number of AI reads per hour (counted in the database).
+  const { data: allowed, error: quotaError } = await access.supabase.rpc("claim_ai_image_request")
+  if (quotaError) return jsonResponse({ error: "Unable to check AI usage." }, 503)
+  if (allowed !== true) {
+    return jsonResponse({ error: "Too many image reads this hour. Please retry later." }, 429)
   }
 
   const payload = {
@@ -259,8 +271,12 @@ Deno.serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
     })
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      return jsonResponse({ error: "AI service took too long. Please retry." }, 504)
+    }
     return jsonResponse({ error: "AI service request failed." }, 502)
   }
 
@@ -282,7 +298,7 @@ Deno.serve(async (req: Request) => {
     if (typeof content !== "string") throw new Error("Missing structured output")
     const draft = JSON.parse(content)
     if (!validateDraft(draft)) throw new Error("Invalid structured output")
-    return jsonResponse({ ...draft, model: GROQ_MODEL })
+    return jsonResponse({ ...cleanDraft(draft), model: GROQ_MODEL })
   } catch {
     return jsonResponse({ error: "AI response could not be parsed safely." }, 502)
   }

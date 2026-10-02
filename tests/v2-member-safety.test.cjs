@@ -207,3 +207,75 @@ test('cancelled schedules are excluded from calendar and default lists without r
  assert.match(html,/byDate = schedules\.filter\(isVisibleSchedule\)\.reduce/);
  assert.match(html,/schedules\.filter\(item => isVisibleSchedule\(item\) && inScheduleWindow/);
 });
+
+test('DB-sourced place, name and image values are escaped before entering HTML', () => {
+  for (const raw of [
+    '>${schedulePlaceLabel(item)}<',
+    '· ${schedulePlaceLabel(item)}',
+    'title="${timeStart(item)}',
+    'alt="${item.place}',
+    'src="${scheduleHeroImage(item)}"',
+    'src="${image}"',
+    'alt="${place}"',
+    'aria-label="${place}',
+    'aria-label="${name}',
+    '>${place}</h3>',
+    '${subLocation}',
+    '>${courtType}<',
+    '>${court.name}</option>'
+  ]) {
+    assert.equal(html.includes(raw), false, raw);
+  }
+});
+
+test('Kakao comments re-read after a minute and keep the last copy when a refresh fails', async () => {
+  let reply = [{ comment_id: 'c1', author_name: 'A', message: 'first', created_at: '' }];
+  let fail = false; let calls = 0; let clock = 1_000_000;
+  const ctx = {
+    supabaseClient: { rpc: async () => { calls++; return fail ? { data: null, error: { message: 'offline' } } : { data: reply, error: null }; } },
+    REVIEW_MODE_ENABLED: true, reviewState: { unlocked: true, accessToken: 'tok' }, KAKAO_COMMENTS_REFRESH_MS: 50_000,
+    kakaoCommentSnapshots: new Map(), maskAccountLikeNumbers: v => v, isApprovedMember: () => true,
+    document: { querySelector: () => null }, state: {}, renderDetail: () => {}, findScheduleById: () => null,
+    console: { warn: () => {} }, Date: { now: () => clock }
+  };
+  vm.createContext(ctx);
+  vm.runInContext('let kakaoCommentsRequest = 0;\n' + source('loadKakaoComments'), ctx);
+  const messages = () => ctx.kakaoCommentSnapshots.get('k').comments.map(c => c.message);
+  await ctx.loadKakaoComments('k');
+  assert.deepEqual(messages(), ['first']);
+  await ctx.loadKakaoComments('k');
+  assert.equal(calls, 1, 'no re-read inside the refresh window');
+  clock += 60_000; reply = [...reply, { comment_id: 'c2', author_name: 'B', message: 'second', created_at: '' }];
+  await ctx.loadKakaoComments('k');
+  assert.deepEqual(messages(), ['first', 'second']);
+  clock += 60_000; fail = true;
+  await ctx.loadKakaoComments('k');
+  assert.equal(ctx.kakaoCommentSnapshots.get('k').status, 'loaded');
+  assert.deepEqual(messages(), ['first', 'second']);
+  await ctx.loadKakaoComments('k');
+  assert.equal(calls, 3, 'a failed refresh waits for the next window instead of looping');
+});
+
+test('today follows Korea time and rolls over while the app stays open', () => {
+  let now = Date.parse('2026-10-02T14:59:00Z'); // 23:59 KST
+  const FixedDate = class extends Date { constructor(...a) { super(...(a.length ? a : [now])); } };
+  const ctx = { Intl, Date: FixedDate };
+  vm.createContext(ctx);
+  vm.runInContext(source('todayIsoLocal') + '\n' + source('syncToday') + '\nlet todayIso = todayIsoLocal(); let today = new Date(`${todayIso}T00:00:00`);\nthis.read = () => todayIso;', ctx);
+  assert.equal(ctx.read(), '2026-10-02');
+  assert.equal(ctx.syncToday(), false);
+  now = Date.parse('2026-10-02T15:01:00Z'); // 00:01 KST next day, still Oct 2 in UTC
+  assert.equal(ctx.syncToday(), true);
+  assert.equal(ctx.read(), '2026-10-03');
+});
+test('service worker caches an offline page and shows it when a page cannot load', async () => {
+  const stored = []; let installing;
+  const cache = { addAll: async urls => stored.push(...urls), match: async url => (url === 'https://example.test/tennis-homepage-v2/offline.html' ? 'offline-page' : undefined) };
+  const ctx = vm.createContext({ URL, fetch: async () => { throw new Error('offline'); }, caches: { open: async () => cache, keys: async () => [] }, self: { registration: { scope: 'https://example.test/tennis-homepage-v2/' }, addEventListener: (n, fn) => (ctx.handlers[n] = fn), skipWaiting: () => {} }, handlers: {} });
+  vm.runInContext(sw, ctx);
+  ctx.handlers.install({ waitUntil: p => (installing = p) }); await installing;
+  assert.ok(stored.includes('./offline.html'));
+  let responded;
+  ctx.handlers.fetch({ request: { url: 'https://example.test/tennis-homepage-v2/?schedule=x', method: 'GET', mode: 'navigate', headers: { get: () => 'text/html' } }, respondWith: p => (responded = p) });
+  assert.equal(await responded, 'offline-page');
+});

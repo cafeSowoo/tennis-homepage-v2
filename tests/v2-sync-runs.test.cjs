@@ -70,7 +70,7 @@ test('sync state records the check time with how many schedules await review',as
   await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
     create function auth.jwt() returns jsonb language sql stable as $$select nullif(current_setting('request.jwt.claims',true),'')::jsonb$$;
     grant usage on schema auth to anon, authenticated; grant usage on schema public to anon, authenticated;`);
-  await db.exec(fs.readFileSync('supabase/migrations/20260912053018_kakao_sync_state.sql','utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/20260912054128_kakao_sync_state.sql','utf8'));
   await db.exec(fs.readFileSync('supabase/migrations/20260929073142_kakao_sync_held_count.sql','utf8'));
   const fp=c=>`'${c.repeat(64)}'`;
   await db.exec(`set role authenticated; select set_config('request.jwt.claims','${MEMBER}',false)`);
