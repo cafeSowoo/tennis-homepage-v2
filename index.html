@@ -6011,10 +6011,13 @@
       }
 
       try {
-        const { data, error } = await supabaseClient.rpc("review_access_check", { p_token: reviewState.accessToken });
-        if (error || data !== true) {
+        // Renewing keeps an active visitor's token alive and trades the old shared token for a personal one.
+        const { data, error } = await supabaseClient.rpc("review_access_renew", { p_token: reviewState.accessToken });
+        if (error || !data) {
           clearReviewAccess();
         } else {
+          reviewState.accessToken = String(data);
+          localStorage.setItem(REVIEW_ACCESS_TOKEN_KEY, reviewState.accessToken);
           reviewState.unlocked = true;
         }
       } catch {
@@ -6258,7 +6261,9 @@
         document.querySelector('#reviewMemberPicker')?.focus();
       } catch (error) {
         console.warn('Review access could not be verified.', error);
-        notice.textContent = '비밀번호를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+        notice.textContent = error?.code === '54000'
+          ? '비밀번호를 여러 번 틀려 잠시 막혔습니다. 15분 뒤 다시 시도해 주세요.'
+          : '비밀번호를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.';
       } finally {
         button.disabled = false;
       }

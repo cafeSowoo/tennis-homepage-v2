@@ -9,6 +9,7 @@ window.supabase={createClient(){const m=window.__v2Mock;return {
  async rpc(name,p){m.calls.push({name,args:p});let s=m.tables.v2_schedules.find(x=>x.id===p.p_id);const now=new Date().toISOString();
  if(name==='review_access_login')return{data:p.p_password==='review-pass'?'review-token':null,error:null};
  if(name==='review_access_check')return{data:p.p_token==='review-token',error:null};
+ if(name==='review_access_renew')return{data:p.p_token==='review-token'?'review-token':null,error:null};
  if(name==='review_members')return p.p_token==='review-token'?{data:[...m.tables.members],error:null}:{data:null,error:{code:'42501',message:'Review access expired'}};
  if(name==='review_kakao_schedules')return p.p_token==='review-token'?{data:m.tables.schedules.filter(x=>x.source==='kakao'),error:null}:{data:null,error:{code:'42501',message:'Review access expired'}};
  if(name==='review_kakao_comments')return{data:p.p_token==='review-token'&&p.p_schedule_id==='kakao-fixture'?[{comment_id:'comment-1',author_name:'윤인선',message:'카카오 댓글 내용 · 계좌 123-**-******',created_at:'2026-09-21T02:01:00Z'},{comment_id:'comment-2',author_name:'다른 회원',message:'두 번째 댓글',created_at:'2026-09-21T02:02:00Z'}]:[],error:null};
