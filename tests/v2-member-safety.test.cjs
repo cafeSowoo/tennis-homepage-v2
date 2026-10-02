@@ -268,3 +268,14 @@ test('today follows Korea time and rolls over while the app stays open', () => {
   assert.equal(ctx.syncToday(), true);
   assert.equal(ctx.read(), '2026-10-03');
 });
+test('service worker caches an offline page and shows it when a page cannot load', async () => {
+  const stored = []; let installing;
+  const cache = { addAll: async urls => stored.push(...urls), match: async url => (url === 'https://example.test/tennis-homepage-v2/offline.html' ? 'offline-page' : undefined) };
+  const ctx = vm.createContext({ URL, fetch: async () => { throw new Error('offline'); }, caches: { open: async () => cache, keys: async () => [] }, self: { registration: { scope: 'https://example.test/tennis-homepage-v2/' }, addEventListener: (n, fn) => (ctx.handlers[n] = fn), skipWaiting: () => {} }, handlers: {} });
+  vm.runInContext(sw, ctx);
+  ctx.handlers.install({ waitUntil: p => (installing = p) }); await installing;
+  assert.ok(stored.includes('./offline.html'));
+  let responded;
+  ctx.handlers.fetch({ request: { url: 'https://example.test/tennis-homepage-v2/?schedule=x', method: 'GET', mode: 'navigate', headers: { get: () => 'text/html' } }, respondWith: p => (responded = p) });
+  assert.equal(await responded, 'offline-page');
+});
