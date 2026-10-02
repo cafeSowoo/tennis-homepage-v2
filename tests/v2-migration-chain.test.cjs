@@ -6,9 +6,9 @@ const assert=require('node:assert/strict');
 // schema.sql is the idempotent base; these early Kakao migrations were folded into it
 // and are not re-runnable on top of it.
 const IN_SCHEMA_SQL=new Set([
- '20260912050101_kakao_schedule_metadata.sql',
- '20260912053018_kakao_sync_state.sql',
- '20260912055816_kakao_rsvp_sources.sql'
+ '20260912050547_kakao_schedule_metadata.sql',
+ '20260912054128_kakao_sync_state.sql',
+ '20260912060214_kakao_rsvp_sources.sql'
 ]);
 
 async function freshDatabase(){
