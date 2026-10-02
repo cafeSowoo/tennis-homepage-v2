@@ -3712,6 +3712,7 @@
     const KAKAO_MIRROR_START_DATE = "2026-10-01";
     const KAKAO_MIRROR_END_DATE = "2026-11-01";
     const REVIEW_KAKAO_REFRESH_MS = 60_000;
+    const KAKAO_COMMENTS_REFRESH_MS = 50_000; // a little under the 60s schedule refresh so each tick re-reads
     const SYNC_ADMIN_MEMBER_NAME = "김지석";
     // Personal calendar overlay is piloted by the club owner first; add member ids here to open it up.
     const PERSONAL_CALENDAR_MEMBER_IDS = new Set(SUPABASE_CONFIG.personalCalendarMemberIds || ["member-kim-jiseok"]);
@@ -8297,14 +8298,18 @@
       const key = String(scheduleId || "");
       if (!key || !supabaseClient) return;
       const existing = kakaoCommentSnapshots.get(key);
-      if (existing?.status === "loading" || existing?.status === "loaded") return;
+      // Re-read at most once a minute (and retry failures on the same beat) while the detail stays open.
+      if (existing?.fetching) return;
+      if (existing && Date.now() - (existing.checkedAt || 0) < KAKAO_COMMENTS_REFRESH_MS) return;
+      if (REVIEW_MODE_ENABLED && (!reviewState.unlocked || !reviewState.accessToken)) return;
 
       const request = ++kakaoCommentsRequest;
-      kakaoCommentSnapshots.set(key, { status: "loading", comments: [] });
+      kakaoCommentSnapshots.set(key, existing?.status === "loaded"
+        ? { ...existing, fetching: true }
+        : { status: "loading", comments: [], fetching: true });
       try {
         let comments = [];
         if (REVIEW_MODE_ENABLED) {
-          if (!reviewState.unlocked || !reviewState.accessToken) return;
           const { data, error } = await supabaseClient.rpc("review_kakao_comments", {
             p_token: reviewState.accessToken,
             p_schedule_id: key
@@ -8328,11 +8333,17 @@
             message: maskAccountLikeNumbers(row.message)
           }));
         }
-        if (request !== kakaoCommentsRequest && !REVIEW_MODE_ENABLED) return;
-        kakaoCommentSnapshots.set(key, { status: "loaded", comments });
+        if (request !== kakaoCommentsRequest && !REVIEW_MODE_ENABLED) {
+          if (kakaoCommentSnapshots.get(key)?.fetching) kakaoCommentSnapshots.delete(key);
+          return;
+        }
+        kakaoCommentSnapshots.set(key, { status: "loaded", comments, checkedAt: Date.now() });
       } catch (error) {
         console.warn("Kakao comments could not be loaded.", error);
-        kakaoCommentSnapshots.set(key, { status: "error", comments: [] });
+        // Keep the last comments on a failed refresh; the next refresh tries again.
+        kakaoCommentSnapshots.set(key, existing?.status === "loaded"
+          ? { ...existing, fetching: false, checkedAt: Date.now() }
+          : { status: "error", comments: [], checkedAt: Date.now() });
       }
 
       if (
@@ -8739,7 +8750,7 @@
         </div>
       `;
       initKakaoQrHelpers();
-      if (item.source === "kakao" && !kakaoCommentSnapshots.has(String(item.id))) {
+      if (item.source === "kakao") {
         void loadKakaoComments(item.id);
       }
     }

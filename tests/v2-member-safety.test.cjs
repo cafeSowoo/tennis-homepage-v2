@@ -227,3 +227,31 @@ test('DB-sourced place, name and image values are escaped before entering HTML',
     assert.equal(html.includes(raw), false, raw);
   }
 });
+
+test('Kakao comments re-read after a minute and keep the last copy when a refresh fails', async () => {
+  let reply = [{ comment_id: 'c1', author_name: 'A', message: 'first', created_at: '' }];
+  let fail = false; let calls = 0; let clock = 1_000_000;
+  const ctx = {
+    supabaseClient: { rpc: async () => { calls++; return fail ? { data: null, error: { message: 'offline' } } : { data: reply, error: null }; } },
+    REVIEW_MODE_ENABLED: true, reviewState: { unlocked: true, accessToken: 'tok' }, KAKAO_COMMENTS_REFRESH_MS: 50_000,
+    kakaoCommentSnapshots: new Map(), maskAccountLikeNumbers: v => v, isApprovedMember: () => true,
+    document: { querySelector: () => null }, state: {}, renderDetail: () => {}, findScheduleById: () => null,
+    console: { warn: () => {} }, Date: { now: () => clock }
+  };
+  vm.createContext(ctx);
+  vm.runInContext('let kakaoCommentsRequest = 0;\n' + source('loadKakaoComments'), ctx);
+  const messages = () => ctx.kakaoCommentSnapshots.get('k').comments.map(c => c.message);
+  await ctx.loadKakaoComments('k');
+  assert.deepEqual(messages(), ['first']);
+  await ctx.loadKakaoComments('k');
+  assert.equal(calls, 1, 'no re-read inside the refresh window');
+  clock += 60_000; reply = [...reply, { comment_id: 'c2', author_name: 'B', message: 'second', created_at: '' }];
+  await ctx.loadKakaoComments('k');
+  assert.deepEqual(messages(), ['first', 'second']);
+  clock += 60_000; fail = true;
+  await ctx.loadKakaoComments('k');
+  assert.equal(ctx.kakaoCommentSnapshots.get('k').status, 'loaded');
+  assert.deepEqual(messages(), ['first', 'second']);
+  await ctx.loadKakaoComments('k');
+  assert.equal(calls, 3, 'a failed refresh waits for the next window instead of looping');
+});
