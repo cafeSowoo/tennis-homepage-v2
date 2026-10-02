@@ -6049,10 +6049,11 @@
         const chip = document.createElement("button");
         chip.type = "button";
         chip.className = "review-member-chip";
-        chip.dataset.memberId = String(member.id);
+        // Not data-member-id: the page-wide click handler opens a member's profile for that attribute.
+        chip.dataset.reviewMemberId = String(member.id);
         chip.textContent = member.name || "이름 없음";
         chip.title = chip.textContent;
-        chip.setAttribute("aria-pressed", String(chip.dataset.memberId === reviewPickedMemberId));
+        chip.setAttribute("aria-pressed", String(chip.dataset.reviewMemberId === reviewPickedMemberId));
         grid.appendChild(chip);
       }
       const hint = document.querySelector("#reviewMemberHint");
@@ -6319,13 +6320,13 @@
       }
       const chip = event.target.closest('.review-member-chip');
       if (!chip) return;
-      if (chip.dataset.memberId === reviewPickedMemberId) {
+      if (chip.dataset.reviewMemberId === reviewPickedMemberId) {
         enterAsReviewMember(reviewPickedMemberId);
         return;
       }
-      reviewPickedMemberId = chip.dataset.memberId;
+      reviewPickedMemberId = chip.dataset.reviewMemberId;
       populateReviewMemberSelect();
-      dialog.querySelector(`.review-member-chip[data-member-id="${CSS.escape(reviewPickedMemberId)}"]`)?.focus();
+      dialog.querySelector(`.review-member-chip[data-review-member-id="${CSS.escape(reviewPickedMemberId)}"]`)?.focus();
     });
 
     document.querySelector('#memberGateLogin').addEventListener('click', async () => {

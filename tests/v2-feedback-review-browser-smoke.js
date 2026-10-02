@@ -11,8 +11,8 @@ async page => {
   await page.getByRole('textbox',{name:'클럽 비밀번호'}).fill('review-pass');
   await page.getByRole('button',{name:'입장하기',exact:true}).click();
   await page.locator('#reviewMemberPicker').click();
-  await page.locator('#reviewMemberGrid [data-member-id="member-a"]').click();
-  await page.locator('#reviewMemberGrid [data-member-id="member-a"]').click();
+  await page.locator('#reviewMemberGrid [data-review-member-id="member-a"]').click();
+  await page.locator('#reviewMemberGrid [data-review-member-id="member-a"]').click();
   await page.evaluate(()=>Object.defineProperty(window.crypto,'randomUUID',{value:undefined,configurable:true}));
   const button=page.locator('[data-feedback-button]:visible');
   await button.waitFor({state:'visible'});
