@@ -76,4 +76,20 @@ test('review login hands out expiring tokens and locks out repeated wrong passwo
  await db.close();
 });
 
+test('AI image reads are capped per login each hour',async()=>{
+ const db=await freshDatabase();
+ await db.exec(`grant usage on schema public to anon, authenticated`);
+ const claim=async()=>(await db.query(`select public.claim_ai_image_request() v`)).rows[0].v;
+ await db.exec(`set role authenticated; select set_config('request.jwt.claims','{"sub":"11111111-1111-4111-8111-111111111111"}',false)`);
+ for(let i=0;i<30;i++)assert.equal(await claim(),true);
+ assert.equal(await claim(),false,'the 31st read in an hour is refused');
+ await db.exec(`select set_config('request.jwt.claims','{"sub":"22222222-2222-4222-8222-222222222222"}',false)`);
+ assert.equal(await claim(),true,'other logins keep their own allowance');
+ await db.exec(`select set_config('request.jwt.claims','',false)`);
+ assert.equal(await claim(),false,'no login, no read');
+ await db.exec(`reset role; set role anon`);
+ await assert.rejects(db.query(`select public.claim_ai_image_request()`),/permission denied/);
+ await db.close();
+});
+
 module.exports={freshDatabase};
