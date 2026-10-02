@@ -645,8 +645,7 @@
       height: 100%;
       object-fit: cover;
     }
-    body.review-mode .avatar-photo img,
-    body.review-mode #memberPhotoViewer .photo-viewer-frame img {
+    body.review-mode .avatar-photo img {
       filter: blur(6px);
       transform: scale(1.12);
     }
@@ -8036,22 +8035,22 @@
     }
 
     const MEMBER_AVATAR_SOURCES = {
-      "김지석": "assets/members/opt/member-kim-jiseok.webp",
-      "김태환": "assets/members/opt/member-kim-taehwan.webp",
-      "민문기": "assets/members/opt/member-min-mungi.webp",
-      "박지영": "assets/members/opt/member-park-jiyoung.webp",
-      "박창언": "assets/members/opt/member-park-changeon.webp",
-      "송영희": "assets/members/opt/member-song-younghee.webp",
-      "신경은": "assets/members/opt/member-shin-kyoungeun.webp",
-      "윤인선": "assets/members/opt/member-yoon-inseon.webp",
-      "윤준": "assets/members/opt/member-yoon-jun.webp",
-      "이민경": "assets/members/opt/member-lee-minkyung.webp",
-      "이상백": "assets/members/opt/member-lee-sangbaek.webp",
-      "이희지": "assets/members/opt/member-lee-heeji.webp",
-      "조형철": "assets/members/opt/member-cho-hyeongcheol.webp",
-      "최빛나": "assets/members/opt/member-choi-bitna.webp",
-      "한인호": "assets/members/opt/member-han-inho.webp",
-      "허수정": "assets/members/opt/member-heo-sujeong.webp"
+      "김지석": "assets/members/opt/member-kim-jiseok.jpg",
+      "김태환": "assets/members/opt/member-kim-taehwan.jpg",
+      "민문기": "assets/members/opt/member-min-mungi.jpg",
+      "박지영": "assets/members/opt/member-park-jiyoung.jpg",
+      "박창언": "assets/members/opt/member-park-changeon.jpg",
+      "송영희": "assets/members/opt/member-song-younghee.jpg",
+      "신경은": "assets/members/opt/member-shin-kyoungeun.jpg",
+      "윤인선": "assets/members/opt/member-yoon-inseon.jpg",
+      "윤준": "assets/members/opt/member-yoon-jun.jpg",
+      "이민경": "assets/members/opt/member-lee-minkyung.jpg",
+      "이상백": "assets/members/opt/member-lee-sangbaek.jpg",
+      "이희지": "assets/members/opt/member-lee-heeji.jpg",
+      "조형철": "assets/members/opt/member-cho-hyeongcheol.jpg",
+      "최빛나": "assets/members/opt/member-choi-bitna.jpg",
+      "한인호": "assets/members/opt/member-han-inho.jpg",
+      "허수정": "assets/members/opt/member-heo-sujeong.jpg"
     };
 
     function initials(name) {
@@ -8059,8 +8058,9 @@
     }
 
     // Avatars show at <= 96px, so they load the 192px thumbnail; the photo viewer keeps the 512px file.
+    // Both files already have the blur baked in, so an original face never leaves the repo.
     function avatarThumbSrc(src) {
-      return String(src).replace(/\.webp$/, "-192.webp");
+      return String(src).replace(/\.(webp|jpg)$/, "-192.$1");
     }
 
     function memberAvatarHTML(name, { className = "", attributes = "" } = {}) {
